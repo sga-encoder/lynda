@@ -5,123 +5,40 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Guía de Cálculo Integral</title>
 <meta name="description" content="Guía interactiva paso a paso de técnicas de integración, con bases matemáticas, ejemplos de libro y solución de examen.">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
-<style>
-:root{
-  --bg:#f7f6f2; --panel:#ffffff; --ink:#1d1f24; --muted:#5d6370; --line:#e3e1da;
-  --accent:#2f5bd3; --accent-soft:#e7edfc; --ok:#1f8a4c; --ok-soft:#e3f4ea;
-  --warn:#b26a00; --warn-soft:#fdf1dc; --hard:#b4373b; --hard-soft:#fbe6e6;
-  --code:#f1efe9; --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 14px rgba(0,0,0,.04);
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#15171c; --panel:#1d2027; --ink:#e8e9ec; --muted:#a2a8b4; --line:#2e323b;
-    --accent:#86a5ff; --accent-soft:#232c45; --ok:#5fd08f; --ok-soft:#1b3326;
-    --warn:#f0b35a; --warn-soft:#3a2d17; --hard:#ff8a8d; --hard-soft:#3c2023;
-    --code:#252932; --shadow:none;
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#15171c; --panel:#1d2027; --ink:#e8e9ec; --muted:#a2a8b4; --line:#2e323b;
-  --accent:#86a5ff; --accent-soft:#232c45; --ok:#5fd08f; --ok-soft:#1b3326;
-  --warn:#f0b35a; --warn-soft:#3a2d17; --hard:#ff8a8d; --hard-soft:#3c2023;
-  --code:#252932; --shadow:none;
-}
-*{box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,sans-serif}
-a{color:var(--accent)}
-header.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
-header.top h1{font-size:1.05rem;margin:0;flex:1}
-header.top h1 a{color:var(--ink);text-decoration:none}
-.iconbtn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:6px 10px;cursor:pointer;font:inherit;font-size:.9rem}
-#menuBtn{display:none}
-.layout{display:flex;max-width:1200px;margin:0 auto}
-nav.side{width:250px;flex:none;padding:16px 12px;position:sticky;top:53px;height:calc(100vh - 53px);overflow:auto;border-right:1px solid var(--line)}
-nav.side .grp{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:14px 8px 6px}
-nav.side a{display:flex;justify-content:space-between;gap:6px;padding:6px 10px;border-radius:8px;color:var(--ink);text-decoration:none;font-size:.93rem}
-nav.side a:hover{background:var(--accent-soft)}
-nav.side a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
-nav.side a .cnt{font-size:.75rem;color:var(--muted);font-weight:400}
-main{flex:1;min-width:0;padding:24px 28px 80px}
-main h2{font-size:1.7rem;margin:.2em 0 .3em;line-height:1.25}
-main h3{font-size:1.25rem;margin:1.8em 0 .6em;padding-top:.4em;border-top:1px solid var(--line)}
-main h4{margin:1.2em 0 .4em}
-.lead{color:var(--muted);font-size:1.05rem;margin-top:0}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:14px 0;box-shadow:var(--shadow)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
-.grid .card{margin:0;text-decoration:none;color:var(--ink);display:block}
-.grid .card:hover{border-color:var(--accent)}
-.grid .card b{display:block;margin-bottom:4px}
-.grid .card small{color:var(--muted)}
-.bases{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0 4px}
-.bases span{font-size:.85rem;color:var(--muted);margin-right:4px}
-.chip{display:inline-block;font-size:.82rem;padding:3px 10px;border-radius:99px;background:var(--accent-soft);color:var(--accent);text-decoration:none;border:1px solid transparent}
-.chip:hover{border-color:var(--accent)}
-.tag{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:6px;margin-right:6px;vertical-align:middle}
-.tag.basico{background:var(--ok-soft);color:var(--ok)}
-.tag.medio{background:var(--warn-soft);color:var(--warn)}
-.tag.dificil{background:var(--hard-soft);color:var(--hard)}
-.src{font-size:.82rem;color:var(--muted);font-style:italic}
-.problem{font-size:1.08rem;overflow-x:auto;padding:4px 0}
-.note{border-left:4px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 10px 10px 0;margin:12px 0}
-.note.warn{border-color:var(--warn);background:var(--warn-soft)}
-.note.ok{border-color:var(--ok);background:var(--ok-soft)}
-.steps ol{list-style:none;counter-reset:s;padding:0;margin:10px 0}
-.steps li{counter-increment:s;display:none;position:relative;padding:10px 12px 10px 46px;margin:8px 0;border:1px solid var(--line);border-radius:10px;background:var(--bg);overflow-x:auto}
-.steps li.show{display:block;animation:fade .25s ease}
-.steps li::before{content:counter(s);position:absolute;left:12px;top:10px;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:.8rem;font-weight:700;display:flex;align-items:center;justify-content:center}
-:root[data-theme="dark"] .steps li::before{color:#111}
-.steps .what b,.steps .why b{font-size:.8rem;text-transform:uppercase;letter-spacing:.04em}
-.steps .what b{color:var(--accent)}
-.steps .why{color:var(--muted);margin-top:4px;font-size:.95rem}
-.steps .why b{color:var(--warn)}
-.result{display:none;margin-top:8px;padding:10px 14px;border-radius:10px;background:var(--ok-soft);border:1px solid var(--ok);overflow-x:auto}
-.result.show{display:block}
-.ctrls{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-button.b{font:inherit;font-size:.88rem;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
-button.b:hover{border-color:var(--accent)}
-button.b.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-:root[data-theme="dark"] button.b.primary{color:#111}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) button.b.primary,:root:not([data-theme="light"]) .steps li::before{color:#111}}
-.hidden{display:none}
-.reveal{margin-top:8px;padding:10px 14px;border-radius:10px;border:1px dashed var(--line);overflow-x:auto}
-label.done{display:inline-flex;align-items:center;gap:6px;font-size:.88rem;color:var(--muted);cursor:pointer;margin-left:auto}
-table{border-collapse:collapse;width:100%;font-size:.95rem}
-.tablewrap{overflow-x:auto}
-th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
-th{background:var(--code)}
-.progress{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin:6px 0}
-.progress i{display:block;height:100%;background:var(--ok);width:0;transition:width .3s}
-.quiz .opts{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-.quiz .fb{margin-top:8px;font-size:.95rem}
-.quiz button.right{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
-.quiz button.wrong{background:var(--hard-soft);border-color:var(--hard);color:var(--hard)}
-.pager{display:flex;justify-content:space-between;gap:10px;margin-top:40px;flex-wrap:wrap}
-.pager a{text-decoration:none}
-.katex-display{overflow-x:auto;overflow-y:hidden;padding:2px 0}
-@keyframes fade{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
-@media (max-width:860px){
-  #menuBtn{display:inline-block}
-  nav.side{position:fixed;left:0;top:53px;z-index:15;background:var(--panel);transform:translateX(-105%);transition:transform .2s;box-shadow:0 0 30px rgba(0,0,0,.25);width:270px}
-  nav.side.open{transform:none}
-  main{padding:18px 16px 70px}
-  main h2{font-size:1.4rem}
-}
-@media print{nav.side,header.top,.ctrls{display:none}.steps li,.result{display:block!important}}
+<!-- Estilos: Tailwind CSS (versión navegador). Fórmulas: KaTeX. Lógica: JavaScript puro. -->
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.4/dist/index.global.js"></script>
+<style type="text/tailwindcss">
+  @custom-variant dark (&:where(.dark, .dark *));
 </style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script>
+  // Tema claro/oscuro antes de pintar (evita parpadeo)
+  (function(){
+    let t = null; try { t = JSON.parse(localStorage.getItem('calcint:theme')); } catch(e){}
+    const dark = t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.classList.toggle('dark', dark);
+  })();
+</script>
 </head>
-<body>
-<header class="top">
-  <button id="menuBtn" class="iconbtn" aria-label="Abrir menú">☰</button>
-  <h1><a href="#/inicio">∫ Guía de Cálculo Integral</a></h1>
-  <button id="themeBtn" class="iconbtn" aria-label="Cambiar tema">◐ Tema</button>
+<body class="bg-stone-50 text-stone-900 antialiased dark:bg-zinc-950 dark:text-zinc-100 font-sans leading-relaxed">
+<header class="sticky top-0 z-30 flex items-center gap-3 border-b border-stone-200 bg-white/95 px-4 py-2.5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
+  <button id="menuBtn" class="rounded-lg border border-stone-200 px-2.5 py-1 text-sm md:hidden dark:border-zinc-700" aria-label="Abrir menú">☰</button>
+  <h1 class="flex-1 text-base font-bold"><a href="#/inicio">∫ Guía de Cálculo Integral</a></h1>
+  <button id="themeBtn" class="rounded-lg border border-stone-200 px-3 py-1 text-sm hover:border-blue-500 dark:border-zinc-700" aria-label="Cambiar tema">◐ Tema</button>
 </header>
-<div class="layout">
-  <nav class="side" id="side"></nav>
-  <main id="view"></main>
+<div class="mx-auto flex max-w-6xl">
+  <nav id="side" class="fixed left-0 top-[49px] z-20 h-[calc(100vh-49px)] w-64 shrink-0 -translate-x-full overflow-y-auto border-r border-stone-200 bg-white px-3 py-4 shadow-2xl transition-transform md:sticky md:translate-x-0 md:bg-transparent md:shadow-none dark:border-zinc-800 dark:bg-zinc-900 md:dark:bg-transparent"></nav>
+  <main id="view" class="min-w-0 flex-1 px-4 pb-20 pt-5 md:px-7
+    [&_p]:my-2.5 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:my-1
+    [&_p_a]:text-blue-700 [&_p_a]:underline [&_li_a]:text-blue-700 [&_li_a]:underline [&_td_a]:text-blue-700 [&_td_a]:underline [&_.why_a]:text-blue-700 [&_.why_a]:underline
+    dark:[&_p_a]:text-blue-300 dark:[&_li_a]:text-blue-300 dark:[&_td_a]:text-blue-300 dark:[&_.why_a]:text-blue-300
+    [&_table]:w-full [&_table]:border-collapse [&_table]:text-[0.95rem]
+    [&_th]:border [&_th]:border-stone-200 [&_th]:bg-stone-100 [&_th]:px-2.5 [&_th]:py-2 [&_th]:text-left
+    [&_td]:border [&_td]:border-stone-200 [&_td]:px-2.5 [&_td]:py-2 [&_td]:align-top
+    dark:[&_th]:border-zinc-700 dark:[&_th]:bg-zinc-800 dark:[&_td]:border-zinc-700
+    [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden [&_.katex-display]:py-0.5"></main>
 </div>
 
 <script>
@@ -137,7 +54,7 @@ const R = String.raw;
 const BASES = [
  {id:'potencias', t:'Potencias, raíces y exponentes', html:R`
   <p><b>Lo más básico.</b> Una potencia \(x^n\) es multiplicar \(x\) por sí mismo \(n\) veces. Las raíces son potencias con exponente fraccionario: \(\sqrt{x}=x^{1/2}\), \(\sqrt[3]{x}=x^{1/3}\). Para integrar casi siempre hay que <b>reescribir todo como potencias de \(x\)</b>.</p>
-  <div class="tablewrap"><table><tr><th>Regla</th><th>Ejemplo</th></tr>
+  <div class="my-3 overflow-x-auto"><table><tr><th>Regla</th><th>Ejemplo</th></tr>
   <tr><td>\(x^a\cdot x^b=x^{a+b}\)</td><td>\(x^2\cdot x^{1/2}=x^{5/2}\)</td></tr>
   <tr><td>\(\dfrac{x^a}{x^b}=x^{a-b}\)</td><td>\(\dfrac{x^3}{x^2}=x\)</td></tr>
   <tr><td>\((x^a)^b=x^{ab}\)</td><td>\((x^2)^2=x^4\)</td></tr>
@@ -160,14 +77,14 @@ const BASES = [
   <p><b>Ejemplo.</b> \(x^2+6x+13=(x+3)^2-9+13=(x+3)^2+4\). Con \(u=x+3\): \(\int\frac{dx}{x^2+6x+13}=\int\frac{du}{u^2+4}=\tfrac12\arctan\tfrac{x+3}{2}+C\).</p>`},
  {id:'logs', t:'Logaritmos y exponenciales', html:R`
   <p><b>Lo más básico.</b> \(\ln x\) es la inversa de \(e^x\): \(\ln(e^x)=x\), \(e^{\ln x}=x\), \(\ln1=0\), \(\ln e=1\).</p>
-  <div class="tablewrap"><table><tr><th>Propiedad</th><th>Uso típico</th></tr>
+  <div class="my-3 overflow-x-auto"><table><tr><th>Propiedad</th><th>Uso típico</th></tr>
   <tr><td>\(\ln(ab)=\ln a+\ln b\)</td><td>juntar logaritmos</td></tr>
   <tr><td>\(\ln\frac ab=\ln a-\ln b\)</td><td>\(\ln|x-1|-\ln|x+1|=\ln\left|\frac{x-1}{x+1}\right|\)</td></tr>
   <tr><td>\(\ln a^r=r\ln a\)</td><td>\(-\ln|\cos x|=\ln|\sec x|\)</td></tr></table></div>
   <p><b>Límites clave:</b> \(\displaystyle\lim_{t\to\infty}\ln t=\infty\), \(\displaystyle\lim_{t\to\infty}e^{-t}=0\), \(\displaystyle\lim_{t\to-\infty}e^{t}=0\).</p>`},
  {id:'trig', t:'Identidades trigonométricas', html:R`
   <p><b>Lo más básico.</b> En el círculo unitario \(\cos\theta\) es la coordenada \(x\) y \(\sin\theta\) la \(y\), por eso <b>\(\sin^2\theta+\cos^2\theta=1\)</b> (Pitágoras).</p>
-  <div class="tablewrap"><table><tr><th>Identidad</th><th>Para qué sirve</th></tr>
+  <div class="my-3 overflow-x-auto"><table><tr><th>Identidad</th><th>Para qué sirve</th></tr>
   <tr><td>\(\sin^2\theta+\cos^2\theta=1\)</td><td>convertir \(\sin^2\leftrightarrow\cos^2\); simplificar \(\sqrt{a^2-a^2\sin^2\theta}\)</td></tr>
   <tr><td>\(1+\tan^2\theta=\sec^2\theta\)</td><td>simplificar \(\sqrt{a^2+a^2\tan^2\theta}\); potencias de tan/sec</td></tr>
   <tr><td>\(1+\cot^2\theta=\csc^2\theta\)</td><td>integrar \(\cot^2\theta\)</td></tr>
@@ -189,7 +106,7 @@ const BASES = [
   </svg>`},
  {id:'derivadas', t:'Derivadas y regla de la cadena', html:R`
   <p><b>Lo más básico.</b> Integrar es el proceso <b>inverso</b> de derivar. Si no conoces las derivadas, no podrás reconocer integrales.</p>
-  <div class="tablewrap"><table><tr><th>\(f(x)\)</th><th>\(f'(x)\)</th><th>\(f(x)\)</th><th>\(f'(x)\)</th></tr>
+  <div class="my-3 overflow-x-auto"><table><tr><th>\(f(x)\)</th><th>\(f'(x)\)</th><th>\(f(x)\)</th><th>\(f'(x)\)</th></tr>
   <tr><td>\(x^n\)</td><td>\(nx^{n-1}\)</td><td>\(\ln x\)</td><td>\(1/x\)</td></tr>
   <tr><td>\(e^x\)</td><td>\(e^x\)</td><td>\(\sin x\)</td><td>\(\cos x\)</td></tr>
   <tr><td>\(\cos x\)</td><td>\(-\sin x\)</td><td>\(\tan x\)</td><td>\(\sec^2x\)</td></tr>
@@ -201,7 +118,7 @@ const BASES = [
   <p><b>Ejemplo difícil.</b> \(\frac{d}{dx}\big[x\,f(x)\big]=f(x)+x f'(x)\) (producto). Es la clave del ejercicio 6 del examen.</p>`},
  {id:'tabla', t:'Tabla de integrales básicas', html:R`
   <p><b>Lo más básico.</b> Cada fórmula sale de leer al revés la tabla de derivadas. \(C\) es la constante de integración.</p>
-  <div class="tablewrap"><table>
+  <div class="my-3 overflow-x-auto"><table>
   <tr><td>\(\int x^n\,dx=\frac{x^{n+1}}{n+1}+C\ (n\ne-1)\)</td><td>\(\int\frac1x\,dx=\ln|x|+C\)</td></tr>
   <tr><td>\(\int e^x\,dx=e^x+C\)</td><td>\(\int\sin x\,dx=-\cos x+C\)</td></tr>
   <tr><td>\(\int\cos x\,dx=\sin x+C\)</td><td>\(\int\sec^2x\,dx=\tan x+C\)</td></tr>
@@ -227,7 +144,7 @@ const LESSONS = [
   <ul><li>Regla de la potencia: \(\int x^n\,dx=\dfrac{x^{n+1}}{n+1}+C\) (si \(n\ne-1\)).</li>
   <li>Linealidad: se integra término a término y las constantes salen.</li>
   <li>Teorema Fundamental: \(\int_a^bf\,dx=F(b)-F(a)\).</li></ul>
-  <div class="note ok"><b>Truco de oro:</b> toda integral indefinida se comprueba <b>derivando</b> el resultado. Si obtienes el integrando, está bien.</div>`,
+  <div class="my-3 rounded-r-xl border-l-4 border-emerald-600 bg-emerald-50 px-4 py-2.5 dark:border-emerald-500 dark:bg-emerald-950/40"><b>Truco de oro:</b> toda integral indefinida se comprueba <b>derivando</b> el resultado. Si obtienes el integrando, está bien.</div>`,
   examples:[
    {lvl:'basico', src:'Ejemplo de la guía', p:R`\int (3x^2+4x-5)\,dx`, steps:[
      [R`Separar: \(3\int x^2dx+4\int x\,dx-5\int dx\)`, R`Linealidad: la integral de una suma es la suma de integrales y las constantes salen.`],
@@ -266,7 +183,7 @@ const LESSONS = [
   <li>Calcula \(du=g'(x)\,dx\) y despeja lo que necesites.</li>
   <li>Reescribe <b>todo</b> en \(u\) (no debe quedar ninguna \(x\)).</li>
   <li>Integra y regresa a \(x\).</li></ol>
-  <div class="note"><b>En integrales definidas</b> cambia también los límites: si \(x=a\) entonces \(u=g(a)\). Así no hace falta regresar a \(x\).</div>`,
+  <div class="my-3 rounded-r-xl border-l-4 border-blue-600 bg-blue-50 px-4 py-2.5 dark:border-blue-400 dark:bg-blue-950/40"><b>En integrales definidas</b> cambia también los límites: si \(x=a\) entonces \(u=g(a)\). Así no hace falta regresar a \(x\).</div>`,
   examples:[
    {lvl:'basico', src:`${S}, §5.5, Ejemplo 1`, p:R`\int x^3\cos(x^4+2)\,dx`, steps:[
      [R`Sea \(u=x^4+2\)`, R`Es la función de adentro del coseno y su derivada \(4x^3\) aparece (salvo el 4) afuera.`],
@@ -315,7 +232,7 @@ const LESSONS = [
   \[\int u\,dv=uv-\int v\,du\]
   <p><b>¿Cuándo?</b> Cuando el integrando es un <b>producto</b> de funciones de distinto tipo (polinomio · exponencial, polinomio · trig, logaritmo, funciones inversas).</p>
   <p><b>¿Cómo elegir \(u\)?</b> Regla <b>LIATE</b>: elige como \(u\) la que aparezca primero en: <b>L</b>ogarítmica, <b>I</b>nversa trig., <b>A</b>lgebraica (polinomio), <b>T</b>rigonométrica, <b>E</b>xponencial. Lo que queda es \(dv\).</p>
-  <div class="note warn">Objetivo: que la nueva integral \(\int v\,du\) sea <b>más fácil</b> que la original. Si se complica, intercambia \(u\) y \(dv\).</div>`,
+  <div class="my-3 rounded-r-xl border-l-4 border-amber-500 bg-amber-50 px-4 py-2.5 dark:border-amber-400 dark:bg-amber-950/40">Objetivo: que la nueva integral \(\int v\,du\) sea <b>más fácil</b> que la original. Si se complica, intercambia \(u\) y \(dv\).</div>`,
   examples:[
    {lvl:'basico', src:`${S}, §7.1, Ejemplo 1`, p:R`\int x\sin x\,dx`, steps:[
      [R`\(u=x,\ dv=\sin x\,dx\)`, R`LIATE: algebraica antes que trigonométrica. Al derivar \(x\) se vuelve 1.`],
@@ -360,7 +277,7 @@ const LESSONS = [
   bases:['trig','tabla','derivadas'],
   intro:R`
   <p><b>Idea.</b> Integrales con potencias de \(\sin,\cos,\tan,\sec\). Se usan identidades para llevarlas a una <a href="#/l2">sustitución</a> sencilla.</p>
-  <div class="tablewrap"><table><tr><th>Caso</th><th>Estrategia</th></tr>
+  <div class="my-3 overflow-x-auto"><table><tr><th>Caso</th><th>Estrategia</th></tr>
   <tr><td>\(\int\sin^mx\cos^nx\,dx\), potencia de <b>coseno impar</b></td><td>Guarda un \(\cos x\), el resto a seno con \(\cos^2=1-\sin^2\); \(u=\sin x\).</td></tr>
   <tr><td>Potencia de <b>seno impar</b></td><td>Guarda un \(\sin x\), el resto a coseno; \(u=\cos x\).</td></tr>
   <tr><td><b>Ambas pares</b></td><td>Ángulo medio: \(\sin^2x=\frac12(1-\cos2x)\), \(\cos^2x=\frac12(1+\cos2x)\).</td></tr>
@@ -408,7 +325,7 @@ const LESSONS = [
   bases:['trig','triangulo','derivadas','tabla'],
   intro:R`
   <p><b>Idea.</b> Cuando aparece una raíz de la forma \(\sqrt{a^2\pm x^2}\) o \(\sqrt{x^2-a^2}\), se cambia \(x\) por una función trigonométrica para que una identidad <b>elimine la raíz</b>.</p>
-  <div class="tablewrap"><table><tr><th>Expresión</th><th>Sustitución</th><th>Identidad que usa</th></tr>
+  <div class="my-3 overflow-x-auto"><table><tr><th>Expresión</th><th>Sustitución</th><th>Identidad que usa</th></tr>
   <tr><td>\(\sqrt{a^2-x^2}\)</td><td>\(x=a\sin\theta\)</td><td>\(1-\sin^2\theta=\cos^2\theta\)</td></tr>
   <tr><td>\(\sqrt{a^2+x^2}\)</td><td>\(x=a\tan\theta\)</td><td>\(1+\tan^2\theta=\sec^2\theta\)</td></tr>
   <tr><td>\(\sqrt{x^2-a^2}\)</td><td>\(x=a\sec\theta\)</td><td>\(\sec^2\theta-1=\tan^2\theta\)</td></tr></table></div>
@@ -450,11 +367,11 @@ const LESSONS = [
   <ol><li>Si es <b>impropia</b> (grado arriba \(\ge\) grado abajo), <a href="#/bases/division">divide</a> primero.</li>
   <li><a href="#/bases/factorizacion">Factoriza</a> el denominador.</li>
   <li>Plantea la descomposición según el tipo de factor:</li></ol>
-  <div class="tablewrap"><table><tr><th>Factor en el denominador</th><th>Término(s)</th></tr>
+  <div class="my-3 overflow-x-auto"><table><tr><th>Factor en el denominador</th><th>Término(s)</th></tr>
   <tr><td>Lineal \((ax+b)\)</td><td>\(\frac{A}{ax+b}\)</td></tr>
   <tr><td>Lineal repetido \((ax+b)^2\)</td><td>\(\frac{A}{ax+b}+\frac{B}{(ax+b)^2}\)</td></tr>
   <tr><td>Cuadrático irreducible \(ax^2+bx+c\)</td><td>\(\frac{Ax+B}{ax^2+bx+c}\)</td></tr></table></div>
-  <div class="note"><b>Truco:</b> para hallar las constantes, evalúa en las raíces del denominador; cada una "apaga" los demás términos.</div>`,
+  <div class="my-3 rounded-r-xl border-l-4 border-blue-600 bg-blue-50 px-4 py-2.5 dark:border-blue-400 dark:bg-blue-950/40"><b>Truco:</b> para hallar las constantes, evalúa en las raíces del denominador; cada una "apaga" los demás términos.</div>`,
   examples:[
    {lvl:'basico', src:`${S}, §7.4, Ejemplo 1`, p:R`\int\frac{x^3+x}{x-1}\,dx`, steps:[
      [R`Es impropia (grado 3 sobre grado 1): \(\frac{x^3+x}{x-1}=x^2+x+2+\frac{2}{x-1}\)`, R`<a href="#/bases/division">División de polinomios</a>.`],
@@ -501,8 +418,8 @@ const LESSONS = [
   <p><b>Idea.</b> Integrales con un límite infinito (tipo 1) o con el integrando que "explota" en el intervalo (tipo 2). Se reemplazan por un <b>límite</b>:</p>
   \[\int_a^\infty f(x)\,dx=\lim_{t\to\infty}\int_a^tf(x)\,dx\qquad \int_a^bf(x)\,dx=\lim_{t\to a^+}\int_t^bf(x)\,dx\ \text{(si } f \text{ explota en } a)\]
   <p>Si el límite existe y es finito, la integral <b>converge</b>; si no, <b>diverge</b>.</p>
-  <div class="note"><b>Integrales p:</b> \(\int_1^\infty\frac{dx}{x^p}\) converge si \(p>1\) y diverge si \(p\le1\).</div>
-  <div class="note warn">Si ambos límites son infinitos, separa en un punto (por ejemplo 0) y ambas partes deben converger.</div>`,
+  <div class="my-3 rounded-r-xl border-l-4 border-blue-600 bg-blue-50 px-4 py-2.5 dark:border-blue-400 dark:bg-blue-950/40"><b>Integrales p:</b> \(\int_1^\infty\frac{dx}{x^p}\) converge si \(p>1\) y diverge si \(p\le1\).</div>
+  <div class="my-3 rounded-r-xl border-l-4 border-amber-500 bg-amber-50 px-4 py-2.5 dark:border-amber-400 dark:bg-amber-950/40">Si ambos límites son infinitos, separa en un punto (por ejemplo 0) y ambas partes deben converger.</div>`,
   examples:[
    {lvl:'basico', src:`${S}, §7.8, Ejemplo 1`, p:R`\int_1^\infty\frac{dx}{x}`, steps:[
      [R`\(\lim_{t\to\infty}\int_1^t\frac{dx}{x}=\lim_{t\to\infty}\left[\ln|x|\right]_1^t\)`, R`Definición de integral impropia tipo 1.`],
@@ -618,48 +535,70 @@ const QUIZ = [
 const QOPTS = ['Sustitución','Por partes','Integral trig.','Sustitución trig.','Fracciones parciales','Impropia'];
 
 /* =====================================================================
-   UTILIDADES
+   UTILIDADES (clases de Tailwind reutilizadas)
    ===================================================================== */
+const C = {
+  card:  'my-3.5 rounded-xl border border-stone-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-none',
+  h3:    'mt-8 mb-2.5 border-t border-stone-200 pt-3 text-xl font-bold dark:border-zinc-800',
+  chip:  'inline-block rounded-full border border-transparent bg-blue-50 px-2.5 py-0.5 text-sm text-blue-700 hover:border-blue-500 dark:bg-blue-950/50 dark:text-blue-300',
+  btn:   'cursor-pointer rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm hover:border-blue-500 disabled:cursor-default disabled:opacity-70 dark:border-zinc-700 dark:bg-zinc-900',
+  btnP:  'cursor-pointer rounded-lg border border-blue-600 bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:cursor-default disabled:opacity-70 dark:border-blue-400 dark:bg-blue-400 dark:text-zinc-950',
+  src:   'text-sm italic text-stone-500 dark:text-zinc-400',
+  prob:  'overflow-x-auto py-1 text-lg',
+  lead:  'mt-0 text-lg text-stone-600 dark:text-zinc-400',
+  h2:    'mb-1 text-2xl font-bold leading-tight md:text-3xl',
+  note:  '[&_a]:text-blue-700 [&_a]:underline dark:[&_a]:text-blue-300 my-3 rounded-r-xl border-l-4 border-blue-600 bg-blue-50 px-4 py-2.5 dark:border-blue-400 dark:bg-blue-950/40',
+  reveal:'mt-2 overflow-x-auto rounded-xl border border-dashed border-stone-300 px-4 py-2.5 dark:border-zinc-700',
+};
+const TAG = {
+  basico: ['Básico', 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'],
+  medio:  ['Medio',  'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'],
+  dificil:['Difícil','bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300'],
+};
 const store = {
   get(k){ try{ return JSON.parse(localStorage.getItem('calcint:'+k)); }catch(e){ return null; } },
   set(k,v){ try{ localStorage.setItem('calcint:'+k, JSON.stringify(v)); }catch(e){} }
 };
 let done = store.get('done') || {};
 const baseName = id => (BASES.find(b=>b.id===id)||{}).t || id;
-const lvlName = {basico:'Básico', medio:'Medio', dificil:'Difícil'};
 
 function basesChips(ids){
-  return `<div class="bases"><span>📐 Bases que usa:</span>${ids.map(id=>`<a class="chip" href="#/bases/${id}">${baseName(id)}</a>`).join('')}</div>`;
+  return `<div class="my-2.5 flex flex-wrap items-center gap-1.5"><span class="mr-1 text-sm text-stone-500 dark:text-zinc-400">📐 Bases que usa:</span>${ids.map(id=>`<a class="${C.chip}" href="#/bases/${id}">${baseName(id)}</a>`).join('')}</div>`;
 }
 function stepsBlock(steps, result){
-  return `<div class="steps">
-   <ol>${steps.map(s=>`<li><div class="what"><b>Qué hacemos</b><br>${s[0]}</div><div class="why"><b>Por qué</b> ${s[1]}</div></li>`).join('')}</ol>
-   <div class="result">✅ <b>Resultado:</b> \\(\\displaystyle ${result}\\)</div>
-   <div class="ctrls">
-     <button class="b primary" data-act="next">Ver paso 1 ▸</button>
-     <button class="b" data-act="all">Mostrar todo</button>
-     <button class="b" data-act="reset">Reiniciar</button>
+  return `<div data-steps>
+   <div class="my-2.5 space-y-2">${steps.map((s,i)=>`
+     <div data-step class="hidden [&_a]:text-blue-700 [&_a]:underline dark:[&_a]:text-blue-300 relative overflow-x-auto rounded-xl border border-stone-200 bg-stone-50 py-2.5 pl-12 pr-3 dark:border-zinc-800 dark:bg-zinc-950">
+       <span class="absolute left-3 top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white dark:bg-blue-400 dark:text-zinc-950">${i+1}</span>
+       <div><b class="text-xs uppercase tracking-wide text-blue-700 dark:text-blue-300">Qué hacemos</b><br>${s[0]}</div>
+       <div class="why mt-1 text-[0.95rem] text-stone-600 dark:text-zinc-400"><b class="text-xs uppercase tracking-wide text-amber-700 dark:text-amber-300">Por qué</b> ${s[1]}</div>
+     </div>`).join('')}</div>
+   <div data-result class="hidden mt-2 overflow-x-auto rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2.5 dark:border-emerald-500 dark:bg-emerald-950/40">✅ <b>Resultado:</b> \\(\\displaystyle ${result}\\)</div>
+   <div class="mt-2 flex flex-wrap gap-2">
+     <button class="${C.btnP}" data-act="next">Ver paso 1 ▸</button>
+     <button class="${C.btn}" data-act="all">Mostrar todo</button>
+     <button class="${C.btn}" data-act="reset">Reiniciar</button>
    </div></div>`;
 }
 function exampleCard(ex){
-  return `<div class="card">
-   <div><span class="tag ${ex.lvl}">${lvlName[ex.lvl]}</span><span class="src">${ex.src}</span></div>
-   <div class="problem">\\[${ex.p}\\]</div>
+  const [name, cls] = TAG[ex.lvl];
+  return `<div class="${C.card}">
+   <div><span class="mr-1.5 rounded-md px-2 py-0.5 align-middle text-xs font-bold uppercase tracking-wide ${cls}">${name}</span><span class="${C.src}">${ex.src}</span></div>
+   <div class="${C.prob}">\\[${ex.p}\\]</div>
    ${stepsBlock(ex.steps, ex.r)}</div>`;
 }
 function exerciseCard(ex, key, i){
-  const chk = done[key] ? 'checked' : '';
-  return `<div class="card">
-   <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><b>Ejercicio ${i+1}</b><span class="src">${ex.src}</span>
-   <label class="done"><input type="checkbox" data-key="${key}" ${chk}> Lo resolví</label></div>
-   <div class="problem">\\[${ex.p}\\]</div>
-   <div class="ctrls">
-    <button class="b" data-toggle="hint">💡 Pista</button>
-    <button class="b" data-toggle="ans">🎯 Ver respuesta</button>
-    <button class="b" data-toggle="sol">🪜 Solución paso a paso</button>
+  return `<div class="${C.card}" data-card>
+   <div class="flex flex-wrap items-center gap-2"><b>Ejercicio ${i+1}</b><span class="${C.src}">${ex.src}</span>
+     <label class="ml-auto inline-flex cursor-pointer items-center gap-1.5 text-sm text-stone-500 dark:text-zinc-400"><input type="checkbox" class="accent-emerald-600" data-key="${key}" ${done[key]?'checked':''}> Lo resolví</label></div>
+   <div class="${C.prob}">\\[${ex.p}\\]</div>
+   <div class="mt-2 flex flex-wrap gap-2">
+    <button class="${C.btn}" data-toggle="hint">💡 Pista</button>
+    <button class="${C.btn}" data-toggle="ans">🎯 Ver respuesta</button>
+    <button class="${C.btn}" data-toggle="sol">🪜 Solución paso a paso</button>
    </div>
-   <div class="reveal hidden" data-part="hint">${ex.hint}</div>
-   <div class="reveal hidden" data-part="ans">\\(\\displaystyle ${ex.r}\\)</div>
+   <div class="hidden ${C.reveal}" data-part="hint">${ex.hint}</div>
+   <div class="hidden ${C.reveal}" data-part="ans">\\(\\displaystyle ${ex.r}\\)</div>
    <div class="hidden" data-part="sol">${stepsBlock(ex.steps, ex.r)}</div></div>`;
 }
 function lessonProgress(L){
@@ -667,6 +606,8 @@ function lessonProgress(L){
   const n = L.exercises.filter((_,i)=>done[L.id+'-'+i]).length;
   return {n, tot};
 }
+const tile = (href, title, sub) =>
+  `<a href="${href}" class="block rounded-xl border border-stone-200 bg-white p-4 shadow-sm hover:border-blue-500 dark:border-zinc-800 dark:bg-zinc-900"><b class="mb-1 block">${title}</b><small class="text-stone-500 dark:text-zinc-400">${sub}</small></a>`;
 
 /* =====================================================================
    PÁGINAS
@@ -675,13 +616,13 @@ function pageInicio(){
   const all = LESSONS.reduce((a,L)=>a+L.exercises.length,0);
   const ok = LESSONS.reduce((a,L)=>a+lessonProgress(L).n,0);
   return `
-  <h2>Aprende Cálculo Integral paso a paso</h2>
-  <p class="lead">Una guía interactiva: cada tema empieza por lo más básico, luego ejemplos de nivel medio y difícil resueltos paso a paso (qué se hace y por qué), y termina con ejercicios para ti.</p>
-  <div class="card"><b>Tu progreso:</b> ${ok} de ${all} ejercicios marcados como resueltos
-   <div class="progress"><i style="width:${all?100*ok/all:0}%"></i></div>
-   <small class="src">Se guarda solo en este navegador.</small></div>
+  <h2 class="${C.h2}">Aprende Cálculo Integral paso a paso</h2>
+  <p class="${C.lead}">Una guía interactiva: cada tema empieza por lo más básico, luego ejemplos de nivel medio y difícil resueltos paso a paso (qué se hace y por qué), y termina con ejercicios para ti.</p>
+  <div class="${C.card}"><b>Tu progreso:</b> ${ok} de ${all} ejercicios marcados como resueltos
+   <div class="my-1.5 h-2 overflow-hidden rounded-full bg-stone-200 dark:bg-zinc-800"><div class="h-full bg-emerald-500 transition-all" style="width:${all?100*ok/all:0}%"></div></div>
+   <small class="${C.src}">Se guarda solo en este navegador.</small></div>
 
-  <h3>¿Cómo usar esta guía?</h3>
+  <h3 class="${C.h3}">¿Cómo usar esta guía?</h3>
   <ol>
    <li>Si una sección menciona algo que no recuerdas, pulsa el botón azul de <b>Bases que usa</b>: te lleva a la <a href="#/bases">página de bases matemáticas</a>.</li>
    <li>En los ejemplos, intenta el problema primero y luego revela <b>un paso a la vez</b> con "Ver paso".</li>
@@ -689,47 +630,48 @@ function pageInicio(){
    <li>Al final, practica con la <a href="#/examen">solución del examen</a> y el <a href="#/estrategia">entrenador de estrategia</a>.</li>
   </ol>
 
-  <h3>Ruta de aprendizaje</h3>
-  <div class="grid">
-   <a class="card" href="#/bases"><b>0 · Bases matemáticas</b><small>Potencias, factorización, logaritmos, trigonometría, derivadas…</small></a>
-   ${LESSONS.map(L=>{const p=lessonProgress(L);return `<a class="card" href="#/${L.id}"><b>${L.n} · ${L.t}</b><small>${L.examples.length} ejemplos · ${p.n}/${p.tot} ejercicios</small></a>`}).join('')}
-   <a class="card" href="#/estrategia"><b>8 · ¿Qué técnica uso?</b><small>Tabla de decisión y mini-quiz</small></a>
-   <a class="card" href="#/examen"><b>9 · Solución del examen</b><small>Los 6 ejercicios de la foto, paso a paso</small></a>
+  <h3 class="${C.h3}">Ruta de aprendizaje</h3>
+  <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+   ${tile('#/bases','0 · Bases matemáticas','Potencias, factorización, logaritmos, trigonometría, derivadas…')}
+   ${LESSONS.map(L=>{const p=lessonProgress(L);return tile('#/'+L.id, `${L.n} · ${L.t}`, `${L.examples.length} ejemplos · ${p.n}/${p.tot} ejercicios`)}).join('')}
+   ${tile('#/estrategia','8 · ¿Qué técnica uso?','Tabla de decisión y mini-quiz')}
+   ${tile('#/examen','9 · Solución del examen','Los 6 ejercicios de la foto, paso a paso')}
   </div>
 
-  <h3>Fuentes</h3>
+  <h3 class="${C.h3}">Fuentes</h3>
   <p>Los ejemplos marcados con <i>Stewart</i> provienen de los ejemplos resueltos de James Stewart, <i>Cálculo de una variable: Trascendentes tempranas</i> (7.ª/8.ª ed., Cengage Learning), secciones 5.4, 5.5, 7.1–7.4 y 7.8, y tienen el mismo resultado que el libro. La numeración de ejemplos puede variar ligeramente entre ediciones. Los ejercicios de práctica son del mismo tipo que los de esas secciones; todas las respuestas se verificaron derivando el resultado.</p>`;
 }
 
 function pageBases(){
-  return `<h2>Bases matemáticas</h2>
-  <p class="lead">Lo mínimo que necesitas dominar antes de integrar. Cada lección enlaza aquí directamente al tema que usa.</p>
-  <div class="card"><b>Índice:</b> ${BASES.map(b=>`<a class="chip" href="#/bases/${b.id}">${b.t}</a>`).join(' ')}</div>
-  ${BASES.map(b=>`<section id="b-${b.id}"><h3>${b.t}</h3>${b.html}
-   <p class="src">Se usa en: ${LESSONS.filter(L=>L.bases.includes(b.id)).map(L=>`<a href="#/${L.id}">${L.short}</a>`).join(', ') || '—'}${EXAM.some(e=>e.bases.includes(b.id))?', <a href="#/examen">Examen</a>':''}</p></section>`).join('')}`;
+  return `<h2 class="${C.h2}">Bases matemáticas</h2>
+  <p class="${C.lead}">Lo mínimo que necesitas dominar antes de integrar. Cada lección enlaza aquí directamente al tema que usa.</p>
+  <div class="${C.card} flex flex-wrap gap-1.5"><b class="mr-1">Índice:</b> ${BASES.map(b=>`<a class="${C.chip}" href="#/bases/${b.id}">${b.t}</a>`).join(' ')}</div>
+  ${BASES.map(b=>`<section id="b-${b.id}" class="scroll-mt-16"><h3 class="${C.h3}">${b.t}</h3>${b.html}
+   <p class="${C.src}">Se usa en: ${LESSONS.filter(L=>L.bases.includes(b.id)).map(L=>`<a href="#/${L.id}">${L.short}</a>`).join(', ') || '—'}${EXAM.some(e=>e.bases.includes(b.id))?', <a href="#/examen">Examen</a>':''}</p></section>`).join('')}`;
 }
 
 function pageLesson(L){
   const i = LESSONS.indexOf(L), prev = LESSONS[i-1], next = LESSONS[i+1];
   const p = lessonProgress(L);
-  return `<h2>${L.n}. ${L.t}</h2>
+  const link = (href, txt) => `<a class="${C.btn}" href="${href}">${txt}</a>`;
+  return `<h2 class="${C.h2}">${L.n}. ${L.t}</h2>
   ${basesChips(L.bases)}
-  <h3>Lo más básico</h3>${L.intro}
-  <h3>Ejemplos resueltos</h3>
-  <p class="src">Intenta cada uno antes de revelar los pasos.</p>
+  <h3 class="${C.h3}">Lo más básico</h3>${L.intro}
+  <h3 class="${C.h3}">Ejemplos resueltos</h3>
+  <p class="${C.src}">Intenta cada uno antes de revelar los pasos.</p>
   ${L.examples.map(exampleCard).join('')}
-  <h3>Ejercicios para ti <small class="src">(${p.n}/${p.tot} resueltos)</small></h3>
+  <h3 class="${C.h3}">Ejercicios para ti <small class="${C.src}">(${p.n}/${p.tot} resueltos)</small></h3>
   ${L.exercises.map((ex,k)=>exerciseCard(ex, L.id+'-'+k, k)).join('')}
-  <div class="pager">
-   ${prev?`<a class="b" href="#/${prev.id}">◂ ${prev.short}</a>`:'<a href="#/bases">◂ Bases</a>'}
-   ${next?`<a href="#/${next.id}">${next.short} ▸</a>`:'<a href="#/estrategia">¿Qué técnica uso? ▸</a>'}
+  <div class="mt-10 flex flex-wrap justify-between gap-2.5">
+   ${prev ? link('#/'+prev.id, '◂ '+prev.short) : link('#/bases','◂ Bases')}
+   ${next ? link('#/'+next.id, next.short+' ▸') : link('#/estrategia','¿Qué técnica uso? ▸')}
   </div>`;
 }
 
 function pageEstrategia(){
-  return `<h2>¿Qué técnica uso?</h2>
-  <p class="lead">Antes de integrar, <b>mira la forma</b> del integrando. Esta tabla resume las pistas.</p>
-  <div class="tablewrap"><table>
+  return `<h2 class="${C.h2}">¿Qué técnica uso?</h2>
+  <p class="${C.lead}">Antes de integrar, <b>mira la forma</b> del integrando. Esta tabla resume las pistas.</p>
+  <div class="overflow-x-auto"><table>
    <tr><th>Si ves…</th><th>Prueba</th><th>Lección</th></tr>
    <tr><td>Algo que se simplifica a potencias / está en la tabla</td><td>Integral directa</td><td><a href="#/l1">1</a></td></tr>
    <tr><td>Una función "de adentro" cuya derivada aparece afuera</td><td>Sustitución</td><td><a href="#/l2">2</a></td></tr>
@@ -739,123 +681,119 @@ function pageEstrategia(){
    <tr><td>Cociente de polinomios</td><td>Fracciones parciales (dividir si es impropia)</td><td><a href="#/l6">6</a></td></tr>
    <tr><td>Límite \\(\\pm\\infty\\) o el integrando explota</td><td>Impropia (límite)</td><td><a href="#/l7">7</a></td></tr>
   </table></div>
-  <h3>Mini-quiz: elige la técnica</h3>
-  ${QUIZ.map((q,i)=>`<div class="card quiz" data-q="${i}"><div class="problem">\\[${q.p}\\]</div>
-    <div class="opts">${QOPTS.map(o=>`<button class="b" data-opt="${o}">${o}</button>`).join('')}</div>
-    <div class="fb"></div></div>`).join('')}`;
+  <h3 class="${C.h3}">Mini-quiz: elige la técnica</h3>
+  ${QUIZ.map((q,i)=>`<div class="${C.card}" data-q="${i}"><div class="${C.prob}">\\[${q.p}\\]</div>
+    <div class="mt-2 flex flex-wrap gap-2">${QOPTS.map(o=>`<button class="${C.btn}" data-opt="${o}">${o}</button>`).join('')}</div>
+    <div data-fb class="mt-2 text-[0.95rem]"></div></div>`).join('')}`;
 }
 
 function pageExamen(){
-  return `<h2>Solución del examen: Técnicas de integración</h2>
-  <p class="lead">Enunciado: <i>"Evalúe las siguientes integrales utilizando el método que mejor crea conveniente, de entre aquellos tratados en clase."</i> Nota: hacer 5 de los 6 ejercicios.</p>
-  <div class="card"><b>Resumen</b>
-   <div class="tablewrap"><table><tr><th>#</th><th>Integral</th><th>Método</th><th>Resultado</th></tr>
+  return `<h2 class="${C.h2}">Solución del examen: Técnicas de integración</h2>
+  <p class="${C.lead}">Enunciado: <i>"Evalúe las siguientes integrales utilizando el método que mejor crea conveniente, de entre aquellos tratados en clase."</i> Nota: hacer 5 de los 6 ejercicios.</p>
+  <div class="${C.card}"><b>Resumen</b>
+   <div class="mt-2 overflow-x-auto"><table><tr><th>#</th><th>Integral</th><th>Método</th><th>Resultado</th></tr>
    ${EXAM.map(e=>`<tr><td><a href="#/examen/${e.n}">${e.n}</a></td><td>\\(${e.n===6?R`f(x)=\frac{\int[f+xf']dx}{x}`:e.p}\\)</td><td>${e.method}</td><td>\\(${e.n===6?R`\text{demostrado}`:e.r}\\)</td></tr>`).join('')}
    </table></div></div>
-  <div class="note"><b>Consejo para el examen:</b> si debes escoger 5 de 6, los más mecánicos son el 1, 3 y 4; el 2 exige manejar el límite; el 5 requiere el triángulo; el 6 es corto si reconoces la regla del producto.</div>
-  ${EXAM.map(e=>`<section id="b-${e.n}" class="card">
-   <h4 style="margin-top:0">Ejercicio ${e.n} · <span class="src" style="font-style:normal">${e.method}</span></h4>
-   <div class="problem">\\[${e.p}\\]</div>
+  <div class="${C.note}"><b>Consejo para el examen:</b> si debes escoger 5 de 6, los más mecánicos son el 1, 3 y 4; el 2 exige manejar el límite; el 5 requiere el triángulo; el 6 es corto si reconoces la regla del producto.</div>
+  ${EXAM.map(e=>`<section id="b-${e.n}" class="${C.card} scroll-mt-16">
+   <h4 class="text-lg font-bold">Ejercicio ${e.n} · <span class="text-sm font-normal text-stone-500 dark:text-zinc-400">${e.method}</span></h4>
+   <div class="${C.prob}">\\[${e.p}\\]</div>
    ${basesChips(e.bases)}
-   <div class="bases"><span>📘 Lección:</span><a class="chip" href="#/${e.lesson}">${LESSONS.find(L=>L.id===e.lesson).t}</a></div>
-   <div class="note"><b>¿Cómo reconocer el método?</b> ${e.idea}</div>
+   <div class="my-2.5 flex flex-wrap items-center gap-1.5"><span class="mr-1 text-sm text-stone-500 dark:text-zinc-400">📘 Lección:</span><a class="${C.chip}" href="#/${e.lesson}">${LESSONS.find(L=>L.id===e.lesson).t}</a></div>
+   <div class="${C.note}"><b>¿Cómo reconocer el método?</b> ${e.idea}</div>
    ${stepsBlock(e.steps, e.r)}</section>`).join('')}`;
 }
 
 /* =====================================================================
-   NAVEGACIÓN / ROUTER
+   NAVEGACIÓN / ROUTER (hash: #/pagina/subseccion)
    ===================================================================== */
-function buildNav(route){
-  const a = (href,label,id,extra='') => `<a href="${href}" class="${route===id?'active':''}">${label}${extra}</a>`;
+function buildNav(current){
+  const grp = t => `<div class="mx-2 mb-1.5 mt-3.5 text-xs uppercase tracking-wider text-stone-500 dark:text-zinc-400">${t}</div>`;
+  const a = (href,label,id,extra='') => `<a href="${href}" class="flex justify-between gap-1.5 rounded-lg px-2.5 py-1.5 text-[0.93rem] hover:bg-blue-50 dark:hover:bg-blue-950/50 ${current===id?'bg-blue-50 font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300':''}">${label}${extra}</a>`;
   document.getElementById('side').innerHTML =
-   `<div class="grp">Guía</div>${a('#/inicio','🏠 Inicio','inicio')}${a('#/bases','📐 Bases matemáticas','bases')}
-    <div class="grp">Técnicas</div>
-    ${LESSONS.map(L=>{const p=lessonProgress(L);return a('#/'+L.id, `${L.n}. ${L.short}`, L.id, `<span class="cnt">${p.n}/${p.tot}</span>`)}).join('')}
-    <div class="grp">Práctica</div>${a('#/estrategia','🧭 ¿Qué técnica uso?','estrategia')}${a('#/examen','📝 Solución del examen','examen')}`;
+    grp('Guía') + a('#/inicio','🏠 Inicio','inicio') + a('#/bases','📐 Bases matemáticas','bases') +
+    grp('Técnicas') + LESSONS.map(L=>{const p=lessonProgress(L);return a('#/'+L.id, `${L.n}. ${L.short}`, L.id, `<span class="text-xs font-normal text-stone-500 dark:text-zinc-400">${p.n}/${p.tot}</span>`)}).join('') +
+    grp('Práctica') + a('#/estrategia','🧭 ¿Qué técnica uso?','estrategia') + a('#/examen','📝 Solución del examen','examen');
 }
 function renderMath(el){
   if (window.renderMathInElement){
     renderMathInElement(el,{delimiters:[{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false});
   }
 }
+const side = document.getElementById('side');
+function toggleMenu(open){ side.classList.toggle('-translate-x-full', !open); }
 function route(){
-  const parts = (location.hash.replace(/^#\/?/,'') || 'inicio').split('/');
-  const r = parts[0], sub = parts[1];
+  const [r='inicio', sub] = location.hash.replace(/^#\/?/,'').split('/').map(s=>s||undefined);
   const view = document.getElementById('view');
   const L = LESSONS.find(x=>x.id===r);
-  let html, id = r;
-  if (L) html = pageLesson(L);
-  else if (r==='bases') html = pageBases();
-  else if (r==='examen') html = pageExamen();
-  else if (r==='estrategia') html = pageEstrategia();
-  else { html = pageInicio(); id = 'inicio'; }
-  view.innerHTML = html;
+  const pages = {bases:pageBases, examen:pageExamen, estrategia:pageEstrategia};
+  const id = L ? r : (pages[r] ? r : 'inicio');
+  view.innerHTML = L ? pageLesson(L) : (pages[r] ? pages[r]() : pageInicio());
   buildNav(id);
   renderMath(view);
-  document.getElementById('side').classList.remove('open');
+  toggleMenu(false);
   const target = sub && document.getElementById('b-'+sub);
   if (target) setTimeout(()=>target.scrollIntoView({behavior:'smooth',block:'start'}),30);
   else window.scrollTo(0,0);
   const titles = {inicio:'Inicio',bases:'Bases matemáticas',examen:'Solución del examen',estrategia:'¿Qué técnica uso?'};
-  document.title = (L?L.short:titles[id]||'Inicio') + ' · Cálculo Integral';
+  document.title = (L?L.short:titles[id]) + ' · Cálculo Integral';
 }
 
 /* ---------- Interacción ---------- */
+const RIGHT = ['border-emerald-600','bg-emerald-50','text-emerald-700','dark:bg-emerald-950/50','dark:text-emerald-300'];
+const WRONG = ['border-rose-600','bg-rose-50','text-rose-700','dark:bg-rose-950/50','dark:text-rose-300'];
 document.addEventListener('click', e=>{
+  const showLink = e.target.closest('[data-show]');
+  if (showLink){
+    e.preventDefault();
+    const card = showLink.closest('[data-q]'), q = QUIZ[+card.dataset.q], fb = card.querySelector('[data-fb]');
+    fb.innerHTML = `👉 <b>${q.a}</b>: ${q.why}`; renderMath(fb);
+    return;
+  }
   const btn = e.target.closest('button');
   if (!btn) return;
-  const act = btn.dataset.act;
-  if (act){
-    const box = btn.closest('.steps'), lis = [...box.querySelectorAll('li')], res = box.querySelector('.result');
+
+  // Pasos: siguiente / todos / reiniciar
+  if (btn.dataset.act){
+    const box = btn.closest('[data-steps]');
+    const steps = [...box.querySelectorAll('[data-step]')], res = box.querySelector('[data-result]');
     const nextBtn = box.querySelector('[data-act="next"]');
-    let shown = lis.filter(l=>l.classList.contains('show')).length;
-    if (act==='next'){ if (shown<lis.length){ lis[shown].classList.add('show'); shown++; } else res.classList.add('show'); }
-    if (act==='all'){ lis.forEach(l=>l.classList.add('show')); res.classList.add('show'); shown=lis.length; }
-    if (act==='reset'){ lis.forEach(l=>l.classList.remove('show')); res.classList.remove('show'); shown=0; }
-    const fin = res.classList.contains('show');
-    nextBtn.textContent = shown<lis.length ? `Ver paso ${shown+1} ▸` : (fin ? 'Completo ✓' : 'Ver resultado ▸');
+    let shown = steps.filter(s=>!s.classList.contains('hidden')).length;
+    if (btn.dataset.act==='next'){ if (shown<steps.length) steps[shown++].classList.remove('hidden'); else res.classList.remove('hidden'); }
+    if (btn.dataset.act==='all'){ steps.forEach(s=>s.classList.remove('hidden')); res.classList.remove('hidden'); shown=steps.length; }
+    if (btn.dataset.act==='reset'){ steps.forEach(s=>s.classList.add('hidden')); res.classList.add('hidden'); shown=0; }
+    const fin = !res.classList.contains('hidden');
+    nextBtn.textContent = shown<steps.length ? `Ver paso ${shown+1} ▸` : (fin ? 'Completo ✓' : 'Ver resultado ▸');
     nextBtn.disabled = fin;
     return;
   }
+  // Ejercicios: pista / respuesta / solución
   if (btn.dataset.toggle){
-    const card = btn.closest('.card');
-    card.querySelector(`[data-part="${btn.dataset.toggle}"]`).classList.toggle('hidden');
+    btn.closest('[data-card]').querySelector(`[data-part="${btn.dataset.toggle}"]`).classList.toggle('hidden');
     return;
   }
+  // Quiz
   if (btn.dataset.opt){
-    const card = btn.closest('.quiz'), q = QUIZ[+card.dataset.q], fb = card.querySelector('.fb');
-    card.querySelectorAll('button').forEach(b=>b.classList.remove('right','wrong'));
+    const card = btn.closest('[data-q]'), q = QUIZ[+card.dataset.q], fb = card.querySelector('[data-fb]');
+    card.querySelectorAll('[data-opt]').forEach(b=>b.classList.remove(...RIGHT, ...WRONG));
     const ok = btn.dataset.opt===q.a;
-    btn.classList.add(ok?'right':'wrong');
-    fb.innerHTML = ok ? `✅ ¡Correcto! ${q.why}` : `❌ No es la mejor opción. Pista: piensa en la forma del integrando. <a href="#" data-show>Ver respuesta</a>`;
+    btn.classList.add(...(ok?RIGHT:WRONG));
+    fb.innerHTML = ok ? `✅ ¡Correcto! ${q.why}` : `❌ No es la mejor opción. Pista: piensa en la forma del integrando. <a href="#" data-show class="text-blue-700 underline dark:text-blue-300">Ver respuesta</a>`;
     renderMath(fb);
   }
-});
-document.addEventListener('click', e=>{
-  const a = e.target.closest('[data-show]');
-  if (!a) return;
-  e.preventDefault();
-  const card = a.closest('.quiz'), q = QUIZ[+card.dataset.q], fb = card.querySelector('.fb');
-  fb.innerHTML = `👉 <b>${q.a}</b>: ${q.why}`; renderMath(fb);
 });
 document.addEventListener('change', e=>{
   const k = e.target.dataset && e.target.dataset.key;
   if (!k) return;
   if (e.target.checked) done[k]=true; else delete done[k];
   store.set('done', done);
-  buildNav((location.hash.replace(/^#\/?/,'')||'inicio').split('/')[0]);
+  buildNav(location.hash.replace(/^#\/?/,'').split('/')[0] || 'inicio');
 });
-document.getElementById('menuBtn').onclick = ()=>document.getElementById('side').classList.toggle('open');
-(function(){
-  const saved = store.get('theme');
-  if (saved) document.documentElement.dataset.theme = saved;
-  document.getElementById('themeBtn').onclick = ()=>{
-    const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme==='dark'
-               : matchMedia('(prefers-color-scheme: dark)').matches;
-    const t = dark ? 'light' : 'dark';
-    document.documentElement.dataset.theme = t; store.set('theme', t);
-  };
-})();
+document.getElementById('menuBtn').onclick = ()=>toggleMenu(side.classList.contains('-translate-x-full'));
+document.getElementById('themeBtn').onclick = ()=>{
+  const dark = document.documentElement.classList.toggle('dark');
+  store.set('theme', dark ? 'dark' : 'light');
+};
 window.addEventListener('hashchange', route);
 window.addEventListener('load', route);
 </script>

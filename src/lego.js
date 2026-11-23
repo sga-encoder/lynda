@@ -55,8 +55,8 @@ function zoneHTML(key, zone, depth){
   const id = ZREG[key].push(zone)-1;
   const isRoot = depth===0, active = st.active===zone || (!st.active && isRoot);
   const base = isRoot
-    ? 'min-h-24 w-full p-3 gap-1.5 rounded-xl border-2 border-dashed border-stone-300 bg-white bg-[radial-gradient(circle,#e7e5e4_1px,transparent_1px)] [background-size:18px_18px] dark:border-zinc-700 dark:bg-zinc-950 dark:bg-[radial-gradient(circle,#27272a_1px,transparent_1px)]'
-    : 'min-h-9 min-w-9 p-1 gap-1 rounded-md border-2 border-dashed border-stone-300 bg-stone-50/80 dark:border-zinc-600 dark:bg-zinc-900/80';
+    ? 'min-h-28 w-full p-2.5 gap-1.5 rounded-xl border-2 border-dashed border-stone-300 bg-white bg-[radial-gradient(circle,#e7e5e4_1px,transparent_1px)] [background-size:18px_18px] dark:border-zinc-700 dark:bg-zinc-950 dark:bg-[radial-gradient(circle,#27272a_1px,transparent_1px)]'
+    : 'min-h-11 min-w-11 p-1 gap-1 rounded-lg border-2 border-dashed border-stone-300 bg-stone-50/80 dark:border-zinc-600 dark:bg-zinc-900/80';
   const ring = active ? ' ring-2 ring-blue-400 dark:ring-blue-500' : '';
   const empty = zone.length ? '' : (isRoot ? `<span class="pointer-events-none select-none text-sm text-stone-400 dark:text-zinc-500">Lienzo vacío: arrastra o toca piezas del banco…</span>` : '');
   return `<div data-z="${key}|${id}" class="flex flex-wrap items-center ${base}${ring}">${zone.map((n,i)=>nodeHTML(key,n,id,i,depth)).join('')}${empty}</div>`;
@@ -67,7 +67,7 @@ function nodeHTML(key, n, zid, i, depth){
   if (n.t==='frac') return `<span ${attr} class="${brick} inline-flex flex-col items-center gap-1 border-emerald-500 bg-emerald-50 px-1.5 py-1 dark:border-emerald-600 dark:bg-emerald-950/60">${zoneHTML(key,n.z[0],depth+1)}<span class="h-0.5 w-full rounded bg-emerald-700 dark:bg-emerald-300"></span>${zoneHTML(key,n.z[1],depth+1)}</span>`;
   if (n.t==='sqrt') return `<span ${attr} class="${brick} inline-flex items-stretch border-emerald-500 bg-emerald-50 px-1.5 py-1 dark:border-emerald-600 dark:bg-emerald-950/60"><span class="pr-0.5 text-xl leading-none text-emerald-800 dark:text-emerald-200">√</span><span class="border-t-2 border-emerald-700 pt-0.5 dark:border-emerald-300">${zoneHTML(key,n.z[0],depth+1)}</span></span>`;
   if (n.t==='sup')  return `<span ${attr} class="${brick} inline-flex -translate-y-2 scale-90 items-start border-emerald-500 bg-emerald-50 px-1 py-0.5 dark:border-emerald-600 dark:bg-emerald-950/60"><span class="text-[10px] text-emerald-800 dark:text-emerald-200">^</span>${zoneHTML(key,n.z[0],depth+1)}</span>`;
-  return `<span ${attr} class="${brick} ${pieceColor(n.t)} inline-flex min-h-9 min-w-9 items-center justify-center px-2 text-[1.05rem]">${kx(tokTex(n.t))}</span>`;
+  return `<span ${attr} class="${brick} ${pieceColor(n.t)} inline-flex min-h-11 min-w-11 items-center justify-center px-2.5 text-lg">${kx(tokTex(n.t))}</span>`;
 }
 function pieceColor(t){
   if (/^[-+]?\d+(\.\d+)?$/.test(t)) return 'border-blue-500 bg-blue-50 text-blue-950 dark:border-blue-500 dark:bg-blue-950/60 dark:text-blue-100';
@@ -76,7 +76,7 @@ function pieceColor(t){
   return 'border-stone-400 bg-stone-100 text-stone-900 dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
 }
 function bankPiece(key, t){
-  const brick = 'touch-none select-none cursor-grab rounded-md border border-b-4 shadow-sm inline-flex min-h-10 min-w-10 items-center justify-center px-2.5 text-[1.05rem] hover:-translate-y-0.5 transition-transform';
+  const brick = 'touch-none select-none cursor-grab rounded-md border border-b-4 shadow-sm inline-flex min-h-12 min-w-12 items-center justify-center px-3 text-lg touch-manipulation transition-transform active:scale-90 hover:-translate-y-0.5';
   const label = t==='frac' ? kx('\\frac{\\square}{\\square}') : t==='sqrt' ? kx('\\sqrt{\\square}') : t==='sup' ? kx('\\square^{\\,\\blacksquare}') : kx(tokTex(t));
   const cls = STRUCT[t] ? 'border-emerald-500 bg-emerald-50 text-emerald-950 dark:border-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-100' : pieceColor(t);
   const title = {frac:'Fracción: tiene numerador y denominador', sqrt:'Raíz: tiene un espacio dentro', sup:'Exponente: se coloca después de la base'}[t] || 'Pieza';
@@ -111,20 +111,19 @@ function renderLego(key){
   let cur = '';
   if (!finished){
     const s = steps[st.step];
-    const fb = st.msg ? `<div class="mt-2 rounded-lg px-3 py-2 text-sm ${st.msg.ok?'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200':'bg-rose-50 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200'}">${st.msg.t}</div>` : '';
+    const fb = st.msg ? `<div class="mt-3 rounded-xl px-3 py-2.5 text-sm font-medium ${st.msg.ok?'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200':'bg-rose-50 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200'}">${st.msg.t}</div>` : '';
     cur = `
     <div class="rounded-xl border border-blue-300 bg-blue-50/40 p-3 dark:border-blue-800 dark:bg-blue-950/20">
       <div class="mb-2 flex flex-wrap items-baseline gap-2"><span class="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white dark:bg-blue-400 dark:text-zinc-950">Paso ${st.step+1} de ${steps.length}</span><b>${s.q}</b></div>
       ${zoneHTML(key, st.root, 0)}
-      <div class="mt-3 text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-zinc-400">Banco de piezas</div>
-      <div class="mt-1.5 flex flex-wrap gap-2 rounded-xl bg-stone-100 p-2.5 dark:bg-zinc-800/60">${shuffled(s.k, key+st.step).map(t=>bankPiece(key,t)).join('')}</div>
-      <div class="mt-3 flex flex-wrap gap-2">
-        <button class="${C.btnP}" data-lg="check">✔ Verificar</button>
-        <button class="${C.btn}" data-lg="undo">↶ Deshacer</button>
-        <button class="${C.btn}" data-lg="clear">🗑 Limpiar</button>
-        <button class="${C.btn}" data-lg="hint">💡 Pista</button>
-        <button class="${C.btn} ${st.tries>=2?'ring-2 ring-amber-400':''}" data-lg="reveal">👁 Ver solución del paso</button>
-      </div>${fb}
+      ${allZones(st.root).length>1 ? `<div class="mt-2 flex items-center justify-between gap-2 text-xs text-stone-500 dark:text-zinc-400"><span>Las piezas tocadas entran en el espacio <b class="text-blue-700 dark:text-blue-300">azul</b>.</span><button class="${C.btn} !min-h-9 shrink-0 !py-1 !text-xs" data-lg="nextzone">⇥ Siguiente espacio</button></div>` : ''}
+      <div class="mt-3 text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-zinc-400">Banco de piezas · toca o arrastra</div>
+      <div class="mt-1.5 flex flex-wrap justify-center gap-2 rounded-xl bg-stone-100 p-2.5 sm:justify-start dark:bg-zinc-800/60">${shuffled(s.k, key+st.step).map(t=>bankPiece(key,t)).join('')}</div>
+      ${fb}
+      <button class="${C.btnP} mt-3 !min-h-12 w-full !text-base" data-lg="check">✔ Verificar</button>
+      <div class="mt-2 grid grid-cols-4 gap-2">
+        <button class="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-stone-200 bg-white px-1 py-1.5 text-[11px] leading-tight touch-manipulation select-none transition-transform active:scale-95 dark:border-zinc-700 dark:bg-zinc-900 " data-lg="undo"><span class="text-lg leading-none">↶</span>Deshacer</button><button class="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-stone-200 bg-white px-1 py-1.5 text-[11px] leading-tight touch-manipulation select-none transition-transform active:scale-95 dark:border-zinc-700 dark:bg-zinc-900 " data-lg="clear"><span class="text-lg leading-none">🗑</span>Limpiar</button><button class="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-stone-200 bg-white px-1 py-1.5 text-[11px] leading-tight touch-manipulation select-none transition-transform active:scale-95 dark:border-zinc-700 dark:bg-zinc-900 " data-lg="hint"><span class="text-lg leading-none">💡</span>Pista</button><button class="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-stone-200 bg-white px-1 py-1.5 text-[11px] leading-tight touch-manipulation select-none transition-transform active:scale-95 dark:border-zinc-700 dark:bg-zinc-900 ${st.tries>=2?'ring-2 ring-amber-400':''}" data-lg="reveal"><span class="text-lg leading-none">👁</span>Solución</button>
+      </div>
     </div>`;
   } else {
     const seen = st.log.filter(l=>l.seen).length;
@@ -139,6 +138,7 @@ function legoEx(key){                 // key = f-<tema>-<i>
   const [, tema, i] = key.match(/^f-(.+)-(\d+)$/);
   return FUND.find(t=>t.id===tema).lego[+i];
 }
+function allZones(zone){ return [zone, ...zone.flatMap(n=>(n.z||[]).flatMap(allZones))]; }
 function snapshot(st){ st.hist.push(JSON.stringify(st.root)); if (st.hist.length>50) st.hist.shift(); }
 function findZone(ref){ const [key,id] = ref.split('|'); return {key, zone:ZREG[key][+id]}; }
 
@@ -158,6 +158,8 @@ function legoAction(key, act){
   if (act==='hint'){ st.msg = {ok:true, t:'💡 '+s.h}; }
   if (act==='reveal'){ st.log.push({seen:true}); st.step++; st.root=[]; st.hist=[]; st.active=null; st.tries=0; st.msg=null; }
   if (act==='restart'){ delete LEGO[key]; }
+  if (act==='nextzone'){ const zs = allZones(st.root); st.active = zs[(zs.indexOf(st.active||st.root)+1) % zs.length]; }
+  if (act==='check' && navigator.vibrate){ try{ navigator.vibrate(st.msg && st.msg.ok ? 30 : [60,40,60]); }catch(e){} }
   renderLego(key);
 }
 function insertNode(key, zone, idx, node){
@@ -198,10 +200,10 @@ document.addEventListener('pointerdown', e=>{
   e.preventDefault();
   if (tokEl){
     const [key, t] = tokEl.dataset.tok.split('|');
-    DRAG = {key, src:'bank', t:decodeURIComponent(t), el, x0:e.clientX, y0:e.clientY, moved:false};
+    DRAG = {key, src:'bank', t:decodeURIComponent(t), el, x0:e.clientX, y0:e.clientY, moved:false, lift:e.pointerType==='mouse'?0:48};
   } else {
     const [key, zid, i] = nEl.dataset.n.split('|');
-    DRAG = {key, src:'node', zone:ZREG[key][+zid], i:+i, el, x0:e.clientX, y0:e.clientY, moved:false};
+    DRAG = {key, src:'node', zone:ZREG[key][+zid], i:+i, el, x0:e.clientX, y0:e.clientY, moved:false, lift:e.pointerType==='mouse'?0:48};
   }
 });
 document.addEventListener('pointermove', e=>{
@@ -216,9 +218,9 @@ document.addEventListener('pointermove', e=>{
   }
   const r = DRAG.ghost.getBoundingClientRect();
   DRAG.ghost.style.left = (e.clientX - r.width/2)+'px';
-  DRAG.ghost.style.top  = (e.clientY - r.height/2)+'px';
+  DRAG.ghost.style.top  = (e.clientY - DRAG.lift - r.height/2)+'px';
   document.querySelectorAll('[data-z].bg-blue-100').forEach(z=>z.classList.remove('bg-blue-100','dark:bg-blue-900/40'));
-  const z = zoneAt(e.clientX, e.clientY, DRAG.key);
+  const z = zoneAt(e.clientX, e.clientY - DRAG.lift, DRAG.key);
   if (z) z.classList.add('bg-blue-100','dark:bg-blue-900/40');
 });
 document.addEventListener('pointerup', e=>{
@@ -231,16 +233,17 @@ document.addEventListener('pointerup', e=>{
     else { snapshot(st); d.zone.splice(d.i,1); st.active=null; st.msg=null; }
     renderLego(d.key); return;
   }
-  const zEl = zoneAt(e.clientX, e.clientY, d.key);
+  const Y = e.clientY - d.lift;
+  const zEl = zoneAt(e.clientX, Y, d.key);
   if (d.src==='bank'){
-    if (zEl){ const {zone} = findZone(zEl.dataset.z); insertNode(d.key, zone, dropIndex(zEl,e.clientX,e.clientY), newNode(d.t)); }
+    if (zEl){ const {zone} = findZone(zEl.dataset.z); insertNode(d.key, zone, dropIndex(zEl,e.clientX,Y), newNode(d.t)); }
   } else {
     const node = d.zone[d.i];
     if (!zEl){ snapshot(st); d.zone.splice(d.i,1); st.active=null; }   // soltar fuera = quitar
     else {
       const {zone} = findZone(zEl.dataset.z);
       if (!containsZone(node, zone)){
-        let idx = dropIndex(zEl, e.clientX, e.clientY);
+        let idx = dropIndex(zEl, e.clientX, Y);
         snapshot(st); d.zone.splice(d.i,1);
         if (zone===d.zone && idx>d.i) idx--;
         zone.splice(idx,0,node);

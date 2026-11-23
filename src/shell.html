@@ -2,7 +2,11 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#18181b" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>Guía de Cálculo</title>
 <meta name="description" content="Guía interactiva paso a paso: fundamentos, cálculo diferencial y cálculo integral, con ejercicios para armar con piezas y diccionario de propiedades.">
 <!-- Todo va incluido en este archivo (funciona sin internet):
@@ -19,16 +23,16 @@
   })();
 </script>
 </head>
-<body class="bg-stone-50 text-stone-900 antialiased dark:bg-zinc-950 dark:text-zinc-100 font-sans leading-relaxed">
-<header class="sticky top-0 z-30 flex items-center gap-2 border-b border-stone-200 bg-white/95 px-4 py-2.5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
-  <button id="menuBtn" class="rounded-lg border border-stone-200 px-2.5 py-1 text-sm md:hidden dark:border-zinc-700" aria-label="Abrir menú">☰</button>
+<body class="bg-stone-50 text-stone-900 antialiased [-webkit-tap-highlight-color:transparent] dark:bg-zinc-950 dark:text-zinc-100 font-sans leading-relaxed">
+<header class="sticky top-0 z-30 flex items-center gap-2 border-b border-stone-200 bg-white/95 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-4 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
+  <button id="menuBtn" class="flex h-10 w-10 items-center justify-center rounded-xl border border-stone-200 text-lg touch-manipulation md:hidden dark:border-zinc-700" aria-label="Temas de la sección">☰</button>
   <h1 class="flex-1 truncate text-base font-bold"><a href="#/">∫ Guía de Cálculo</a></h1>
-  <button data-dict-open class="rounded-lg border border-blue-600 bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700 dark:border-blue-400 dark:bg-blue-400 dark:text-zinc-950" aria-label="Abrir diccionario de propiedades" title="Diccionario de propiedades (tecla D)">📖<span class="hidden sm:inline"> Diccionario</span></button>
-  <button id="themeBtn" class="rounded-lg border border-stone-200 px-3 py-1 text-sm hover:border-blue-500 dark:border-zinc-700" aria-label="Cambiar tema">◐<span class="hidden sm:inline"> Tema</span></button>
+  <button data-dict-open class="hidden h-10 rounded-xl border border-blue-600 bg-blue-600 px-3 text-sm md:inline-flex md:items-center text-white hover:bg-blue-700 dark:border-blue-400 dark:bg-blue-400 dark:text-zinc-950" aria-label="Abrir diccionario de propiedades" title="Diccionario de propiedades (tecla D)">📖<span class="hidden sm:inline"> Diccionario</span></button>
+  <button id="themeBtn" class="flex h-10 min-w-10 items-center justify-center rounded-xl border border-stone-200 px-2.5 text-sm touch-manipulation hover:border-blue-500 dark:border-zinc-700" aria-label="Cambiar tema">🌓<span class="hidden sm:inline"> Tema</span></button>
 </header>
 <div class="mx-auto flex max-w-6xl">
-  <nav id="side" class="fixed left-0 top-[49px] z-20 h-[calc(100vh-49px)] w-64 shrink-0 -translate-x-full overflow-y-auto border-r border-stone-200 bg-white px-3 py-4 shadow-2xl transition-transform md:sticky md:translate-x-0 md:bg-transparent md:shadow-none dark:border-zinc-800 dark:bg-zinc-900 md:dark:bg-transparent"></nav>
-  <main id="view" class="min-w-0 flex-1 px-4 pb-20 pt-5 md:px-7
+  <nav id="side" class="fixed left-0 top-0 z-40 h-dvh w-[82vw] max-w-72 pt-[max(1rem,env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))] md:top-[57px] md:z-20 md:h-[calc(100dvh-57px)] md:w-64 md:pt-4 shrink-0 -translate-x-full overflow-y-auto border-r border-stone-200 bg-white px-3 py-4 shadow-2xl transition-transform md:sticky md:translate-x-0 md:bg-transparent md:shadow-none dark:border-zinc-800 dark:bg-zinc-900 md:dark:bg-transparent"></nav>
+  <main id="view" class="min-w-0 flex-1 px-3.5 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-4 sm:px-5 md:px-7 md:pb-20
     [&_p]:my-2.5 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:my-1
     [&_p_a]:text-blue-700 [&_p_a]:underline [&_li_a]:text-blue-700 [&_li_a]:underline [&_td_a]:text-blue-700 [&_td_a]:underline [&_.why_a]:text-blue-700 [&_.why_a]:underline
     dark:[&_p_a]:text-blue-300 dark:[&_li_a]:text-blue-300 dark:[&_td_a]:text-blue-300 dark:[&_.why_a]:text-blue-300
@@ -38,20 +42,30 @@
     dark:[&_th]:border-zinc-700 dark:[&_th]:bg-zinc-800 dark:[&_td]:border-zinc-700
     [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden [&_.katex-display]:py-0.5"></main>
 </div>
+<div id="scrim" class="fixed inset-0 z-[35] hidden bg-black/40 md:hidden"></div>
+
+<!-- Barra de navegación inferior (celular) -->
+<nav id="bottomNav" class="fixed inset-x-0 bottom-0 z-30 flex border-t border-stone-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden dark:border-zinc-800 dark:bg-zinc-900/95" aria-label="Secciones">
+    <a href="#/" data-bn="home"  class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🏠</span>Inicio</a>
+    <a href="#/f" data-bn="F"  class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🧱</span>Fundamentos</a>
+    <a href="#/diferencial" data-bn="D"  class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">📈</span>Diferencial</a>
+    <a href="#/integral" data-bn="I"  class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">∫</span>Integral</a>
+    <button data-dict-open data-bn="dict" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">📖</span>Diccionario</button>
+</nav>
 
 <!-- Modal: Diccionario de propiedades -->
-<div id="dict" class="fixed inset-0 z-50 hidden items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="dictTitle">
-  <div class="flex h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:h-[85vh] sm:rounded-2xl dark:bg-zinc-900">
-    <div class="border-b border-stone-200 p-4 dark:border-zinc-800">
+<div id="dict" class="fixed inset-0 z-50 hidden items-stretch justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="dictTitle">
+  <div class="flex h-dvh w-full max-w-4xl flex-col overflow-hidden bg-white shadow-2xl sm:h-[85vh] sm:rounded-2xl dark:bg-zinc-900">
+    <div class="border-b border-stone-200 px-3.5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:p-4 dark:border-zinc-800">
       <div class="flex items-center gap-2">
         <h2 id="dictTitle" class="flex-1 text-lg font-bold">📖 Diccionario de propiedades</h2>
         <span id="dictCount" class="text-sm text-stone-500 dark:text-zinc-400"></span>
-        <button data-dict-close class="rounded-lg border border-stone-200 px-2.5 py-1 text-sm hover:border-blue-500 dark:border-zinc-700" aria-label="Cerrar">✕</button>
+        <button data-dict-close class="flex h-10 w-10 items-center justify-center rounded-xl border border-stone-200 text-base touch-manipulation hover:border-blue-500 dark:border-zinc-700" aria-label="Cerrar">✕</button>
       </div>
-      <input id="dictQ" type="search" placeholder="Buscar: potencia, logaritmo, cadena, fracción…" class="mt-3 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-zinc-700 dark:bg-zinc-950 dark:focus:ring-blue-900">
-      <div id="dictTabs" class="mt-3 flex flex-wrap gap-2"></div>
+      <input id="dictQ" type="search" placeholder="Buscar: potencia, logaritmo, cadena, fracción…" class="mt-3 w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-zinc-700 dark:bg-zinc-950 dark:focus:ring-blue-900">
+      <div id="dictTabs" class="-mx-3.5 mt-3 flex gap-2 overflow-x-auto px-3.5 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0"></div>
     </div>
-    <div id="dictList" class="flex-1 overflow-y-auto px-4 pb-6"></div>
+    <div id="dictList" class="flex-1 overflow-y-auto overscroll-contain px-3.5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:px-4"></div>
   </div>
 </div>
 

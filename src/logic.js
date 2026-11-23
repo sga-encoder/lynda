@@ -2,14 +2,14 @@
    UTILIDADES (clases de Tailwind reutilizadas)
    ===================================================================== */
 const C = {
-  card:  'my-3.5 rounded-xl border border-stone-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-none',
+  card:  'my-3 rounded-2xl border border-stone-200 bg-white p-3.5 sm:p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-none',
   h3:    'mt-8 mb-2.5 border-t border-stone-200 pt-3 text-xl font-bold dark:border-zinc-800',
-  chip:  'inline-block rounded-full border border-transparent bg-blue-50 px-2.5 py-0.5 text-sm text-blue-700 hover:border-blue-500 dark:bg-blue-950/50 dark:text-blue-300',
-  btn:   'cursor-pointer rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm hover:border-blue-500 disabled:cursor-default disabled:opacity-70 dark:border-zinc-700 dark:bg-zinc-900',
-  btnP:  'cursor-pointer rounded-lg border border-blue-600 bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:cursor-default disabled:opacity-70 dark:border-blue-400 dark:bg-blue-400 dark:text-zinc-950',
+  chip:  'inline-flex min-h-10 items-center rounded-full border border-transparent bg-blue-50 px-3.5 py-1.5 text-sm touch-manipulation select-none transition-transform active:scale-95 text-blue-700 hover:border-blue-500 dark:bg-blue-950/50 dark:text-blue-300',
+  btn:   'inline-flex min-h-11 items-center justify-center gap-1 cursor-pointer rounded-xl border border-stone-200 bg-white px-3.5 py-2 text-sm touch-manipulation select-none transition-transform active:scale-95 hover:border-blue-500 disabled:cursor-default disabled:opacity-70 dark:border-zinc-700 dark:bg-zinc-900',
+  btnP:  'inline-flex min-h-11 items-center justify-center gap-1 cursor-pointer rounded-xl border border-blue-600 bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white touch-manipulation select-none transition-transform active:scale-95 hover:bg-blue-700 disabled:cursor-default disabled:opacity-70 dark:border-blue-400 dark:bg-blue-400 dark:text-zinc-950',
   src:   'text-sm italic text-stone-500 dark:text-zinc-400',
-  prob:  'overflow-x-auto py-1 text-lg',
-  lead:  'mt-0 text-lg text-stone-600 dark:text-zinc-400',
+  prob:  'overflow-x-auto py-1 text-lg [&_.katex-display]:my-2',
+  lead:  'mt-0 text-base sm:text-lg text-stone-600 dark:text-zinc-400',
   h2:    'mb-1 text-2xl font-bold leading-tight md:text-3xl',
   note:  'my-3 rounded-r-xl border-l-4 border-blue-600 bg-blue-50 px-4 py-2.5 dark:border-blue-400 dark:bg-blue-950/40',
   reveal:'mt-2 overflow-x-auto rounded-xl border border-dashed border-stone-300 px-4 py-2.5 dark:border-zinc-700',
@@ -38,10 +38,10 @@ function stepsBlock(steps, result){
        <div class="why mt-1 text-[0.95rem] text-stone-600 dark:text-zinc-400"><b class="text-xs uppercase tracking-wide text-amber-700 dark:text-amber-300">Por qué</b> ${s[1]}</div>
      </div>`).join('')}</div>
    <div data-result class="hidden mt-2 overflow-x-auto rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2.5 dark:border-emerald-500 dark:bg-emerald-950/40">✅ <b>Resultado:</b> \\(\\displaystyle ${result}\\)</div>
-   <div class="mt-2 flex flex-wrap gap-2">
+   <div class="mt-2 grid grid-cols-[1fr_auto_auto] gap-2 sm:flex">
      <button class="${C.btnP}" data-act="next">Ver paso 1 ▸</button>
-     <button class="${C.btn}" data-act="all">Mostrar todo</button>
-     <button class="${C.btn}" data-act="reset">Reiniciar</button>
+     <button class="${C.btn}" data-act="all" aria-label="Mostrar todos los pasos">Todo</button>
+     <button class="${C.btn}" data-act="reset" aria-label="Reiniciar">↺</button>
    </div></div>`;
 }
 function exampleCard(ex){
@@ -56,10 +56,10 @@ function exerciseCard(ex, key, i){
    <div class="flex flex-wrap items-center gap-2"><b>Ejercicio ${i+1}</b><span class="${C.src}">${ex.src}</span>
      <label class="ml-auto inline-flex cursor-pointer items-center gap-1.5 text-sm text-stone-500 dark:text-zinc-400"><input type="checkbox" class="accent-emerald-600" data-key="${key}" ${done[key]?'checked':''}> Lo resolví</label></div>
    <div class="${C.prob}">\\[${ex.p}\\]</div>
-   <div class="mt-2 flex flex-wrap gap-2">
+   <div class="mt-2 grid grid-cols-3 gap-2 sm:flex">
     <button class="${C.btn}" data-toggle="hint">💡 Pista</button>
-    <button class="${C.btn}" data-toggle="ans">🎯 Ver respuesta</button>
-    <button class="${C.btn}" data-toggle="sol">🪜 Solución paso a paso</button>
+    <button class="${C.btn}" data-toggle="ans">🎯 Respuesta</button>
+    <button class="${C.btn}" data-toggle="sol">🪜 Solución</button>
    </div>
    <div class="hidden ${C.reveal}" data-part="hint">${ex.hint}</div>
    <div class="hidden ${C.reveal}" data-part="ans">\\(\\displaystyle ${ex.r}\\)</div>
@@ -71,7 +71,7 @@ function lessonProgress(L){
   return {n, tot};
 }
 const tile = (href, title, sub) =>
-  `<a href="${href}" class="block rounded-xl border border-stone-200 bg-white p-4 shadow-sm hover:border-blue-500 dark:border-zinc-800 dark:bg-zinc-900"><b class="mb-1 block">${title}</b><small class="text-stone-500 dark:text-zinc-400">${sub}</small></a>`;
+  `<a href="${href}" class="block rounded-2xl border border-stone-200 bg-white p-3.5 sm:p-4 shadow-sm touch-manipulation active:scale-[0.98] transition-transform hover:border-blue-500 dark:border-zinc-800 dark:bg-zinc-900"><b class="mb-1 block">${title}</b><small class="text-stone-500 dark:text-zinc-400">${sub}</small></a>`;
 
 /* =====================================================================
    PÁGINAS
@@ -148,7 +148,7 @@ function pageEstrategia(){
   </table></div>
   <h3 class="${C.h3}">Mini-quiz: elige la técnica</h3>
   ${QUIZ.map((q,i)=>`<div class="${C.card}" data-q="${i}"><div class="${C.prob}">\\[${q.p}\\]</div>
-    <div class="mt-2 flex flex-wrap gap-2">${QOPTS.map(o=>`<button class="${C.btn}" data-opt="${o}">${o}</button>`).join('')}</div>
+    <div class="mt-2 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">${QOPTS.map(o=>`<button class="${C.btn}" data-opt="${o}">${o}</button>`).join('')}</div>
     <div data-fb class="mt-2 text-[0.95rem]"></div></div>`).join('')}`;
 }
 
@@ -268,8 +268,8 @@ function renderDict(){
     (!q || fold(d.n+' '+d.c+' '+SECCIONES[d.s]).includes(q)));
   const tabs = [['all','Todas'], ...Object.entries(SECCIONES)];
   document.getElementById('dictTabs').innerHTML = tabs.map(([k,l])=>
-    `<button data-dsec="${k}" class="rounded-full border px-3 py-1 text-sm ${DSTATE.sec===k&&!DSTATE.cat?'border-blue-600 bg-blue-600 text-white dark:border-blue-400 dark:bg-blue-400 dark:text-zinc-950':'border-stone-300 hover:border-blue-500 dark:border-zinc-700'}">${l}</button>`).join('') +
-    (DSTATE.cat ? `<button data-dcat-clear class="rounded-full border border-blue-600 bg-blue-50 px-3 py-1 text-sm text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">${DSTATE.cat} ✕</button>` : '');
+    `<button data-dsec="${k}" class="shrink-0 whitespace-nowrap rounded-full border px-3.5 py-2 text-sm touch-manipulation ${DSTATE.sec===k&&!DSTATE.cat?'border-blue-600 bg-blue-600 text-white dark:border-blue-400 dark:bg-blue-400 dark:text-zinc-950':'border-stone-300 hover:border-blue-500 dark:border-zinc-700'}">${l}</button>`).join('') +
+    (DSTATE.cat ? `<button data-dcat-clear class="shrink-0 whitespace-nowrap rounded-full border border-blue-600 bg-blue-50 px-3 py-1 text-sm text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">${DSTATE.cat} ✕</button>` : '');
   const cats = [...new Set(items.map(d=>d.c))];
   document.getElementById('dictList').innerHTML = items.length ? cats.map(c=>`
     <section><h4 class="sticky top-0 z-10 -mx-1 mb-2 mt-4 bg-white/95 px-1 py-1 text-sm font-bold uppercase tracking-wide text-stone-500 backdrop-blur dark:bg-zinc-900/95 dark:text-zinc-400">${c} <span class="font-normal normal-case">· ${SECCIONES[items.find(d=>d.c===c).s]}</span></h4>
@@ -327,6 +327,12 @@ function buildNav(cur){
     LESSONS.map(L=>{const p=lessonProgress(L);return a('#/'+L.id, `${L.n}. ${L.short}`, L.id, cnt(p.n,p.tot))}).join('') +
     a('#/estrategia','🧭 ¿Qué técnica uso?','estrategia') + a('#/examen','📝 Solución del examen','examen');
   side.innerHTML = h;
+  // Barra inferior (celular): marca la sección actual
+  const ON = ['text-blue-700','dark:text-blue-300','font-semibold'];
+  document.querySelectorAll('[data-bn]').forEach(el=>{
+    const on = el.dataset.bn===sec; el.classList.remove(...ON); if (on) el.classList.add(...ON);
+    el.querySelector('span').classList.toggle('bg-blue-100', on); el.querySelector('span').classList.toggle('dark:bg-blue-950', on);
+  });
 }
 function buildNavFromHash(){ buildNav(currentId()); }
 function renderMath(el){
@@ -335,7 +341,9 @@ function renderMath(el){
   }
 }
 const side = document.getElementById('side');
-function toggleMenu(open){ side.classList.toggle('-translate-x-full', !open); }
+const scrim = document.getElementById('scrim');
+function toggleMenu(open){ side.classList.toggle('-translate-x-full', !open); scrim.classList.toggle('hidden', !open); }
+scrim.onclick = ()=>toggleMenu(false);
 function route(){
   const [r, sub] = location.hash.replace(/^#\/?/,'').split('/');
   const view = document.getElementById('view');

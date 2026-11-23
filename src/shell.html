@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guía de Cálculo</title>
+<meta name="description" content="Guía interactiva paso a paso: fundamentos, cálculo diferencial y cálculo integral, con ejercicios para armar con piezas y diccionario de propiedades.">
+<!-- Todo va incluido en este archivo (funciona sin internet):
+     · Estilos: Tailwind CSS v4.1.4, compilado a partir de las clases usadas en este HTML.
+     · Fórmulas: KaTeX v0.16.9 (con sus fuentes).
+     · Lógica: JavaScript puro (al final del archivo). -->
+<!--@@VENDOR@@-->
+<script>
+  // Tema claro/oscuro antes de pintar (evita parpadeo)
+  (function(){
+    let t = null; try { t = JSON.parse(localStorage.getItem('calcint:theme')); } catch(e){}
+    const dark = t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.classList.toggle('dark', dark);
+  })();
+</script>
+</head>
+<body class="bg-stone-50 text-stone-900 antialiased dark:bg-zinc-950 dark:text-zinc-100 font-sans leading-relaxed">
+<header class="sticky top-0 z-30 flex items-center gap-2 border-b border-stone-200 bg-white/95 px-4 py-2.5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
+  <button id="menuBtn" class="rounded-lg border border-stone-200 px-2.5 py-1 text-sm md:hidden dark:border-zinc-700" aria-label="Abrir menú">☰</button>
+  <h1 class="flex-1 truncate text-base font-bold"><a href="#/">∫ Guía de Cálculo</a></h1>
+  <button data-dict-open class="rounded-lg border border-blue-600 bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700 dark:border-blue-400 dark:bg-blue-400 dark:text-zinc-950" aria-label="Abrir diccionario de propiedades" title="Diccionario de propiedades (tecla D)">📖<span class="hidden sm:inline"> Diccionario</span></button>
+  <button id="themeBtn" class="rounded-lg border border-stone-200 px-3 py-1 text-sm hover:border-blue-500 dark:border-zinc-700" aria-label="Cambiar tema">◐<span class="hidden sm:inline"> Tema</span></button>
+</header>
+<div class="mx-auto flex max-w-6xl">
+  <nav id="side" class="fixed left-0 top-[49px] z-20 h-[calc(100vh-49px)] w-64 shrink-0 -translate-x-full overflow-y-auto border-r border-stone-200 bg-white px-3 py-4 shadow-2xl transition-transform md:sticky md:translate-x-0 md:bg-transparent md:shadow-none dark:border-zinc-800 dark:bg-zinc-900 md:dark:bg-transparent"></nav>
+  <main id="view" class="min-w-0 flex-1 px-4 pb-20 pt-5 md:px-7
+    [&_p]:my-2.5 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:my-1
+    [&_p_a]:text-blue-700 [&_p_a]:underline [&_li_a]:text-blue-700 [&_li_a]:underline [&_td_a]:text-blue-700 [&_td_a]:underline [&_.why_a]:text-blue-700 [&_.why_a]:underline
+    dark:[&_p_a]:text-blue-300 dark:[&_li_a]:text-blue-300 dark:[&_td_a]:text-blue-300 dark:[&_.why_a]:text-blue-300
+    [&_table]:w-full [&_table]:border-collapse [&_table]:text-[0.95rem]
+    [&_th]:border [&_th]:border-stone-200 [&_th]:bg-stone-100 [&_th]:px-2.5 [&_th]:py-2 [&_th]:text-left
+    [&_td]:border [&_td]:border-stone-200 [&_td]:px-2.5 [&_td]:py-2 [&_td]:align-top
+    dark:[&_th]:border-zinc-700 dark:[&_th]:bg-zinc-800 dark:[&_td]:border-zinc-700
+    [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden [&_.katex-display]:py-0.5"></main>
+</div>
+
+<!-- Modal: Diccionario de propiedades -->
+<div id="dict" class="fixed inset-0 z-50 hidden items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="dictTitle">
+  <div class="flex h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:h-[85vh] sm:rounded-2xl dark:bg-zinc-900">
+    <div class="border-b border-stone-200 p-4 dark:border-zinc-800">
+      <div class="flex items-center gap-2">
+        <h2 id="dictTitle" class="flex-1 text-lg font-bold">📖 Diccionario de propiedades</h2>
+        <span id="dictCount" class="text-sm text-stone-500 dark:text-zinc-400"></span>
+        <button data-dict-close class="rounded-lg border border-stone-200 px-2.5 py-1 text-sm hover:border-blue-500 dark:border-zinc-700" aria-label="Cerrar">✕</button>
+      </div>
+      <input id="dictQ" type="search" placeholder="Buscar: potencia, logaritmo, cadena, fracción…" class="mt-3 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-zinc-700 dark:bg-zinc-950 dark:focus:ring-blue-900">
+      <div id="dictTabs" class="mt-3 flex flex-wrap gap-2"></div>
+    </div>
+    <div id="dictList" class="flex-1 overflow-y-auto px-4 pb-6"></div>
+  </div>
+</div>
+
+<script>
+<!--@@APP@@-->
+</script>
+</body>
+</html>

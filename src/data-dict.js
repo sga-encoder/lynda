@@ -1,0 +1,98 @@
+/* =====================================================================
+   DICCIONARIO DE PROPIEDADES (modal accesible desde cualquier página)
+   s: sección (F fundamentos, D diferencial, I integral) · c: categoría
+   n: nombre · f: fórmula (LaTeX) · e: ejemplo (LaTeX) · to: enlace
+   ===================================================================== */
+const SECCIONES = {F:'Fundamentos', D:'Cálculo diferencial', I:'Cálculo integral'};
+const DICT = [
+ // ---------- Aritmética ----------
+ {s:'F',c:'Aritmética',n:'Suma con signos iguales',f:R`(+a)+(+b)=a+b,\quad(-a)+(-b)=-(a+b)`,e:R`-4-9=-13`,to:'#/f/signos'},
+ {s:'F',c:'Aritmética',n:'Suma con signos distintos',f:R`\text{se restan y queda el signo del mayor valor}`,e:R`-4+9=5`,to:'#/f/signos'},
+ {s:'F',c:'Aritmética',n:'Restar es sumar el opuesto',f:R`a-b=a+(-b),\qquad -(-b)=b`,e:R`3-(-2)=5`,to:'#/f/signos'},
+ {s:'F',c:'Aritmética',n:'Ley de signos (multiplicación y división)',f:R`(+)(+)=+,\ (-)(-)=+,\ (+)(-)=-`,e:R`(-3)(-4)=12,\ \ -20\div5=-4`,to:'#/f/multdiv'},
+ {s:'F',c:'Aritmética',n:'Jerarquía de operaciones',f:R`(\,)\ \to\ a^n,\sqrt{\ }\ \to\ \times,\div\ \to\ +,-`,e:R`8-2\cdot3=2`,to:'#/f/multdiv'},
+ {s:'F',c:'Aritmética',n:'Propiedad distributiva',f:R`a(b+c)=ab+ac`,e:R`-3(2x-5)=-6x+15`,to:'#/f/multdiv'},
+ {s:'F',c:'Aritmética',n:'Conmutativa y asociativa',f:R`a+b=b+a,\quad ab=ba,\quad (a+b)+c=a+(b+c)`,e:R`2\cdot5=5\cdot2`,to:'#/f/multdiv'},
+ {s:'F',c:'Aritmética',n:'Neutros e inversos',f:R`a+0=a,\quad a\cdot1=a,\quad a+(-a)=0,\quad a\cdot\tfrac1a=1`,e:R`7\cdot\tfrac17=1`,to:'#/f/lineales'},
+ {s:'F',c:'Aritmética',n:'División entre cero',f:R`\frac a0\ \text{no está definido}`,e:R`\frac{5}{0}\ \text{no existe}`,to:'#/f/racionales'},
+ // ---------- Fracciones ----------
+ {s:'F',c:'Fracciones',n:'Simplificar',f:R`\frac{ak}{bk}=\frac ab\quad(k\ne0)`,e:R`\frac68=\frac34`,to:'#/f/fracciones'},
+ {s:'F',c:'Fracciones',n:'Suma con igual denominador',f:R`\frac ac+\frac bc=\frac{a+b}{c}`,e:R`\frac14+\frac24=\frac34`,to:'#/f/fracciones'},
+ {s:'F',c:'Fracciones',n:'Suma con distinto denominador',f:R`\frac ab+\frac cd=\frac{ad+bc}{bd}`,e:R`\frac12+\frac13=\frac56`,to:'#/f/fracciones'},
+ {s:'F',c:'Fracciones',n:'Multiplicación',f:R`\frac ab\cdot\frac cd=\frac{ac}{bd}`,e:R`\frac23\cdot\frac45=\frac8{15}`,to:'#/f/fracciones'},
+ {s:'F',c:'Fracciones',n:'División (recíproco)',f:R`\frac ab\div\frac cd=\frac ab\cdot\frac dc`,e:R`\frac35\div\frac9{10}=\frac23`,to:'#/f/fracciones'},
+ // ---------- Potencias y raíces ----------
+ {s:'F',c:'Potencias y raíces',n:'Producto de potencias',f:R`a^m\cdot a^n=a^{m+n}`,e:R`x^2x^3=x^5`,to:'#/f/potencias'},
+ {s:'F',c:'Potencias y raíces',n:'Cociente de potencias',f:R`\frac{a^m}{a^n}=a^{m-n}`,e:R`\frac{x^8}{x^2}=x^6`,to:'#/f/potencias'},
+ {s:'F',c:'Potencias y raíces',n:'Potencia de una potencia',f:R`(a^m)^n=a^{mn}`,e:R`(x^2)^3=x^6`,to:'#/f/potencias'},
+ {s:'F',c:'Potencias y raíces',n:'Potencia de un producto',f:R`(ab)^n=a^nb^n`,e:R`(2x)^3=8x^3`,to:'#/f/potencias'},
+ {s:'F',c:'Potencias y raíces',n:'Exponente cero y negativo',f:R`a^0=1,\qquad a^{-n}=\frac1{a^n}`,e:R`x^{-2}=\frac1{x^2}`,to:'#/f/potencias'},
+ {s:'F',c:'Potencias y raíces',n:'Exponente fraccionario',f:R`a^{m/n}=\sqrt[n]{a^m}`,e:R`\sqrt t=t^{1/2}`,to:'#/f/potencias'},
+ {s:'F',c:'Potencias y raíces',n:'Raíz de un producto y un cociente',f:R`\sqrt{ab}=\sqrt a\sqrt b,\qquad\sqrt{\tfrac ab}=\tfrac{\sqrt a}{\sqrt b}`,e:R`\sqrt{12}=2\sqrt3`,to:'#/f/potencias'},
+ {s:'F',c:'Potencias y raíces',n:'Raíz de un cuadrado',f:R`\sqrt{a^2}=|a|,\qquad(\sqrt a)^2=a\ (a\ge0)`,e:R`\sqrt{(-3)^2}=3`,to:'#/f/radicales'},
+ // ---------- Factorización ----------
+ {s:'F',c:'Factorización',n:'Factor común',f:R`ab+ac=a(b+c)`,e:R`4x^2-12x=4x(x-3)`,to:'#/f/factorizacion'},
+ {s:'F',c:'Factorización',n:'Diferencia de cuadrados',f:R`a^2-b^2=(a-b)(a+b)`,e:R`x^2-9=(x-3)(x+3)`,to:'#/f/factorizacion'},
+ {s:'F',c:'Factorización',n:'Trinomio cuadrado perfecto',f:R`a^2\pm2ab+b^2=(a\pm b)^2`,e:R`x^2+6x+9=(x+3)^2`,to:'#/f/factorizacion'},
+ {s:'F',c:'Factorización',n:'Trinomio x² + bx + c',f:R`x^2+bx+c=(x+m)(x+n),\ \ m+n=b,\ mn=c`,e:R`x^2+7x+10=(x+2)(x+5)`,to:'#/f/factorizacion'},
+ {s:'F',c:'Factorización',n:'Suma y diferencia de cubos',f:R`a^3\pm b^3=(a\pm b)(a^2\mp ab+b^2)`,e:R`x^3-8=(x-2)(x^2+2x+4)`,to:'#/f/factorizacion'},
+ {s:'F',c:'Factorización',n:'Completar el cuadrado',f:R`x^2+bx=\left(x+\tfrac b2\right)^2-\left(\tfrac b2\right)^2`,e:R`x^2+6x=(x+3)^2-9`,to:'#/bases/completar'},
+ // ---------- Ecuaciones ----------
+ {s:'F',c:'Ecuaciones',n:'Propiedad de la igualdad',f:R`a=b\Rightarrow a+c=b+c,\ \ ac=bc`,e:R`x+5=9\Rightarrow x=4`,to:'#/f/lineales'},
+ {s:'F',c:'Ecuaciones',n:'Producto cero',f:R`AB=0\iff A=0\ \text{o}\ B=0`,e:R`(x-2)(x-3)=0\Rightarrow x=2,3`,to:'#/f/cuadraticas'},
+ {s:'F',c:'Ecuaciones',n:'Fórmula general (cuadrática)',f:R`ax^2+bx+c=0\Rightarrow x=\frac{-b\pm\sqrt{b^2-4ac}}{2a}`,e:R`x^2+2x-4=0\Rightarrow x=-1\pm\sqrt5`,to:'#/f/cuadraticas'},
+ {s:'F',c:'Ecuaciones',n:'Discriminante',f:R`\Delta=b^2-4ac:\ >0\ \text{dos},\ =0\ \text{una},\ <0\ \text{ninguna real}`,e:R`\Delta=17>0`,to:'#/f/cuadraticas'},
+ {s:'F',c:'Ecuaciones',n:'Teorema del factor',f:R`P(r)=0\iff(x-r)\ \text{es factor de}\ P(x)`,e:R`P(1)=0\Rightarrow(x-1)\mid P`,to:'#/f/polinomicas'},
+ {s:'F',c:'Ecuaciones',n:'Ecuaciones racionales: restricciones',f:R`\frac{P(x)}{Q(x)}:\ Q(x)\ne0`,e:R`\frac{3}{x-2}:\ x\ne2`,to:'#/f/racionales'},
+ {s:'F',c:'Ecuaciones',n:'Ecuaciones radicales: comprobar',f:R`\sqrt A=B\Rightarrow A=B^2\ \ (\text{verificar } B\ge0)`,e:R`\sqrt{2x+3}=x\Rightarrow x=3`,to:'#/f/radicales'},
+ // ---------- Exponenciales y logaritmos ----------
+ {s:'F',c:'Exponenciales y logaritmos',n:'Definición de logaritmo',f:R`\log_b x=y\iff b^y=x\quad(x>0,\ b>0,\ b\ne1)`,e:R`\log_2 8=3`,to:'#/f/logaritmicas'},
+ {s:'F',c:'Exponenciales y logaritmos',n:'Logaritmo de un producto',f:R`\log_b(MN)=\log_bM+\log_bN`,e:R`\ln x+\ln2=\ln(2x)`,to:'#/f/logaritmicas'},
+ {s:'F',c:'Exponenciales y logaritmos',n:'Logaritmo de un cociente',f:R`\log_b\frac MN=\log_bM-\log_bN`,e:R`\ln\frac{x-1}{x+1}=\ln(x-1)-\ln(x+1)`,to:'#/f/logaritmicas'},
+ {s:'F',c:'Exponenciales y logaritmos',n:'Logaritmo de una potencia',f:R`\log_b M^r=r\log_bM`,e:R`\ln x^3=3\ln x`,to:'#/f/logaritmicas'},
+ {s:'F',c:'Exponenciales y logaritmos',n:'Cambio de base',f:R`\log_b x=\frac{\ln x}{\ln b}`,e:R`\log_5 12=\frac{\ln12}{\ln5}`,to:'#/f/exponenciales'},
+ {s:'F',c:'Exponenciales y logaritmos',n:'Valores especiales',f:R`\log_b1=0,\quad\log_bb=1,\quad\ln e=1`,e:R`\ln1=0`,to:'#/f/logaritmicas'},
+ {s:'F',c:'Exponenciales y logaritmos',n:'Inversas',f:R`b^{\log_bx}=x,\qquad\log_b(b^x)=x`,e:R`e^{\ln7}=7,\ \ln(e^{2x})=2x`,to:'#/f/exponenciales'},
+ {s:'F',c:'Exponenciales y logaritmos',n:'Igualar bases',f:R`a^m=a^n\iff m=n`,e:R`3^x=3^4\Rightarrow x=4`,to:'#/f/exponenciales'},
+ // ---------- Trigonometría ----------
+ {s:'F',c:'Trigonometría',n:'Razones en el triángulo',f:R`\sin\theta=\tfrac{op}{hip},\ \cos\theta=\tfrac{ady}{hip},\ \tan\theta=\tfrac{op}{ady}`,e:R`\tan\theta=\frac{\sin\theta}{\cos\theta}`,to:'#/bases/triangulo'},
+ {s:'F',c:'Trigonometría',n:'Identidad pitagórica',f:R`\sin^2\theta+\cos^2\theta=1`,e:R`\cos^2\theta=1-\sin^2\theta`,to:'#/bases/trig'},
+ {s:'F',c:'Trigonometría',n:'Pitagóricas derivadas',f:R`1+\tan^2\theta=\sec^2\theta,\quad1+\cot^2\theta=\csc^2\theta`,e:R`\sec^2\theta-1=\tan^2\theta`,to:'#/bases/trig'},
+ {s:'F',c:'Trigonometría',n:'Ángulo doble',f:R`\sin2\theta=2\sin\theta\cos\theta,\quad\cos2\theta=\cos^2\theta-\sin^2\theta`,e:R`\sin\frac\pi2=2\sin\frac\pi4\cos\frac\pi4`,to:'#/bases/trig'},
+ {s:'F',c:'Trigonometría',n:'Ángulo medio',f:R`\sin^2\theta=\tfrac12(1-\cos2\theta),\ \cos^2\theta=\tfrac12(1+\cos2\theta)`,e:R`\sin^2x=\frac{1-\cos2x}2`,to:'#/bases/trig'},
+ {s:'F',c:'Trigonometría',n:'Valores notables',f:R`\sin\tfrac\pi6=\tfrac12,\ \sin\tfrac\pi4=\tfrac{\sqrt2}2,\ \sin\tfrac\pi3=\tfrac{\sqrt3}2`,e:R`\cos\tfrac\pi3=\tfrac12,\ \tan\tfrac\pi4=1`,to:'#/f/trigonometricas'},
+ {s:'F',c:'Trigonometría',n:'Signos por cuadrante',f:R`\text{I: todas},\ \text{II: }\sin,\ \text{III: }\tan,\ \text{IV: }\cos`,e:R`\sin x>0\Rightarrow x\in\text{I o II}`,to:'#/f/trigonometricas'},
+ {s:'F',c:'Trigonometría',n:'Periodicidad',f:R`\sin(x+2\pi)=\sin x,\quad\tan(x+\pi)=\tan x`,e:R`\tan\tfrac{5\pi}4=\tan\tfrac\pi4`,to:'#/f/trigonometricas'},
+ // ---------- Desigualdades ----------
+ {s:'F',c:'Desigualdades',n:'Multiplicar por negativo invierte',f:R`a<b\ \text{y}\ c<0\Rightarrow ac>bc`,e:R`-2x\ge6\Rightarrow x\le-3`,to:'#/f/inecuaciones'},
+ {s:'F',c:'Desigualdades',n:'Notación de intervalos',f:R`(a,b):\ a<x<b,\quad[a,b]:\ a\le x\le b`,e:R`x\ge-2\Rightarrow[-2,\infty)`,to:'#/f/inecuaciones'},
+ {s:'F',c:'Desigualdades',n:'Valor absoluto',f:R`|x|<a\iff-a<x<a,\qquad|x|>a\iff x<-a\ \text{o}\ x>a`,e:R`|x|<3\iff-3<x<3`,to:'#/f/inecuaciones'},
+ // ---------- Cálculo diferencial ----------
+ {s:'D',c:'Límites',n:'Límites básicos',f:R`\lim_{x\to a}c=c,\quad\lim_{x\to a}x=a`,e:R`\lim_{x\to2}(3x+1)=7`,to:'#/diferencial'},
+ {s:'D',c:'Límites',n:'Límite notable del seno',f:R`\lim_{x\to0}\frac{\sin x}{x}=1`,e:R`\lim_{x\to0}\frac{\sin3x}{x}=3`,to:'#/diferencial'},
+ {s:'D',c:'Límites',n:'Límites al infinito',f:R`\lim_{x\to\infty}\frac1{x^n}=0\ (n>0)`,e:R`\lim_{x\to\infty}\frac{2x+1}{x}=2`,to:'#/bases/limites'},
+ {s:'D',c:'Límites',n:"Regla de L'Hôpital",f:R`\frac00\ \text{o}\ \frac\infty\infty:\ \lim\frac fg=\lim\frac{f'}{g'}`,e:R`\lim_{t\to-\infty}te^t=0`,to:'#/bases/limites'},
+ {s:'D',c:'Derivadas',n:'Definición de derivada',f:R`f'(x)=\lim_{h\to0}\frac{f(x+h)-f(x)}{h}`,e:R`(x^2)'=\lim_{h\to0}(2x+h)=2x`,to:'#/diferencial'},
+ {s:'D',c:'Derivadas',n:'Regla de la potencia',f:R`\frac{d}{dx}x^n=nx^{n-1}`,e:R`(x^5)'=5x^4`,to:'#/bases/derivadas'},
+ {s:'D',c:'Derivadas',n:'Constante y suma',f:R`(c)'=0,\quad(cf)'=cf',\quad(f+g)'=f'+g'`,e:R`(3x^2+5)'=6x`,to:'#/bases/derivadas'},
+ {s:'D',c:'Derivadas',n:'Regla del producto',f:R`(fg)'=f'g+fg'`,e:R`(x\sin x)'=\sin x+x\cos x`,to:'#/bases/derivadas'},
+ {s:'D',c:'Derivadas',n:'Regla del cociente',f:R`\left(\frac fg\right)'=\frac{f'g-fg'}{g^2}`,e:R`\left(\frac{1}{x}\right)'=-\frac1{x^2}`,to:'#/bases/derivadas'},
+ {s:'D',c:'Derivadas',n:'Regla de la cadena',f:R`\big(f(g(x))\big)'=f'(g(x))\,g'(x)`,e:R`\big(\sin(x^4)\big)'=4x^3\cos(x^4)`,to:'#/bases/derivadas'},
+ {s:'D',c:'Derivadas',n:'Exponencial y logaritmo',f:R`(e^x)'=e^x,\quad(\ln x)'=\frac1x,\quad(a^x)'=a^x\ln a`,e:R`(e^{3x})'=3e^{3x}`,to:'#/bases/derivadas'},
+ {s:'D',c:'Derivadas',n:'Trigonométricas',f:R`(\sin x)'=\cos x,\ (\cos x)'=-\sin x,\ (\tan x)'=\sec^2x`,e:R`(\sec x)'=\sec x\tan x`,to:'#/bases/derivadas'},
+ {s:'D',c:'Derivadas',n:'Trigonométricas inversas',f:R`(\arcsin x)'=\frac1{\sqrt{1-x^2}},\quad(\arctan x)'=\frac1{1+x^2}`,e:R`(\arctan2x)'=\frac{2}{1+4x^2}`,to:'#/bases/derivadas'},
+ // ---------- Cálculo integral ----------
+ {s:'I',c:'Integrales básicas',n:'Linealidad',f:R`\int(af+bg)\,dx=a\int f\,dx+b\int g\,dx`,e:R`\int(3x^2+2)\,dx=x^3+2x+C`,to:'#/l1'},
+ {s:'I',c:'Integrales básicas',n:'Regla de la potencia',f:R`\int x^n\,dx=\frac{x^{n+1}}{n+1}+C\ \ (n\ne-1)`,e:R`\int x^4dx=\frac{x^5}5+C`,to:'#/l1'},
+ {s:'I',c:'Integrales básicas',n:'Integral de 1/x',f:R`\int\frac{dx}x=\ln|x|+C`,e:R`\int\frac{2}{x-1}dx=2\ln|x-1|+C`,to:'#/bases/tabla'},
+ {s:'I',c:'Integrales básicas',n:'Exponencial y trigonométricas',f:R`\int e^xdx=e^x,\ \int\sin x\,dx=-\cos x,\ \int\cos x\,dx=\sin x`,e:R`\int\sec^2x\,dx=\tan x+C`,to:'#/bases/tabla'},
+ {s:'I',c:'Integrales básicas',n:'Arcotangente y arcoseno',f:R`\int\frac{dx}{x^2+a^2}=\frac1a\arctan\frac xa,\ \int\frac{dx}{\sqrt{a^2-x^2}}=\arcsin\frac xa`,e:R`\int\frac{dx}{x^2+9}=\frac13\arctan\frac x3+C`,to:'#/bases/tabla'},
+ {s:'I',c:'Integrales básicas',n:'Teorema Fundamental del Cálculo',f:R`\int_a^bf(x)\,dx=F(b)-F(a),\ \ F'=f`,e:R`\int_0^{\pi/4}\sec^2t\,dt=1`,to:'#/l1'},
+ {s:'I',c:'Técnicas',n:'Sustitución',f:R`\int f(g(x))g'(x)\,dx=\int f(u)\,du,\ \ u=g(x)`,e:R`\int x^3\cos(x^4+2)dx=\tfrac14\sin(x^4+2)+C`,to:'#/l2'},
+ {s:'I',c:'Técnicas',n:'Integración por partes',f:R`\int u\,dv=uv-\int v\,du`,e:R`\int\ln x\,dx=x\ln x-x+C`,to:'#/l3'},
+ {s:'I',c:'Técnicas',n:'LIATE (elegir u)',f:R`\text{Logarítmica, Inversa, Algebraica, Trigonométrica, Exponencial}`,e:R`\int x e^x dx:\ u=x`,to:'#/l3'},
+ {s:'I',c:'Técnicas',n:'Sustituciones trigonométricas',f:R`\sqrt{a^2-x^2}:x=a\sin\theta;\ \sqrt{a^2+x^2}:x=a\tan\theta;\ \sqrt{x^2-a^2}:x=a\sec\theta`,e:R`\int\sqrt{16-x^2}dx:\ x=4\sin\theta`,to:'#/l5'},
+ {s:'I',c:'Técnicas',n:'Fracciones parciales',f:R`\frac{P}{(x-a)(x-b)}=\frac A{x-a}+\frac B{x-b}`,e:R`\frac{x-11}{x^2+3x-4}=\frac3{x+4}-\frac2{x-1}`,to:'#/l6'},
+ {s:'I',c:'Técnicas',n:'Integral impropia',f:R`\int_a^\infty f\,dx=\lim_{t\to\infty}\int_a^tf\,dx`,e:R`\int_1^\infty\frac{dx}{x^2}=1`,to:'#/l7'},
+ {s:'I',c:'Técnicas',n:'Integrales p',f:R`\int_1^\infty\frac{dx}{x^p}\ \text{converge}\iff p>1`,e:R`\int_1^\infty\frac{dx}{x}\ \text{diverge}`,to:'#/l7'},
+];

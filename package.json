@@ -1,0 +1,7 @@
+{
+  "name": "guia-calculo",
+  "private": true,
+  "description": "Guía interactiva de cálculo en un solo archivo HTML (index.html).",
+  "scripts": { "build": "node build.js" },
+  "devDependencies": { "@tailwindcss/cli": "4.1.4", "tailwindcss": "4.1.4", "katex": "0.16.9" }
+}

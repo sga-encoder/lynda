@@ -192,6 +192,7 @@ function pageHome(){
     ${sec('#/diferencial','📈','2 · Cálculo diferencial','Límites, derivadas y sus aplicaciones.', '<span class="mt-2 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-950/60 dark:text-amber-200">Próximamente</span>')}
     ${sec('#/integral','∫','3 · Cálculo integral','Técnicas de integración, impropias y la solución del examen.', bar(iOk,iAll))}
   </div>
+  <a href="#/jugar" class="mt-4 flex items-center gap-4 rounded-2xl bg-gradient-to-r from-indigo-950 to-violet-900 p-5 text-white shadow-sm touch-manipulation active:scale-[0.98] transition-transform"><span class="text-5xl">👽</span><span><b class="block text-lg">🎮 Practicar: Defensa Algebraica</b><span class="text-sm text-indigo-200">Resuelve ecuaciones con cartas de propiedades para dar energía a los soldados. Lo que completas en Aprender desbloquea problemas nuevos.</span></span></a>
   <div class="${C.card} mt-6"><b>📖 Diccionario de propiedades</b>
     <p class="!my-1.5">Todas las propiedades y fórmulas en un solo lugar, con buscador. Ábrelo desde cualquier página con el botón <b>📖 Diccionario</b> de la barra superior (o la tecla <kbd class="rounded border border-stone-300 px-1 text-xs dark:border-zinc-600">D</kbd>).</p>
     <button class="${C.btnP}" data-dict-open>Abrir diccionario</button></div>
@@ -316,8 +317,8 @@ function buildNav(cur){
   const grp = (t, href, open) => `<a href="${href}" class="mx-1 mb-1 mt-4 flex items-center justify-between rounded-lg px-1.5 py-1 text-xs font-bold uppercase tracking-wider ${open?'text-blue-700 dark:text-blue-300':'text-stone-500 dark:text-zinc-400'} hover:bg-blue-50 dark:hover:bg-blue-950/40">${t}<span>${open?'▾':'▸'}</span></a>`;
   const a = (href,label,id,extra='') => `<a href="${href}" class="flex justify-between gap-1.5 rounded-lg px-2.5 py-1.5 text-[0.93rem] hover:bg-blue-50 dark:hover:bg-blue-950/50 ${cur===id?'bg-blue-50 font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300':''}">${label}${extra}</a>`;
   const cnt = (n,t) => `<span class="text-xs font-normal text-stone-500 dark:text-zinc-400">${n}/${t}</span>`;
-  const sec = cur==='home' ? 'home' : cur.startsWith('f') ? 'F' : cur==='diferencial' ? 'D' : 'I';
-  let h = a('#/','🏠 Inicio','home') + `<button data-dict-open class="mt-1 flex w-full rounded-lg px-2.5 py-1.5 text-left text-[0.93rem] hover:bg-blue-50 dark:hover:bg-blue-950/50">📖 Diccionario</button>`;
+  const sec = cur==='home' ? 'home' : cur==='jugar' ? 'P' : cur.startsWith('f') ? 'F' : cur==='diferencial' ? 'D' : 'I';
+  let h = a('#/','🏠 Inicio','home') + a('#/jugar','🎮 Practicar: Defensa Algebraica','jugar') + `<button data-dict-open class="mt-1 flex w-full rounded-lg px-2.5 py-1.5 text-left text-[0.93rem] hover:bg-blue-50 dark:hover:bg-blue-950/50">📖 Diccionario</button>`;
   h += grp('🧱 Fundamentos', '#/f', sec==='F'||sec==='home');
   if (sec==='F'||sec==='home') h += a('#/f','Todos los temas','f') + FUND.map((T,i)=>{const p=fundProgress(T);return a('#/f/'+T.id, `${i+1}. ${T.short}`, 'f/'+T.id, cnt(p.n,p.tot))}).join('');
   h += grp('📈 Cálculo diferencial', '#/diferencial', sec==='D');
@@ -353,6 +354,7 @@ function route(){
   if (T){ html = pageFundTopic(T); title = T.short; }
   else if (r==='f'){ html = pageFundIndex(); title = 'Fundamentos'; }
   else if (r==='diferencial'){ html = pageDiferencial(); title = 'Cálculo diferencial'; }
+  else if (r==='jugar'){ html = pageHome(); title = 'Practicar'; }
   else if (r==='integral'){ html = pageIntegral(); title = 'Cálculo integral'; }
   else if (L){ html = pageLesson(L); title = L.short; }
   else if (r==='bases'){ html = pageBases(); title = 'Bases para integrar'; }
@@ -360,6 +362,7 @@ function route(){
   else if (r==='estrategia'){ html = pageEstrategia(); title = '¿Qué técnica uso?'; }
   else { html = pageHome(); title = 'Inicio'; }
   view.innerHTML = html;
+  if (r==='jugar') abrirJuego(); else cerrarJuego();
   buildNavFromHash();
   renderMath(view);
   if (T) T.lego.forEach((_,k)=>renderLego(`f-${T.id}-${k}`));
@@ -425,3 +428,15 @@ document.getElementById('themeBtn').onclick = ()=>{
 };
 window.addEventListener('hashchange', route);
 window.addEventListener('load', route);
+
+/* ---------- Practicar: juego (se crea al entrar por primera vez) ---------- */
+let JUEGO = null;
+function abrirJuego(){
+  JUEGO ??= new DefensaAlgebraica.GameApp(document.getElementById('juego'), {
+    doneKeys: () => Object.keys(done).filter(k => done[k]),
+    onExit: () => { location.hash = '#/'; },
+    piezas: new DefensaAlgebraica.TableroPiezas(() => document.getElementById('juegoPiezas')),
+  });
+  JUEGO.open(); document.body.classList.add('overflow-hidden');
+}
+function cerrarJuego(){ if (JUEGO){ JUEGO.close(); document.body.classList.remove('overflow-hidden'); } }

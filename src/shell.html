@@ -44,11 +44,15 @@
 </div>
 <div id="scrim" class="fixed inset-0 z-[35] hidden bg-black/40 md:hidden"></div>
 
+<!-- Juego (pantalla completa) -->
+<div id="juego" class="fixed inset-0 z-[45] hidden bg-zinc-950 text-zinc-100"></div>
+<div id="juegoPiezas" class="fixed inset-0 z-[46] hidden bg-black/40"></div>
+
 <!-- Barra de navegación inferior (celular) -->
 <nav id="bottomNav" class="fixed inset-x-0 bottom-0 z-30 flex border-t border-stone-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden dark:border-zinc-800 dark:bg-zinc-900/95" aria-label="Secciones">
     <a href="#/" data-bn="home"  class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🏠</span>Inicio</a>
     <a href="#/f" data-bn="F"  class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🧱</span>Fundamentos</a>
-    <a href="#/diferencial" data-bn="D"  class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">📈</span>Diferencial</a>
+    <a href="#/jugar" data-bn="P"  class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🎮</span>Practicar</a>
     <a href="#/integral" data-bn="I"  class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">∫</span>Integral</a>
     <button data-dict-open data-bn="dict" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">📖</span>Diccionario</button>
 </nav>

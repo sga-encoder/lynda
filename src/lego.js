@@ -20,6 +20,8 @@ function ansTex(s){
 
 /* ---------- Modelo ---------- */
 const LEGO = {};          // estado por ejercicio
+/** Otros componentes (p. ej. el Paso libre del juego) pueden reutilizar el lienzo y la paleta registrando su propio render. */
+const LEGO_HOOKS = {};
 function legoState(key){
   if (!LEGO[key]) LEGO[key] = {step:0, root:[], active:null, hist:[], log:[], tries:0, msg:null, cat:null, pin:false};
   return LEGO[key];
@@ -107,7 +109,7 @@ function catOf(t){
   return 'sig';
 }
 function paletteHTML(key, step, st){
-  const groups = {}; shuffled(step.k, key+st.step).forEach(t=>(groups[catOf(t)] ||= []).push(t));
+  const groups = {}; (step.orden ? step.k : shuffled(step.k, key+st.step)).forEach(t=>(groups[catOf(t)] ||= []).push(t));
   const cats = CATS.filter(c=>groups[c.id]);
   if (st.cat && !groups[st.cat]) { st.cat = null; st.pin = false; }
   const open = st.cat ? CATS.find(c=>c.id===st.cat) : null;
@@ -117,7 +119,7 @@ function paletteHTML(key, step, st){
         ${st.pin ? `<button data-lg="closecat" class="flex h-8 w-8 items-center justify-center rounded-lg border border-stone-300 bg-white text-sm touch-manipulation dark:border-zinc-600 dark:bg-zinc-900" aria-label="Cerrar menú">✕</button>` : ''}
       </div>
       <div class="flex flex-wrap justify-center gap-2 sm:justify-start">${groups[open.id].map(t=>bankPiece(key,t)).join('')}</div>`
-    : `<div class="flex h-full min-h-[5.5rem] items-center justify-center px-2 text-center text-sm text-stone-500 dark:text-zinc-400">Toca una categoría para <b class="mx-1">fijar</b> su menú, o <b class="mx-1">mantenla presionada</b> para asomarlo y arrastrar.</div>`;
+    : `<div class="flex h-full min-h-[5.5rem] items-center justify-center px-2 text-center text-sm text-stone-500 dark:text-zinc-400"><span>Toca una categoría para <b>fijar</b> su menú, o <b>mantenla presionada</b> para asomarlo y arrastrar.</span></div>`;
   const btn = c => { const on = st.cat===c.id;
     return `<button type="button" data-cat="${key}|${c.id}" aria-pressed="${on}" class="flex min-h-14 touch-none select-none flex-col items-center justify-center gap-0.5 rounded-xl border px-1 py-1 text-[11px] leading-tight transition-transform active:scale-95 ${on ? 'border-blue-600 bg-blue-600 text-white dark:border-blue-400 dark:bg-blue-400 dark:text-zinc-950' : 'border-stone-200 bg-white dark:border-zinc-700 dark:bg-zinc-900'}"><span class="text-lg leading-none">${c.icon}</span>${c.name}<span class="opacity-70">${groups[c.id].length}</span></button>`; };
   return `
@@ -138,6 +140,7 @@ function legoCard(ex, key, idx){
     <div data-lego-body></div></div>`;
 }
 function renderLego(key){
+  if (LEGO_HOOKS[key]) return LEGO_HOOKS[key]();
   const card = document.querySelector(`[data-lego="${CSS.escape(key)}"]`);
   if (!card) return;
   const ex = legoEx(key), st = legoState(key), steps = ex.steps;
@@ -185,6 +188,14 @@ function findZone(ref){ const [key,id] = ref.split('|'); return {key, zone:ZREG[
 
 /* ---------- Acciones ---------- */
 function legoAction(key, act){
+  if (LEGO_HOOKS[key]){                       // lienzo reutilizado: solo acciones de edición
+    const st = legoState(key);
+    if (act==='undo' && st.hist.length){ st.root = JSON.parse(st.hist.pop()); st.active=null; }
+    if (act==='clear'){ snapshot(st); st.root=[]; st.active=null; }
+    if (act==='closecat'){ st.cat=null; st.pin=false; }
+    if (act==='nextzone'){ const zs = allZones(st.root); st.active = zs[(zs.indexOf(st.active||st.root)+1) % zs.length]; }
+    return renderLego(key);
+  }
   const st = legoState(key), ex = legoEx(key), s = ex.steps[st.step];
   if (act==='check'){
     if (!st.root.length){ st.msg = {ok:false, t:'El lienzo está vacío. Arrastra piezas del banco.'}; }

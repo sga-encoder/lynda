@@ -93,31 +93,53 @@ const FUND = [
      {q:'Multiplica y simplifica al máximo.', k:['frac','2','3','30','45','27','50'], a:['frac{2}{3}'], w:R`\(\frac{30}{45}=\frac23\) (dividiendo entre 15).`, h:'3·10 = 30 y 5·9 = 45; luego simplifica.'}]},
   ]},
 
-{ id:'potencias', t:'Potencias y raíces', short:'Potencias y raíces', dict:'Potencias y raíces',
+{ id:'polinomios', t:'Suma y resta de polinomios', short:'Suma y resta de polinomios', dict:'Aritmética',
   intro:R`
-  <p><b>Lo más básico.</b> \(a^n\) es multiplicar \(a\) por sí mismo \(n\) veces: \(2^3=2\cdot2\cdot2=8\). La raíz deshace la potencia: \(\sqrt9=3\) porque \(3^2=9\).</p>
-  <ul>
-   <li>\(a^m\cdot a^n=a^{m+n}\) (misma base: se suman exponentes).</li>
-   <li>\(\frac{a^m}{a^n}=a^{m-n}\), \((a^m)^n=a^{mn}\), \(a^0=1\), \(a^{-n}=\frac1{a^n}\).</li>
-   <li>\(\sqrt{ab}=\sqrt a\sqrt b\): sirve para simplificar raíces: \(\sqrt{12}=\sqrt{4\cdot3}=2\sqrt3\).</li>
-  </ul>`,
+  <p><b>Lo más básico.</b> Un polinomio es una suma de términos como \(3x^2\), \(-4x\) o \(7\). Solo se pueden juntar los <b>términos semejantes</b>: los que tienen la misma letra con el mismo exponente.</p>
+  <ul><li>\(3x^2+x^2=4x^2\) (se suman los coeficientes, el \(x^2\) se queda igual).</li><li>\(2x\) y \(2x^2\) <b>no</b> se juntan: tienen distinto exponente.</li>
+  <li>Para <b>restar</b> un polinomio se cambia el signo de todos sus términos: \(-(a-b+c)=-a+b-c\).</li></ul>`,
   examples:[
-   {lvl:'medio', src:'Ejemplo de la guía', p:R`(2x^3)^2\cdot x^{-4}`, steps:[
-     [R`\((2x^3)^2=2^2x^6=4x^6\)`, R`La potencia afecta a cada factor; \((x^3)^2=x^{6}\).`],
-     [R`\(4x^6\cdot x^{-4}=4x^{6-4}\)`, R`Misma base: se suman exponentes (\(6+(-4)\)).`]], r:R`4x^2`},
-   {lvl:'dificil', src:'Ejemplo de la guía', p:R`\sqrt{50}+\sqrt{18}`, steps:[
-     [R`\(\sqrt{50}=\sqrt{25\cdot2}=5\sqrt2\)`, R`Buscamos el cuadrado perfecto más grande que divide a 50.`],
-     [R`\(\sqrt{18}=\sqrt{9\cdot2}=3\sqrt2\)`, R`Igual con 18.`],
-     [R`\(5\sqrt2+3\sqrt2=8\sqrt2\)`, R`Son "semejantes": como \(5y+3y=8y\).`]], r:R`8\sqrt2`},
+   {lvl:'medio', src:'Ejemplo de la guía', p:R`(2x^2+5x-3)+(x^2-2x+7)`, steps:[
+     [R`\(2x^2+x^2=3x^2\)`, R`Términos con \(x^2\): se suman los coeficientes 2 y 1.`],
+     [R`\(5x-2x=3x\)`, R`Términos con \(x\).`],
+     [R`\(-3+7=4\)`, R`Términos sin letra (constantes).`]], r:R`3x^2+3x+4`},
+   {lvl:'dificil', src:'Ejemplo de la guía', p:R`(4x^2-x+2)-(x^2+3x-5)`, steps:[
+     [R`\(4x^2-x+2-x^2-3x+5\)`, R`El menos cambia el signo de cada término del segundo paréntesis.`],
+     [R`\(3x^2-4x+7\)`, R`Se juntan los semejantes: \(4x^2-x^2\), \(-x-3x\) y \(2+5\).`]], r:R`3x^2-4x+7`},
   ],
   lego:[
-   {src:'Ejercicio de práctica', p:R`\frac{x^5\cdot x^3}{x^2}`, steps:[
-     {q:'Resuelve el numerador (usa la pieza de exponente).', k:['x','pot','8','15','2'], a:['x^{8}'], w:R`\(x^5x^3=x^{5+3}\).`, h:'Coloca x y después la pieza ▭ⁿ para el exponente.'},
-     {q:'Ahora divide entre x².', k:['x','pot','6','4','10'], a:['x^{6}'], w:R`\(\frac{x^8}{x^2}=x^{8-2}\).`, h:'Al dividir se restan exponentes.'}]},
-   {src:'Ejercicio de práctica', p:R`\sqrt{12}+\sqrt{27}`, steps:[
-     {q:'Simplifica √12.', k:['2','3','4','sqrt','6'], a:['2sqrt{3}'], w:R`\(\sqrt{12}=\sqrt{4\cdot3}=2\sqrt3\).`, h:'12 = 4·3 y √4 = 2.'},
-     {q:'Simplifica √27.', k:['3','9','sqrt','2'], a:['3sqrt{3}'], w:R`\(\sqrt{27}=\sqrt{9\cdot3}=3\sqrt3\).`, h:'27 = 9·3.'},
-     {q:'Suma.', k:['5','6','sqrt','3','39'], a:['5sqrt{3}'], w:R`\(2\sqrt3+3\sqrt3=5\sqrt3\).`, h:'Como 2y + 3y.'}]},
+   {src:'Ejercicio de práctica', p:R`(3x^2+2x-5)+(x^2-4x+1)`, steps:[
+     {q:'Suma los términos con x²: 3x² + x².', k:['4','3','x','pot','2'], a:['4x^{2}'], w:R`\(3+1=4\); el \(x^2\) se queda igual.`, h:'Se suman solo los números de adelante.'},
+     {q:'Suma los términos con x: 2x − 4x.', k:['-','2','6','x'], a:['-2x'], w:R`\(2-4=-2\).`, h:'2 − 4'},
+     {q:'Escribe el resultado completo (las constantes −5 + 1 también se juntan).', k:['4','2','x','pot','-','+'], a:['4x^{2}-2x-4'], w:R`\(-5+1=-4\).`, h:'4x² − 2x − 4'}]},
+   {src:'Ejercicio de práctica', p:R`(5x^2-3x+2)-(2x^2+x-6)`, steps:[
+     {q:'Quita el paréntesis del segundo polinomio: escribe −(2x² + x − 6) cambiando cada signo.', k:['-','+','2','6','x','pot'], a:['-2x^{2}-x+6'], w:'El signo menos de adelante cambia el signo de todos los términos.', h:'−2x² − x + 6'},
+     {q:'Junta los términos semejantes y escribe el resultado.', k:['3','4','8','x','pot','2','-','+'], a:['3x^{2}-4x+8'], w:R`\(5x^2-2x^2=3x^2\), \(-3x-x=-4x\), \(2+6=8\).`, h:'Primero los x², luego los x y al final los números.'}]},
+  ]},
+
+{ id:'lineales', t:'Ecuaciones lineales', short:'Ecuaciones lineales', dict:'Ecuaciones',
+  intro:R`
+  <p><b>Lo más básico.</b> Una ecuación es una <b>balanza</b>: lo que hagas a un lado, hazlo al otro. Para despejar \(x\) usa la operación <b>inversa</b>: lo que suma pasa restando, lo que multiplica pasa dividiendo.</p>
+  <p>\(x+5=9\Rightarrow x=9-5=4\). &nbsp; \(3x=12\Rightarrow x=\frac{12}{3}=4\).</p>
+  <p><b>Receta:</b> 1) quita paréntesis y denominadores, 2) pasa las \(x\) a un lado y los números al otro, 3) divide entre el coeficiente, 4) comprueba.</p>`,
+  examples:[
+   {lvl:'medio', src:'Ejemplo de la guía', p:R`3x-7=2x+5`, steps:[
+     [R`\(3x-2x=5+7\)`, R`Las \(x\) a la izquierda, los números a la derecha (cambian de signo al pasar).`],
+     [R`\(x=12\)`, R`Se simplifica cada lado.`],
+     [R`Comprobación: \(3(12)-7=29=2(12)+5\) ✓`, R`Siempre verifica sustituyendo.`]], r:R`x=12`},
+   {lvl:'dificil', src:'Ejemplo de la guía', p:R`\frac{x+1}{3}-\frac{x-2}{4}=1`, steps:[
+     [R`Multiplicar todo por 12: \(4(x+1)-3(x-2)=12\)`, R`12 es el mcm de 3 y 4; así desaparecen los denominadores.`],
+     [R`\(4x+4-3x+6=12\)`, R`Distributiva; ojo: \(-3\cdot(-2)=+6\).`],
+     [R`\(x+10=12\Rightarrow x=2\)`, R`Términos semejantes y despeje.`]], r:R`x=2`},
+  ],
+  lego:[
+   {src:'Ejercicio de práctica', p:R`2x+3=11`, steps:[
+     {q:'Resta 3 en ambos lados.', k:['2x','=','8','14','x','11','3','-'], a:['2x=8'], w:'El +3 pasa restando: 11 − 3 = 8.', h:'Deja 2x solo.'},
+     {q:'Divide entre 2.', k:['x','=','4','16','6','2'], a:['x=4'], w:'El 2 que multiplica pasa dividiendo.', h:'8 ÷ 2'}]},
+   {src:'Ejercicio de práctica', p:R`5(x-2)=3x+4`, steps:[
+     {q:'Aplica la propiedad distributiva.', k:['5x','-','10','2','=','3x','+','4','x'], a:['5x-10=3x+4'], w:R`\(5\cdot x-5\cdot2\).`, h:'Multiplica 5 por cada término del paréntesis.'},
+     {q:'Pasa las x a un lado y los números al otro, y simplifica.', k:['2x','8x','=','14','6','-6'], a:['2x=14'], w:R`\(5x-3x=4+10\).`, h:'−10 pasa sumando, 3x pasa restando.'},
+     {q:'Despeja x.', k:['x','=','7','28','12'], a:['x=7'], w:R`\(14\div2=7\).`, h:'Divide entre 2.'}]},
   ]},
 
 { id:'factorizacion', t:'Factorización', short:'Factorización', dict:'Factorización',
@@ -151,29 +173,31 @@ const FUND = [
      {q:'Factoriza.', k:['4x','(',')','x','-','3','+','12'], a:['4x(x-3)'], w:R`\(\frac{4x^2}{4x}=x\), \(\frac{-12x}{4x}=-3\).`, h:'Divide cada término entre el factor común.'}]},
   ]},
 
-{ id:'lineales', t:'Ecuaciones lineales', short:'Ecuaciones lineales', dict:'Ecuaciones',
+{ id:'potencias', t:'Potencias y raíces', short:'Potencias y raíces', dict:'Potencias y raíces',
   intro:R`
-  <p><b>Lo más básico.</b> Una ecuación es una <b>balanza</b>: lo que hagas a un lado, hazlo al otro. Para despejar \(x\) usa la operación <b>inversa</b>: lo que suma pasa restando, lo que multiplica pasa dividiendo.</p>
-  <p>\(x+5=9\Rightarrow x=9-5=4\). &nbsp; \(3x=12\Rightarrow x=\frac{12}{3}=4\).</p>
-  <p><b>Receta:</b> 1) quita paréntesis y denominadores, 2) pasa las \(x\) a un lado y los números al otro, 3) divide entre el coeficiente, 4) comprueba.</p>`,
+  <p><b>Lo más básico.</b> \(a^n\) es multiplicar \(a\) por sí mismo \(n\) veces: \(2^3=2\cdot2\cdot2=8\). La raíz deshace la potencia: \(\sqrt9=3\) porque \(3^2=9\).</p>
+  <ul>
+   <li>\(a^m\cdot a^n=a^{m+n}\) (misma base: se suman exponentes).</li>
+   <li>\(\frac{a^m}{a^n}=a^{m-n}\), \((a^m)^n=a^{mn}\), \(a^0=1\), \(a^{-n}=\frac1{a^n}\).</li>
+   <li>\(\sqrt{ab}=\sqrt a\sqrt b\): sirve para simplificar raíces: \(\sqrt{12}=\sqrt{4\cdot3}=2\sqrt3\).</li>
+  </ul>`,
   examples:[
-   {lvl:'medio', src:'Ejemplo de la guía', p:R`3x-7=2x+5`, steps:[
-     [R`\(3x-2x=5+7\)`, R`Las \(x\) a la izquierda, los números a la derecha (cambian de signo al pasar).`],
-     [R`\(x=12\)`, R`Se simplifica cada lado.`],
-     [R`Comprobación: \(3(12)-7=29=2(12)+5\) ✓`, R`Siempre verifica sustituyendo.`]], r:R`x=12`},
-   {lvl:'dificil', src:'Ejemplo de la guía', p:R`\frac{x+1}{3}-\frac{x-2}{4}=1`, steps:[
-     [R`Multiplicar todo por 12: \(4(x+1)-3(x-2)=12\)`, R`12 es el mcm de 3 y 4; así desaparecen los denominadores.`],
-     [R`\(4x+4-3x+6=12\)`, R`Distributiva; ojo: \(-3\cdot(-2)=+6\).`],
-     [R`\(x+10=12\Rightarrow x=2\)`, R`Términos semejantes y despeje.`]], r:R`x=2`},
+   {lvl:'medio', src:'Ejemplo de la guía', p:R`(2x^3)^2\cdot x^{-4}`, steps:[
+     [R`\((2x^3)^2=2^2x^6=4x^6\)`, R`La potencia afecta a cada factor; \((x^3)^2=x^{6}\).`],
+     [R`\(4x^6\cdot x^{-4}=4x^{6-4}\)`, R`Misma base: se suman exponentes (\(6+(-4)\)).`]], r:R`4x^2`},
+   {lvl:'dificil', src:'Ejemplo de la guía', p:R`\sqrt{50}+\sqrt{18}`, steps:[
+     [R`\(\sqrt{50}=\sqrt{25\cdot2}=5\sqrt2\)`, R`Buscamos el cuadrado perfecto más grande que divide a 50.`],
+     [R`\(\sqrt{18}=\sqrt{9\cdot2}=3\sqrt2\)`, R`Igual con 18.`],
+     [R`\(5\sqrt2+3\sqrt2=8\sqrt2\)`, R`Son "semejantes": como \(5y+3y=8y\).`]], r:R`8\sqrt2`},
   ],
   lego:[
-   {src:'Ejercicio de práctica', p:R`2x+3=11`, steps:[
-     {q:'Resta 3 en ambos lados.', k:['2x','=','8','14','x','11','3','-'], a:['2x=8'], w:'El +3 pasa restando: 11 − 3 = 8.', h:'Deja 2x solo.'},
-     {q:'Divide entre 2.', k:['x','=','4','16','6','2'], a:['x=4'], w:'El 2 que multiplica pasa dividiendo.', h:'8 ÷ 2'}]},
-   {src:'Ejercicio de práctica', p:R`5(x-2)=3x+4`, steps:[
-     {q:'Aplica la propiedad distributiva.', k:['5x','-','10','2','=','3x','+','4','x'], a:['5x-10=3x+4'], w:R`\(5\cdot x-5\cdot2\).`, h:'Multiplica 5 por cada término del paréntesis.'},
-     {q:'Pasa las x a un lado y los números al otro, y simplifica.', k:['2x','8x','=','14','6','-6'], a:['2x=14'], w:R`\(5x-3x=4+10\).`, h:'−10 pasa sumando, 3x pasa restando.'},
-     {q:'Despeja x.', k:['x','=','7','28','12'], a:['x=7'], w:R`\(14\div2=7\).`, h:'Divide entre 2.'}]},
+   {src:'Ejercicio de práctica', p:R`\frac{x^5\cdot x^3}{x^2}`, steps:[
+     {q:'Resuelve el numerador (usa la pieza de exponente).', k:['x','pot','8','15','2'], a:['x^{8}'], w:R`\(x^5x^3=x^{5+3}\).`, h:'Coloca x y después la pieza ▭ⁿ para el exponente.'},
+     {q:'Ahora divide entre x².', k:['x','pot','6','4','10'], a:['x^{6}'], w:R`\(\frac{x^8}{x^2}=x^{8-2}\).`, h:'Al dividir se restan exponentes.'}]},
+   {src:'Ejercicio de práctica', p:R`\sqrt{12}+\sqrt{27}`, steps:[
+     {q:'Simplifica √12.', k:['2','3','4','sqrt','6'], a:['2sqrt{3}'], w:R`\(\sqrt{12}=\sqrt{4\cdot3}=2\sqrt3\).`, h:'12 = 4·3 y √4 = 2.'},
+     {q:'Simplifica √27.', k:['3','9','sqrt','2'], a:['3sqrt{3}'], w:R`\(\sqrt{27}=\sqrt{9\cdot3}=3\sqrt3\).`, h:'27 = 9·3.'},
+     {q:'Suma.', k:['5','6','sqrt','3','39'], a:['5sqrt{3}'], w:R`\(2\sqrt3+3\sqrt3=5\sqrt3\).`, h:'Como 2y + 3y.'}]},
   ]},
 
 { id:'cuadraticas', t:'Ecuaciones cuadráticas', short:'Ecuaciones cuadráticas', dict:'Ecuaciones',
@@ -199,34 +223,6 @@ const FUND = [
      {q:'Calcula el discriminante b² − 4ac.', k:['20','-12','12','4','16'], a:['20'], w:R`\(2^2-4(1)(-4)=4+16=20\).`, h:'a = 1, b = 2, c = −4.'},
      {q:'Aplica la fórmula general.', k:['x','=','frac','-2','2','±','sqrt','20','4','-4'], a:['x=frac{-2±sqrt{20}}{2}'], w:R`\(x=\frac{-b\pm\sqrt\Delta}{2a}\).`, h:'Arriba −b ± √Δ, abajo 2a.'},
      {q:'Simplifica sabiendo que √20 = 2√5.', k:['x','=','-1','±','sqrt','5','2','1'], a:['x=-1±sqrt{5}'], w:R`\(\frac{-2\pm2\sqrt5}{2}=-1\pm\sqrt5\).`, h:'Divide cada término entre 2.'}]},
-  ]},
-
-{ id:'polinomicas', t:'Ecuaciones polinómicas', short:'Ecuaciones polinómicas', dict:'Ecuaciones',
-  intro:R`
-  <p><b>Lo más básico.</b> Son ecuaciones de grado 3 o más. La estrategia es <b>factorizar</b> hasta tener factores de grado 1 o 2 y usar el producto cero.</p>
-  <ul>
-   <li>Factor común: \(x^3-4x=x(x^2-4)\).</li>
-   <li>Agrupación de a dos términos.</li>
-   <li><b>Raíces racionales:</b> prueba divisores del término independiente (\(\pm1,\pm2,\dots\)). Si \(P(r)=0\), entonces \((x-r)\) es factor y se divide (división sintética).</li>
-  </ul>
-  <p>Ejemplo básico: \(x^3=8\Rightarrow x=2\).</p>`,
-  examples:[
-   {lvl:'medio', src:'Ejemplo de la guía', p:R`x^3-4x=0`, steps:[
-     [R`\(x(x^2-4)=0\)`, R`Factor común \(x\).`],
-     [R`\(x(x-2)(x+2)=0\)`, R`Diferencia de cuadrados.`]], r:R`x=0,\ x=2,\ x=-2`},
-   {lvl:'dificil', src:'Ejemplo de la guía', p:R`x^3-6x^2+11x-6=0`, steps:[
-     [R`Probar \(x=1\): \(1-6+11-6=0\) ✓`, R`Divisores de 6: \(\pm1,\pm2,\pm3,\pm6\).`],
-     [R`\(x^3-6x^2+11x-6=(x-1)(x^2-5x+6)\)`, R`División sintética entre \((x-1)\): coeficientes \(1,-5,6\).`],
-     [R`\((x-1)(x-2)(x-3)=0\)`, R`Factorizar el trinomio.`]], r:R`x=1,\ 2,\ 3`},
-  ],
-  lego:[
-   {src:'Ejercicio de práctica', p:R`x^3+x^2-4x-4=0`, steps:[
-     {q:'Agrupa de a dos y saca factor común en cada par.', k:['x','pot','2','(',')','+','1','-','4','=','0'], a:['x^{2}(x+1)-4(x+1)=0'], w:R`\(x^3+x^2=x^2(x+1)\) y \(-4x-4=-4(x+1)\).`, h:'En el primer par sale x², en el segundo −4.'},
-     {q:'Saca el factor común (x + 1).', k:['x','pot','2','(',')','+','1','-','4','=','0'], a:['(x+1)(x^{2}-4)=0','(x^{2}-4)(x+1)=0'], w:'Ahora (x + 1) se repite en ambos términos.', h:'(x + 1)(… − …)'},
-     {q:'Escribe todas las soluciones separadas por coma.', k:['-1','1','2','-2','4',','], a:['-1,2,-2'], set:true, w:R`\(x+1=0\) y \(x^2-4=0\Rightarrow x=\pm2\).`, h:'Son tres.'}]},
-   {src:'Ejercicio de práctica', p:R`x^3-9x=0`, steps:[
-     {q:'Saca factor común.', k:['x','(',')','pot','2','-','9','=','0','3'], a:['x(x^{2}-9)=0'], w:'x está en los dos términos.', h:'x(…)'},
-     {q:'Escribe todas las soluciones separadas por coma.', k:['0','3','-3','9',','], a:['0,3,-3'], set:true, w:R`\(x=0\) o \(x^2=9\Rightarrow x=\pm3\).`, h:'No olvides el cero.'}]},
   ]},
 
 { id:'racionales', t:'Ecuaciones racionales', short:'Ecuaciones racionales', dict:'Ecuaciones',
@@ -275,6 +271,34 @@ const FUND = [
    {src:'Ejercicio de práctica', p:R`\sqrt x+2=6`, steps:[
      {q:'Aísla la raíz.', k:['sqrt','x','=','4','8','2','+'], a:['sqrt{x}=4'], w:'El +2 pasa restando.', h:'Primero deja la raíz sola.'},
      {q:'Eleva al cuadrado y escribe x.', k:['x','=','16','4','8','2'], a:['x=16'], w:R`\(4^2=16\); comprobación \(\sqrt{16}+2=6\) ✓.`, h:'4 al cuadrado.'}]},
+  ]},
+
+{ id:'polinomicas', t:'Ecuaciones polinómicas', short:'Ecuaciones polinómicas', dict:'Ecuaciones',
+  intro:R`
+  <p><b>Lo más básico.</b> Son ecuaciones de grado 3 o más. La estrategia es <b>factorizar</b> hasta tener factores de grado 1 o 2 y usar el producto cero.</p>
+  <ul>
+   <li>Factor común: \(x^3-4x=x(x^2-4)\).</li>
+   <li>Agrupación de a dos términos.</li>
+   <li><b>Raíces racionales:</b> prueba divisores del término independiente (\(\pm1,\pm2,\dots\)). Si \(P(r)=0\), entonces \((x-r)\) es factor y se divide (división sintética).</li>
+  </ul>
+  <p>Ejemplo básico: \(x^3=8\Rightarrow x=2\).</p>`,
+  examples:[
+   {lvl:'medio', src:'Ejemplo de la guía', p:R`x^3-4x=0`, steps:[
+     [R`\(x(x^2-4)=0\)`, R`Factor común \(x\).`],
+     [R`\(x(x-2)(x+2)=0\)`, R`Diferencia de cuadrados.`]], r:R`x=0,\ x=2,\ x=-2`},
+   {lvl:'dificil', src:'Ejemplo de la guía', p:R`x^3-6x^2+11x-6=0`, steps:[
+     [R`Probar \(x=1\): \(1-6+11-6=0\) ✓`, R`Divisores de 6: \(\pm1,\pm2,\pm3,\pm6\).`],
+     [R`\(x^3-6x^2+11x-6=(x-1)(x^2-5x+6)\)`, R`División sintética entre \((x-1)\): coeficientes \(1,-5,6\).`],
+     [R`\((x-1)(x-2)(x-3)=0\)`, R`Factorizar el trinomio.`]], r:R`x=1,\ 2,\ 3`},
+  ],
+  lego:[
+   {src:'Ejercicio de práctica', p:R`x^3+x^2-4x-4=0`, steps:[
+     {q:'Agrupa de a dos y saca factor común en cada par.', k:['x','pot','2','(',')','+','1','-','4','=','0'], a:['x^{2}(x+1)-4(x+1)=0'], w:R`\(x^3+x^2=x^2(x+1)\) y \(-4x-4=-4(x+1)\).`, h:'En el primer par sale x², en el segundo −4.'},
+     {q:'Saca el factor común (x + 1).', k:['x','pot','2','(',')','+','1','-','4','=','0'], a:['(x+1)(x^{2}-4)=0','(x^{2}-4)(x+1)=0'], w:'Ahora (x + 1) se repite en ambos términos.', h:'(x + 1)(… − …)'},
+     {q:'Escribe todas las soluciones separadas por coma.', k:['-1','1','2','-2','4',','], a:['-1,2,-2'], set:true, w:R`\(x+1=0\) y \(x^2-4=0\Rightarrow x=\pm2\).`, h:'Son tres.'}]},
+   {src:'Ejercicio de práctica', p:R`x^3-9x=0`, steps:[
+     {q:'Saca factor común.', k:['x','(',')','pot','2','-','9','=','0','3'], a:['x(x^{2}-9)=0'], w:'x está en los dos términos.', h:'x(…)'},
+     {q:'Escribe todas las soluciones separadas por coma.', k:['0','3','-3','9',','], a:['0,3,-3'], set:true, w:R`\(x=0\) o \(x^2=9\Rightarrow x=\pm3\).`, h:'No olvides el cero.'}]},
   ]},
 
 { id:'exponenciales', t:'Ecuaciones exponenciales', short:'Ecuaciones exponenciales', dict:'Exponenciales y logaritmos',
@@ -378,4 +402,5 @@ const FUND = [
      {q:'Divide entre −2 (¡cuidado!).', k:['x','≥','≤','-3','3'], a:['x≤-3'], w:'Dividir por un negativo invierte la desigualdad.', h:'El signo se voltea.'},
      {q:'Escribe la solución como intervalo.', k:['(',')','[',']','-3','∞','-∞',','], a:['(-∞,-3]'], w:'−3 sí se incluye (≤): corchete.', h:'Desde −∞ hasta −3.'}]},
   ]},
+
 ];

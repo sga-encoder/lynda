@@ -49,7 +49,7 @@ class GameApp {
   close(){ this.scene?.pause(); this.root.classList.add('hidden'); }
   html(s){ this.root.innerHTML = s; return this.root; }
   /* Desbloqueos: modo desarrollo, Ruta o avance en Aprender */
-  tipoDesbloqueado(t){ return !!this.progreso.data.todo || this.ruta.tipos().has(t.id) || t.unlocked(this.doneKeys()); }
+  tipoDesbloqueado(t){ return !!this.progreso.data.todo || this.ruta.tipos().has(t.id); }   // solo la Ruta (en orden) desbloquea
   cartaDesbloqueada(id){
     if (this.progreso.data.todo) return true;
     return Object.values(DOMINIOS).some(d => d.tipos.some(t => (CARTAS_DE_TIPO[t.id] ?? []).includes(id) && this.tipoDesbloqueado(t)));

@@ -92,12 +92,12 @@ class VistaPrevia extends Renderer {
 
 /* ---------- Catálogo ---------- */
 class CatalogoScene extends Scene {
-  enter(){ this.tab ??= 'cartas'; this.todo ??= !!this.app.progreso.data.todo; this.pintar(); }   // en modo desarrollo se ve todo
+  enter(){ this.tab ??= 'cartas'; this.todo = !!this.app.progreso.data.todo; this.pintar(); }   // «ver todo» solo existe con el modo desarrollador   // en modo desarrollo se ve todo
   exit(){ cancelAnimationFrame(this.raf); }
   conocido(cat, id){ return this.todo || this.app.progreso.conocido(cat, id); }
   dominioDisponible(dom){ const d = this.app.progreso.data; return this.todo || dom.tipos.some(t => d.todo || this.app.tipoDesbloqueado(t)); }
   items(){
-    if (this.tab === 'cartas') return Object.values(DOMINIOS).flatMap(dom => dom.cartas.all().map(c => ({kind:'carta', id:c.id, c, dom, ok:this.dominioDisponible(dom), name:c.name})));
+    if (this.tab === 'cartas') return Object.values(DOMINIOS).flatMap(dom => dom.cartas.all().map(c => ({kind:'carta', id:c.id, c, dom, ok:this.todo || c.free && this.dominioDisponible(dom) || this.app.cartaDesbloqueada(c.id), name:c.name})));
     if (this.tab === 'armas') return Object.entries(BONUS_DEFS).filter(([, d]) => d.tipo === 'arma' && !d.fusion).map(([id, d]) => ({kind:'arma', id, d, ok:this.conocido('armas', id), name:d.name}));
     if (this.tab === 'tacticos') return Object.entries(BONUS_DEFS).filter(([, d]) => d.tipo === 'tactico' && !d.fusion).map(([id, d]) => ({kind:'tactico', id, d, ok:this.conocido('tacticos', id), name:d.name}));
     // Fusiones: se sabe que existen, pero no cómo se consiguen (se descubren jugando)
@@ -119,7 +119,7 @@ class CatalogoScene extends Scene {
     this.lista = items;
     this.app.html(`
     <div class="mx-auto flex h-full max-w-2xl flex-col px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
-      <div class="flex items-center justify-between">${btnVolver}<label class="flex items-center gap-2 text-xs text-zinc-400"><input type="checkbox" data-a="vertodo" class="h-4 w-4 accent-amber-400" ${this.todo ? 'checked' : ''}>👁 Ver todo (desarrollo)</label></div>
+      <div class="flex items-center justify-between">${btnVolver}${this.app.progreso.data.todo ? '<span class="text-xs text-amber-300">🧪 Modo desarrollador: todo visible</span>' : ''}</div>
       <h2 class="mt-3 text-2xl font-black">📚 Catálogo</h2>
       ${tabs([['cartas', '🃏', 'Cartas'], ['armas', '🔫', 'Armas'], ['tacticos', '🧠', 'Tácticos'], ['fusiones', '⚗️', 'Fusiones'], ['entidades', '👽', 'Entidades']], this.tab)}
       <p class="mt-1 text-xs text-zinc-400">${this.tab === 'cartas' ? `${ok}/${items.length} cartas disponibles · las demás se desbloquean en la 🗺️ Ruta o avanzando en Aprender`

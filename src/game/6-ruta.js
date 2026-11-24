@@ -38,16 +38,18 @@ const CARTAS_DE_TIPO = {
    práctica de las cartas de propiedades y algunos logros del juego.
    Cada hito cumplido entrega sus premios (tipos de problema y con ellos
    sus cartas, bonificadores, dificultades o 🔬). */
-const BASE_RUTA = {titulo:'Inicio', icon:'🚩', tipos:['lin1', 'simp1', 'dpoli', 'ipoli'], difs:['recluta', 'soldado'], bonus:['rifle', 'amplificador', 'escudo']};
+/* Orden lógico de aprendizaje: cada nivel se alcanza solo si los anteriores están
+   cumplidos (como un pase de batalla). Nadie empieza con derivadas ni integrales. */
+const BASE_RUTA = {titulo:'Inicio', icon:'🚩', difs:['recluta', 'soldado'], bonus:['rifle', 'amplificador', 'escudo']};
 const PREMIOS_TEMA = {
   'f-signos':{bonus:['reclutas']}, 'f-multdiv':{puntos:10}, 'f-fracciones':{bonus:['lenta']},
-  'f-potencias':{tipos:['apot0', 'apot1', 'apot2', 'apot3']}, 'f-factorizacion':{tipos:['simp2']}, 'f-lineales':{tipos:['lin2', 'dist'], bonus:['laser']},
-  'f-cuadraticas':{bonus:['municion']}, 'f-polinomicas':{bonus:['misil']}, 'f-racionales':{bonus:['concentracion']}, 'f-radicales':{tipos:['araiz1', 'araiz2']},
-  'f-exponenciales':{tipos:['alog3'], bonus:['mortero']}, 'f-logaritmicas':{tipos:['alog1', 'alog2']}, 'f-trigonometricas':{tipos:['atrig1', 'atrig2', 'atrig3', 'atrig4'], bonus:['botiquin']},
-  'f-inecuaciones':{puntos:20},
-  'd-limites':{puntos:10}, 'd-reglas':{tipos:['dsqrt', 'dneg']}, 'd-producto':{tipos:['dprod']}, 'd-cadena':{tipos:['dcad', 'dexp2']}, 'd-trascendentes':{tipos:['dtrig', 'dtan', 'dln'], bonus:['tesla']},
+  'f-polinomios':{tipos:['simp1']}, 'f-lineales':{tipos:['lin1', 'lin2'], bonus:['laser']}, 'f-factorizacion':{tipos:['simp2', 'dist']},
+  'f-potencias':{tipos:['apot0', 'apot1', 'apot2', 'apot3', 'araiz1', 'araiz2']}, 'f-cuadraticas':{bonus:['municion']}, 'f-racionales':{bonus:['concentracion']},
+  'f-radicales':{puntos:15}, 'f-polinomicas':{bonus:['misil']}, 'f-exponenciales':{tipos:['alog3'], bonus:['mortero']}, 'f-logaritmicas':{tipos:['alog1', 'alog2']},
+  'f-trigonometricas':{tipos:['atrig1', 'atrig2', 'atrig3', 'atrig4'], bonus:['botiquin']}, 'f-inecuaciones':{puntos:20},
+  'd-limites':{puntos:10}, 'd-reglas':{tipos:['dpoli', 'dsqrt', 'dneg']}, 'd-producto':{tipos:['dprod']}, 'd-cadena':{tipos:['dcad', 'dexp2']}, 'd-trascendentes':{tipos:['dtrig', 'dtan', 'dln'], bonus:['tesla']},
   'd-implicita':{tipos:['dcoc']}, 'd-extremos':{tipos:['dsincos']}, 'd-optimizacion':{difs:['veterano'], bonus:['franco']}, 'd-lhopital':{puntos:25},
-  'l1':{tipos:['isqrt', 'ineg']}, 'l2':{tipos:['itrig', 'ilin', 'irecip']}, 'l7':{difs:['leyenda'], puntos:40},
+  'l1':{tipos:['ipoli', 'isqrt', 'ineg']}, 'l2':{tipos:['itrig', 'ilin', 'irecip']}, 'l7':{difs:['leyenda'], puntos:40},
 };
 const prefijos = (keys, pref) => keys.filter(k => k.startsWith(pref)).length;
 /** Lista de hitos (se arma al usarla: necesita los temas de la guía). */
@@ -61,12 +63,12 @@ function construirRuta(){
   if (G){
     hitos.push({titulo:'Ver el tutorial de fichas', icon:'🧩', href:'#/tutorial', req:[{txt:'tutorial visto', pref:'t-visto', n:1}], puntos:5});
     hitos.push({titulo:'Primer ejercicio con fichas', icon:'🧱', href:'#/f', req:[{txt:'ejercicio de Fundamentos', pref:'f-', n:1}], puntos:10});
-    hitos.push(juego('Primera partida', 'partidas', 1));
     for (const T of FUND){
       hitos.push(tema('f', T));
+      if (T.id === 'polinomios') hitos.push(juego('Primera partida', 'partidas', 1));
       if (T.id === 'lineales') hitos.push(props('fund', ['dist', 'seme', 'mover', 'div', 'oper'], 'Cartas: despejar ecuaciones', 5));
       if (T.id === 'potencias') hitos.push(props('alg', ['p-prod', 'p-coc', 'p-pot', 'p-prodpot', 'p-cocpot', 'p-cero', 'p-uno'], 'Cartas: propiedades de las potencias', 7));
-      if (T.id === 'radicales') hitos.push(props('alg', ['r-prod', 'r-coc', 'r-pot', 'r-exacta'], 'Cartas: propiedades de las raíces', 4));
+      if (T.id === 'potencias') hitos.push(props('alg', ['r-prod', 'r-coc', 'r-pot', 'r-exacta'], 'Cartas: propiedades de las raíces', 4));
       if (T.id === 'logaritmicas') hitos.push(props('alg', ['l-prod', 'l-coc', 'l-pot', 'l-inv'], 'Cartas: propiedades de los logaritmos', 4));
       if (T.id === 'trigonometricas') hitos.push(props('alg', ['t-pit', 't-tan', 't-doble', 't-cos2', 't-par'], 'Cartas: identidades trigonométricas', 5));
     }
@@ -101,9 +103,17 @@ class Ruta {
     return [Math.min(v, r.n), r.n];
   }
   cumplido(h){ return h.req.every(r => { const [a, b] = this.avance(r); return a >= b; }); }
-  hitos(){ return RUTA_HITOS().map((h, i) => ({...h, i, ok:this.dev || this.cumplido(h)})); }
-  get nivelReal(){ return RUTA_HITOS().filter(h => this.cumplido(h)).length - 1; }
+  /** Índice del último nivel alcanzado: los niveles de aprendizaje cuentan EN ORDEN (los logros del juego no bloquean). */
+  get nivelReal(){
+    const H = RUTA_HITOS(); let ultimo = 0;
+    for (let i = 1; i < H.length; i++){ if (H[i].logro) continue; if (!this.cumplido(H[i])) break; ultimo = i; }
+    return ultimo;
+  }
+  alcanzado(h, i){ return h.logro ? this.cumplido(h) : i <= this.nivelReal; }
+  hitos(){ const n = this.nivelReal; return RUTA_HITOS().map((h, i) => ({...h, i, ok:this.dev || (h.logro ? this.cumplido(h) : i <= n)})); }
   get nivel(){ return this.dev ? RUTA_HITOS().length - 1 : this.nivelReal; }
+  /** Niveles de aprendizaje alcanzados + logros cumplidos (para mostrar «X de N»). */
+  get completados(){ return RUTA_HITOS().filter((h, i) => this.alcanzado(h, i)).length; }
   get total(){ return RUTA_HITOS().length; }
   alcanzados(){ return this.hitos().filter(h => h.ok); }
   tipos(){ return new Set(this.alcanzados().flatMap(t => t.tipos ?? [])); }
@@ -121,10 +131,10 @@ class Ruta {
     const nombreTipo = Object.fromEntries(Object.values(DOMINIOS).flatMap(d => d.tipos.map(t => [t.id, {name:t.name, icon:d.icon}])));
     const cartaInfo = Object.fromEntries(Object.values(DOMINIOS).flatMap(d => d.cartas.all().map(c => [c.id, {name:c.name, icon:c.icon}])));
     const vistas = new Set(), rec = this.progreso.data.rutaReclamados ?? [];
-    return {xp:this.xp, nivel:this.nivel, nivelReal:this.nivelReal, dev:this.dev, ejercicios:this.ejercicios, total:this.total,
+    return {xp:this.xp, nivel:this.nivel, nivelReal:this.nivelReal, completados:this.completados, dev:this.dev, ejercicios:this.ejercicios, total:this.total,
       tiers:this.hitos().map(h => {
         const cartas = (h.tipos ?? []).flatMap(id => CARTAS_DE_TIPO[id] ?? []).filter(c => !vistas.has(c) && vistas.add(c));
-        return {i:h.i, ok:h.ok, real:this.cumplido(h), titulo:h.titulo, titulo2:h.titulo2, icon:h.icon, href:h.href,
+        return {i:h.i, ok:h.ok, real:this.alcanzado(h, h.i), hecho:this.cumplido(h), logro:!!h.logro, titulo:h.titulo, titulo2:h.titulo2, icon:h.icon, href:h.href,
           req:h.req.map(r => { const [a, b] = this.avance(r); return {txt:r.txt, a, b}; }),
           premios:[
             ...(h.tipos ?? []).map(id => ({tipo:'problema', icon:nombreTipo[id]?.icon ?? '🧮', nombre:nombreTipo[id]?.name ?? id})),

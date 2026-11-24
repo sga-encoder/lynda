@@ -102,6 +102,9 @@ class CatalogoScene extends Scene {
     if (this.tab === 'armas') return Object.entries(BONUS_DEFS).filter(([, d]) => d.tipo === 'arma' && !d.fusion).map(([id, d]) => ({kind:'arma', id, d, ok:this.conocido('armas', id), name:d.name}));
     if (this.tab === 'tacticos') return Object.entries(BONUS_DEFS).filter(([, d]) => d.tipo === 'tactico' && !d.fusion).map(([id, d]) => ({kind:'tactico', id, d, ok:this.conocido('tacticos', id), name:d.name}));
     // Fusiones: se sabe que existen, pero no cómo se consiguen (se descubren jugando)
+    // ⚡ Potenciadores: 6 superpotenciadores + 6 por cada una de las 15 armas de los soldados
+    if (this.tab === 'potenciadores') return [...Object.entries(SUPERPOTENCIADORES).map(([id, x]) => ({kind:'pot', id, d:{icon:x.icon}, x, grupo:'super', ok:this.conocido('potenciadores', id), name:x.nombre})),
+      ...Object.values(POTENCIADORES).map(x => ({kind:'pot', id:x.id, d:{icon:x.icon}, x, grupo:x.arma, ok:this.conocido('potenciadores', x.id), name:x.nombre}))];
     if (this.tab === 'fusiones') return FUSIONES.map(f => ({kind:'fusion', id:f.resultado, d:BONUS_DEFS[f.resultado], ok:this.conocido('fusiones', f.resultado), name:BONUS_DEFS[f.resultado].name}));
     // Entidades en dos grupos: 🪖 Soldados y 👽 Alienígenas (comunes, Comandantes y Soberanos)
     const g = id => INFO_ENEMIGO[id].grupo ?? (ENEMIGOS[id](0, {vida:1, velocidad:1}).jefe ? 'soberano' : 'comun');
@@ -113,7 +116,7 @@ class CatalogoScene extends Scene {
     const desconocido = !it.ok, nombre = desconocido ? (it.kind === 'carta' ? '🔒 ' + it.name : 'Desconocido') : it.name;
     const vista = it.kind === 'fusion' ? fusionAnim(it.d.icon, desconocido)
       : it.kind === 'carta' ? `<div class="flex justify-center py-1 ${desconocido ? 'grayscale opacity-40' : ''}">${cartaHTML(it.c, it.dom, {attr:'', chica:true})}</div>`
-      : it.kind === 'tactico' ? `<div class="flex h-[4.4rem] items-center justify-center text-4xl ${desconocido ? 'brightness-0 opacity-50' : '[animation:flotar_2s_ease-in-out_infinite]'}">${it.d.icon}</div>`
+      : (it.kind === 'tactico' || it.kind === 'pot') ? `<div class="flex h-[4.4rem] items-center justify-center text-4xl ${desconocido ? 'brightness-0 opacity-50' : '[animation:flotar_2s_ease-in-out_infinite]'}">${it.d.icon}</div>`
       : `<canvas data-prev="${i}" class="block aspect-[120/70] w-full rounded-lg ${desconocido ? 'brightness-0 opacity-60' : ''}"></canvas>`;
     return `<button data-item="${i}" class="rounded-2xl border border-zinc-800 bg-zinc-900 p-1.5 text-left touch-manipulation active:scale-[0.98] transition-transform">${vista}<div class="mt-1 truncate px-1 text-xs font-semibold ${desconocido ? 'text-zinc-500' : ''}">${nombre}</div></button>`;
   }
@@ -125,11 +128,11 @@ class CatalogoScene extends Scene {
     <div class="mx-auto flex h-full max-w-2xl flex-col px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
       <div class="flex items-center justify-between">${btnVolver}${this.app.progreso.data.todo ? '<span class="text-xs text-amber-300">🧪 Modo desarrollador: todo visible</span>' : ''}</div>
       <h2 class="mt-3 text-2xl font-black">📚 Catálogo</h2>
-      ${tabs([['cartas', '🃏', 'Cartas'], ['armas', '🔫', 'Armas'], ['tacticos', '🧠', 'Tácticos'], ['fusiones', '⚗️', 'Fusiones'], ['entidades', '👽', 'Entidades']], this.tab)}
+      ${tabs([['cartas', '🃏', 'Cartas'], ['armas', '🔫', 'Armas'], ['tacticos', '🧠', 'Tácticos'], ['fusiones', '⚗️', 'Fusiones'], ['potenciadores', '⚡', 'Potenciadores'], ['entidades', '👽', 'Entidades']], this.tab)}
       <p class="mt-1 text-xs text-zinc-400">${this.tab === 'cartas' ? `${ok}/${items.length} cartas disponibles · las demás se desbloquean en la 🗺️ Ruta o avanzando en Aprender`
         : this.tab === 'fusiones' ? `${ok}/${items.length} fusiones descubiertas · existen fusiones entre armas, entre tácticos y entre armas y tácticos. ¿Cuáles? Descúbrelo jugando.`
         : `${ok}/${items.length} descubiertos · se descubren al obtenerlos o verlos en una partida`}</p>
-      <div class="mt-2 grid flex-1 grid-cols-2 content-start gap-2 overflow-y-auto pb-4 sm:grid-cols-3">${items.map((it, i) => (it.grupo && it.grupo !== items[i - 1]?.grupo ? `<div class="col-span-full mt-2 text-sm font-black text-zinc-300">${{soldados:'🪖 Soldados', comun:'👽 Alienígenas · comunes y de cada mundo', comandante:'🎖️ Alienígenas · Comandantes (subjefes)', soberano:'👑 Alienígenas · Soberanos (jefes)'}[it.grupo]}</div>` : '') + this.tile(it, i)).join('')}</div>
+      <div class="mt-2 grid flex-1 grid-cols-2 content-start gap-2 overflow-y-auto pb-4 sm:grid-cols-3">${items.map((it, i) => (it.grupo && it.grupo !== items[i - 1]?.grupo ? `<div class="col-span-full mt-2 text-sm font-black text-zinc-300">${it.kind === 'pot' ? (it.grupo === 'super' ? '🌟 Superpotenciadores' : `${it.x.armaIcon} ${it.x.armaNombre}`) : {soldados:'🪖 Soldados', comun:'👽 Alienígenas · comunes y de cada mundo', comandante:'🎖️ Alienígenas · Comandantes (subjefes)', soberano:'👑 Alienígenas · Soberanos (jefes)'}[it.grupo]}</div>` : '') + this.tile(it, i)).join('')}</div>
       <div data-h="detalle" class="absolute inset-0 z-20 hidden"></div>
     </div>`).onclick = e => this.click(e);
     this.animar();
@@ -171,6 +174,11 @@ class CatalogoScene extends Scene {
           <span class="absolute text-emerald-300 [animation:cat-b_4s_ease-in-out_infinite]">${texJuego(despues, false)}</span></div>
         <p class="mt-1 text-center text-xs text-zinc-500">Ejemplo animado: antes → después</p>
         <p class="mt-2 text-xs text-zinc-400">Área: ${it.dom.icon} ${it.dom.nombre} · usada en partidas: ${P.conocido('cartas', it.id) ? 'sí' : 'todavía no'}</p>`;
+    } else if (it.kind === 'pot'){
+      const x = it.x;
+      vista = `<div class="flex h-36 items-center justify-center"><span class="text-7xl [animation:flotar_2s_ease-in-out_infinite]">${x.icon}</span></div>`;
+      cuerpo = `<p class="text-sm text-zinc-300">${x.desc}</p><p class="mt-2 text-xs text-zinc-400">${x.arma ? `${x.armaIcon} Potencia el arma <b>${x.armaNombre}</b> (${SOLDADOS[x.tipo].name}). Se elige al subir de nivel en la partida; hasta nivel ${MAX_POT}.`
+        : `${x.clase === 'arma' ? 'Superpotenciador de arma: aparece cuando tienes 2 potenciadores al máximo.' : 'Superpotenciador con táctica: aparece con 1 potenciador y 1 táctico al máximo.'} Sirve para todas las armas.`}</p>`;
     } else if (it.kind === 'arma' || it.kind === 'tactico' || it.kind === 'fusion'){
       const d = it.d, niveles = d.niveles.map((n, i) => n && [i + 1, n]).filter(Boolean), claves = Object.keys(niveles[0][1]);
       const esArma = d.tipo === 'arma';

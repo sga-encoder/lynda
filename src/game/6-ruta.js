@@ -73,7 +73,7 @@ function construirRuta(){
       if (T.id === 'logaritmicas') hitos.push(props('alg', ['l-prod', 'l-coc', 'l-pot', 'l-inv'], 'Cartas: propiedades de los logaritmos', 4));
       if (T.id === 'trigonometricas') hitos.push(props('alg', ['t-pit', 't-tan', 't-doble', 't-cos2', 't-par'], 'Cartas: identidades trigonométricas', 5));
     }
-    hitos.push(juego('Primera misión cumplida', 'misiones', 1, {puntos:15}));
+    hitos.push(juego('Primera misión cumplida', 'misiones', 1, {puntos:15, supers:true}));
     for (const T of DIF){
       hitos.push(tema('d', T));
       if (T.id === 'cadena') hitos.push(props('dif', ['d-suma', 'd-kf', 'd-cte', 'd-pot', 'd-tabla', 'd-prod', 'd-cad'], 'Cartas: reglas de derivación', 7));
@@ -148,6 +148,7 @@ class Ruta {
             ...(h.difs ?? []).map(id => ({tipo:'dificultad', icon:dificultad(id).icon, nombre:`Dificultad ${dificultad(id).nombre}`})),
             ...(h.bonus ?? []).map(id => ({tipo:'bonus', icon:BONUS_DEFS[id].icon, nombre:BONUS_DEFS[id].name})),
             ...(h.soldados ?? []).map(id => ({tipo:'bonus', icon:SOLDADOS[id].icon, nombre:`Soldado: ${SOLDADOS[id].name}`})),
+            ...(h.supers ? [{tipo:'bonus', icon:'⚡', nombre:'Superpotenciadores (6)'}] : []),
             ...(h.peloton ? [{tipo:'bonus', icon:'🪖', nombre:'Estrategia de pelotón (tipos de soldado y munición)'}] : []),
             ...(h.puntos ? [{tipo:'puntos', icon:'🔬', nombre:`+${h.puntos} puntos de investigación`, reclamable:h.ok && !rec.includes(h.i), reclamado:rec.includes(h.i)}] : []),
           ]};
@@ -215,7 +216,7 @@ function fotoPartida(escena, nombre){
   return {
     app:'defensa-algebraica', version:VERSION_PARTIDA, id:r.idPartida ??= 'p' + Date.now().toString(36),
     nombre: nombre || `Misión ${r.mision} · oleada ${r.oleada}`, fecha:new Date().toISOString(), modo:d.modo, dificultad:d.dificultad ?? 'soldado',
-    run:{mundo:r.mundo ?? null, mm:r.mm ?? 0, infinito:!!r.infinito, tipos:r.tipos ? [...r.tipos] : null, mision:r.mision, oleada:r.oleada, nivel:r.nivel, xp:r.xp, xpTotal:r.xpTotal, problemas:r.problemas, eficientes:r.eficientes, bajas:r.bajas, jefes:r.jefes,
+    run:{potenciadores:r.potenciadores ?? {}, supers:r.supers ?? [], mundo:r.mundo ?? null, mm:r.mm ?? 0, infinito:!!r.infinito, tipos:r.tipos ? [...r.tipos] : null, mision:r.mision, oleada:r.oleada, nivel:r.nivel, xp:r.xp, xpTotal:r.xpTotal, problemas:r.problemas, eficientes:r.eficientes, bajas:r.bajas, jefes:r.jefes,
       combosUsados:r.combosUsados, puntosMisiones:r.puntosMisiones, vida:r.base.vida, vidaMax:r.base.vidaMax, energia:r.energia.valor,
       armas:l.armas.map(b => [b.id, b.nivel]), tacticos:l.tacticos.map(b => [b.id, b.nivel]),
       combos:r.combos.filter(c => !c.hecho && !c.mazo).map(c => ({nombre:c.nombre, dominio:c.dominio, cartas:c.cartas}))},
@@ -228,6 +229,7 @@ function runDesdeFoto(app, p){
   const r = new Run(app), s = p.run;
   if (s.infinito){ r.infinito = true; r.tipos = new Set(s.tipos ?? []); }
   if (s.mundo){ r.mundo = s.mundo; r.mm = s.mm ?? 0; }
+  r.potenciadores = {...(s.potenciadores ?? {})}; r.supers = [...(s.supers ?? [])];
   Object.assign(r, {mision:s.mision, oleada:s.oleada, nivel:s.nivel, xp:s.xp, xpTotal:s.xpTotal, problemas:s.problemas, eficientes:s.eficientes, bajas:s.bajas, jefes:s.jefes,
     combosUsados:s.combosUsados, puntosMisiones:s.puntosMisiones, proceso:[...p.proceso], idPartida:p.id});
   r.loadout.armas = s.armas.filter(([id]) => BONUS_DEFS[id]).map(([id, n]) => new Bonus(id, n));

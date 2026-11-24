@@ -1135,7 +1135,7 @@ class Progreso {
     this.repo = repo;
     this.data = {puntos:0, mejoras:{}, record:0, partidas:0, modo:'fund', todo:false, devDesbloqueado:false, mazoInfinito:[], semi:true, asistido:0, dificultad:'soldado', rutaXP:0, ...repo.load()};
     if (!this.data.devDesbloqueado) this.data.todo = false;          // el modo desarrollador exige la contraseña
-    this.data.desc = {armas:['rifle'], tacticos:[], enemigos:[], soldados:[], cartas:[], fusiones:[], ...(this.data.desc ?? {})};
+    this.data.desc = {armas:['rifle'], tacticos:[], enemigos:[], soldados:[], cartas:[], fusiones:[], potenciadores:[], ...(this.data.desc ?? {})};
     this.data.mazo = {fund:[], alg:[], dif:[], int:[], ...(this.data.mazo ?? {})};
   }
   /** Registra algo encontrado por primera vez (para el catálogo). Devuelve true si es nuevo. */
@@ -1335,7 +1335,8 @@ class WaveDirector {
 class World {
   enemigos = []; soldados = []; balas = []; balasEnemigas = []; particulas = []; rayos = []; textos = [];
   #balas = new Pool(() => ({})); #parts = new Pool(() => ({}));
-  constructor({bus, loadout, energia, base, extraSoldados = 0, mej = () => 0, torreta = 0, peloton = null, soldadosOk = () => true, perfil = null, titular = null}){
+  constructor({bus, loadout, energia, base, extraSoldados = 0, mej = () => 0, torreta = 0, peloton = null, soldadosOk = () => true, perfil = null, titular = null, potencia = () => null}){
+    this.potencia = potencia;                        // efecto de los potenciadores de la partida para un arma
     this.perfil = perfil; this.titular = titular;   // perfil(uid) → estadísticas del soldado concreto; titular(tipo) → soldado por defecto del tipo
     this.soldadosOk = soldadosOk;                  // tipos de soldado desbloqueados en la Ruta
     this.peloton = peloton;                        // {orden:[tipos], equipo:{tipo:dano}} o null (orden por defecto)
@@ -1371,10 +1372,12 @@ class World {
       let tipo = perfil?.tipo ?? quien;
       if (!this.soldadosOk(tipo)){ tipo = 'fusilero'; perfil = this.perfil ? this.perfil(this.titular('fusilero')) : null; }   // tipos aún bloqueados → fusileros
       const nuevo = new Soldado(libre, tipo, L.efecto('vidaSoldado', 0), perfil); nuevo.mult = 1 + 0.15 * this.mej('sold-' + tipo);   // mejora permanente del tipo
-      nuevo.vidaMax *= nuevo.mult; nuevo.vida = nuevo.vidaMax; this.soldados.push(nuevo); this.tiposSoldado.add(tipo);
+      nuevo.vidaMax *= nuevo.mult;
+      const ep = perfil && this.potencia(perfil.armaId); if (ep){ nuevo.vidaMax *= 1 + ep.vida; nuevo.regenExtra = ep.regen; }   // Formación Euler
+      nuevo.vida = nuevo.vidaMax; this.soldados.push(nuevo); this.tiposSoldado.add(tipo);
       this.texto(this.base.derecha + 8, MUNDO.suelo - 24, `+${SOLDADOS[tipo].icon}`, '#bbf7d0');
     }
-    for (const s of this.soldados) if (s.perfil?.regen) s.vida = Math.min(s.vidaMax, s.vida + s.perfil.regen * dt);   // blindajes regenerativos
+    for (const s of this.soldados){ const rg = (s.perfil?.regen ?? 0) + (s.regenExtra ?? 0); if (rg) s.vida = Math.min(s.vidaMax, s.vida + rg * dt); }   // blindajes regenerativos
     const curar = L.efecto('curar', 0);
     if (curar) this.soldados.forEach(s => s.vida = Math.min(s.vidaMax, s.vida + curar * dt));
     this.apoyoSoldados(dt);
@@ -1413,23 +1416,26 @@ class World {
   apoyoSoldados(dt){
     for (const s of this.soldados){
       const d = s.def;
+      const ep = (s.perfil && this.potencia(s.perfil.armaId)) || {dmg:0, cd:0, rango:0, area:0, perf:0, crit:0, extra:0, costo:0};   // potenciadores
       if (d.ataque && (s.apoyoT -= dt) <= 0){
         const o = this.elegir({alcance:'tierra', prioridad:'cercano', desde:{x:s.x, y:s.cy}});
-        if (!o || o.x - s.x > d.ataque.rango * (this.clima.rango ?? 1)){ s.apoyoT = 0.3; continue; }
-        if (!this.energia.gastar(d.ataque.costo)){ s.apoyoT = 0.4; this.sinEnergia = true; continue; }
-        s.apoyoT = d.ataque.cd;
+        if (!o || o.x - s.x > d.ataque.rango * (1 + ep.rango) * (this.clima.rango ?? 1)){ s.apoyoT = 0.3; continue; }
+        if (!this.energia.gastar(d.ataque.costo * Math.max(0.2, 1 + ep.costo))){ s.apoyoT = 0.4; this.sinEnergia = true; continue; }
+        s.apoyoT = d.ataque.cd * Math.max(0.35, 1 + ep.cd);
         const eq = s.perfil ? d.ataque.dano : this.equipoDe(s.tipo), Q = s.perfil ? {} : EQUIPO[eq] ?? {};   // con perfil, el tipo de daño lo da el arma equipada
-        this.disparar({x:s.x + 4, y:s.cy - 3, obj:o, golpe:{dmg:d.ataque.dmg * (s.mult ?? 1) * (eq === d.ataque.dano ? 1 : Q.mult ?? 1), dano:eq, area:Math.max(d.ataque.area ?? 0, Q.area ?? 0), alcance:'tierra'}, parabola:!!d.ataque.parabola,
-          vel:d.ataque.parabola ? 120 : 260, color:d.ataque.area ? '#fb923c' : '#e5e7eb', r:d.ataque.area ? 2 : 1.1});
+        const critico = Math.random() < ep.crit, dmg = d.ataque.dmg * (s.mult ?? 1) * (eq === d.ataque.dano ? 1 : Q.mult ?? 1) * (1 + ep.dmg) * (critico ? 2 : 1);
+        for (let k = 0; k <= ep.extra; k++)                              // Ráfaga Fibonacci: balas extra
+          this.disparar({x:s.x + 4, y:s.cy - 3 - k * 2, obj:o, golpe:{dmg, dano:eq, area:Math.max(d.ataque.area ?? 0, Q.area ?? 0) + ep.area, alcance:'tierra', perf:ep.perf, efecto:ep.congela ? 'congelar' : undefined}, parabola:!!d.ataque.parabola,
+            vel:(d.ataque.parabola ? 120 : 260) * (1 - k * 0.08), color:critico ? '#fde047' : d.ataque.area ? '#fb923c' : '#e5e7eb', r:critico ? 1.8 : d.ataque.area ? 2 : 1.1});
       }
       if (d.apoyo && (s.apoyoT -= dt) <= 0){
-        s.apoyoT = d.apoyo.cd;
+        s.apoyoT = d.apoyo.cd * Math.max(0.35, 1 + ep.cd);
         if (d.apoyo.curar){
           const herido = this.soldados.filter(x => x.vida < x.vidaMax).sort((a, b) => a.vida / a.vidaMax - b.vida / b.vidaMax)[0];
-          if (herido && this.energia.gastar(d.apoyo.costo)){ herido.vida = Math.min(herido.vidaMax, herido.vida + d.apoyo.curar * (s.mult ?? 1)); this.texto(herido.x, herido.cy - 14, '+❤', '#86efac'); }
+          if (herido && this.energia.gastar(d.apoyo.costo)){ herido.vida = Math.min(herido.vidaMax, herido.vida + d.apoyo.curar * (s.mult ?? 1) * (1 + ep.dmg)); this.texto(herido.x, herido.cy - 14, '+❤', '#86efac'); }
         }
         if (d.apoyo.reparar && this.base.vida < this.base.vidaMax && this.energia.gastar(d.apoyo.costo)){
-          this.base.vida = Math.min(this.base.vidaMax, this.base.vida + d.apoyo.reparar * (s.mult ?? 1)); this.texto(this.base.cx, this.base.cy - 22, '+🔧', '#fde68a');
+          this.base.vida = Math.min(this.base.vidaMax, this.base.vida + d.apoyo.reparar * (s.mult ?? 1) * (1 + ep.dmg)); this.texto(this.base.cx, this.base.cy - 22, '+🔧', '#fde68a');
         }
       }
     }
@@ -1560,11 +1566,11 @@ class World {
   }
   /** Munición equipada para un tipo de soldado (por defecto, la suya). */
   equipoDe(tipo){ return this.peloton?.equipo?.[tipo] ?? SOLDADOS[tipo].ataque?.dano ?? 'fisico'; }
-  golpear(e, {dmg, dano, efecto}){
+  golpear(e, {dmg, dano, efecto, perf: perfExtra = 0}){
     if (e.escudoMental && !(e.escudoT > 0)){ this.texto(e.x, e.cy - 14, '🛡 resuelve un problema', '#f0abfc', 0.6); return; }
     let d = dmg;
-    if (e.armadura && dano === 'fisico'){ const perf = Math.min(1, this.loadout.efecto('perforacion', 0) + (efecto === 'perforar' ? 0.5 : 0)); d *= 1 - e.armadura * (1 - perf); }
-    if (e.escudo && dano === 'energia') d *= 1 - e.escudo;
+    if (e.armadura && dano === 'fisico'){ const perf = Math.min(1, this.loadout.efecto('perforacion', 0) + (efecto === 'perforar' ? 0.5 : 0) + perfExtra); d *= 1 - e.armadura * (1 - perf); }
+    if (e.escudo && dano === 'energia') d *= 1 - e.escudo * (1 - Math.min(1, perfExtra));
     if ((DEBILIDAD[e.tipo] ?? DEBILIDAD[e.forma]) === dano) d *= MULT_DEBIL;
     if (e.blindadoT > 0) d *= 0.4;                                  // armadura temporal de un Comandante               // debilidad: la estrategia del pelotón importa
     if (efecto === 'congelar' && !e.jefe) e.congelado = 2.5;
@@ -1893,7 +1899,7 @@ function perfilSoldado(P, uid){
   const bl = BLINDAJES_TROPA[tipo].find(b => b[0] === T.equipo[tipo].blindaje), nb = bl ? nivelTropa(P, bl[0]) : 0, B = bl ? bl[3] : {}, fb = 1 + 0.2 * Math.max(0, nb - 1);
   const ataqueBase = base.ataque ?? {dmg:1, cd:0.9, costo:0.5, rango:130, dano:'fisico'};
   const perfil = {uid:s[0], tipo, name:s[1], icon:s[2], vida:base.vida * (m.vida ?? 1) * fs + (B.vida ?? 0) * fb, reduccion:Math.min(0.6, (B.reduccion ?? 0) * fb), regen:(B.regen ?? 0) * fb,
-    arma:arma[1], blindaje:bl?.[1] ?? null};
+    arma:arma[1], armaId:arma[0], blindaje:bl?.[1] ?? null};
   if (base.apoyo) perfil.apoyo = {...base.apoyo, curar:base.apoyo.curar && base.apoyo.curar * (A.cura ?? 1) * (m.dmg ?? 1) * fs * fa, reparar:base.apoyo.reparar && base.apoyo.reparar * (A.repara ?? 1) * (m.dmg ?? 1) * fs * fa, cd:base.apoyo.cd * (A.cd ?? 1) * (m.cd ?? 1)};
   else perfil.ataque = {...ataqueBase, dano:A.dano ?? ataqueBase.dano, dmg:ataqueBase.dmg * (A.dmg ?? 1) * (m.dmg ?? 1) * fs * fa, cd:ataqueBase.cd * (A.cd ?? 1) * (m.cd ?? 1),
     rango:(A.rango ?? ataqueBase.rango) * (m.rango ?? 1), area:A.area ?? ataqueBase.area ?? 0, parabola:A.parabola ?? !!ataqueBase.parabola};
@@ -1911,6 +1917,60 @@ function itemsTropa(app, tipo){
 function titularDe(app, tipo){
   const P = app.progreso, l = SOLDADOS_UNICOS[tipo].filter((s, k) => tropaDesbloqueada(app, tipo, 'soldado', k));
   return (l.sort((a, b) => nivelTropa(P, b[0]) - nivelTropa(P, a[0]))[0] ?? SOLDADOS_UNICOS[tipo][0])[0];
+}
+
+/* =====================================================================
+   DEFENSA ALGEBRAICA · 3d) Potenciadores de las armas de los soldados
+   - Cada una de las 15 armas tiene 6 potenciadores propios (90 en total);
+     se eligen al subir de nivel durante la partida (máx. nivel 3).
+   - 6 superpotenciadores iguales para todas las armas: 3 «de arma» (piden
+     2 potenciadores al máximo) y 3 «con táctica» (piden 1 potenciador y 1
+     táctico al máximo). Se desbloquean con la Ruta.
+   ===================================================================== */
+/** Plantillas: cada arma recibe las 6 con un nombre propio. `ef` = efecto por nivel. */
+const PLANTILLAS_POT = [
+  {k:'dano',   icon:'💥', nombre:'Carga reforzada', desc:'+20 % de daño (o curación/reparación) por nivel.', ef:{dmg:0.2}},
+  {k:'cad',    icon:'⏩', nombre:'Mecanismo rápido', desc:'Dispara un 15 % más seguido por nivel.', ef:{cd:-0.15}},
+  {k:'alc',    icon:'📏', nombre:'Mira extendida', desc:'+15 % de alcance por nivel.', ef:{rango:0.15}},
+  {k:'area',   icon:'🌀', nombre:'Onda expansiva', desc:'+8 de área de impacto por nivel.', ef:{area:8}},
+  {k:'perf',   icon:'🔩', nombre:'Punta perforante', desc:'Ignora un 20 % de armadura y escudo por nivel.', ef:{perf:0.2}},
+  {k:'crit',   icon:'🎯', nombre:'Golpe certero', desc:'10 % de probabilidad de daño doble por nivel.', ef:{crit:0.1}},
+];
+const MAX_POT = 3;
+const POTENCIADORES = {};          // id → {id, arma, tipo, ...plantilla}
+for (const tipo of Object.keys(ARMAS_TROPA)) for (const [armaId, armaNombre, armaIcon] of ARMAS_TROPA[tipo])
+  for (const P of PLANTILLAS_POT){ const id = `${armaId}:${P.k}`; POTENCIADORES[id] = {...P, id, arma:armaId, armaNombre, armaIcon, tipo, nombre:`${P.nombre} · ${armaNombre}`}; }
+/** Superpotenciadores (iguales para todas las armas). */
+const SUPERPOTENCIADORES = {
+  sobrecarga:  {icon:'⚡', nombre:'Sobrecarga', clase:'arma', desc:'+40 % de daño en todas las armas de los soldados.', ef:{dmg:0.4}},
+  fibonacci:   {icon:'🌻', nombre:'Ráfaga Fibonacci', clase:'arma', desc:'Cada disparo lanza una bala extra.', ef:{extra:1}},
+  exacto:      {icon:'🎯', nombre:'Disparo exacto', clase:'arma', desc:'+25 % de probabilidad de daño doble.', ef:{crit:0.25}},
+  euler:       {icon:'🛡️', nombre:'Formación Euler', clase:'tactica', desc:'Soldados con +40 % de vida y regeneración.', ef:{vida:0.4, regen:0.6}},
+  eco:         {icon:'🔊', nombre:'Eco táctico', clase:'tactica', desc:'Los disparos de los soldados cuestan 40 % menos energía.', ef:{costo:-0.4}},
+  convergencia:{icon:'🧲', nombre:'Convergencia', clase:'tactica', desc:'Los golpes frenan a los enemigos y +20 % de alcance.', ef:{congela:true, rango:0.2}},
+};
+/** Efecto total de los potenciadores para un tipo de soldado (con su arma equipada). */
+function efectoPotencia(run, armaId){
+  const e = {dmg:0, cd:0, rango:0, area:0, perf:0, crit:0, extra:0, costo:0, vida:0, regen:0, congela:false};
+  for (const [id, n] of Object.entries(run.potenciadores ?? {})){ const p = POTENCIADORES[id]; if (!p || p.arma !== armaId) continue; for (const [k, v] of Object.entries(p.ef)) e[k] += v * n; }
+  for (const id of run.supers ?? []){ for (const [k, v] of Object.entries(SUPERPOTENCIADORES[id].ef)) e[k] = typeof v === 'boolean' ? v : e[k] + v; }
+  return e;
+}
+/** Opciones de potenciadores al subir de nivel (de las armas equipadas de los tipos desbloqueados). */
+function opcionesPotencia(app, run, rng, n = 3){
+  const P = app.progreso, T = tropaDe(P);
+  const armas = TIPOS_TROPA.filter(t => app.soldadoDesbloqueado(t)).map(t => T.equipo[t].arma);
+  const pot = run.potenciadores ??= {}, sup = run.supers ??= [];
+  const supers = superDisponibles(app, run).map(id => ({accion:'super', id}));
+  const normales = rng.shuffle(armas.flatMap(a => PLANTILLAS_POT.map(p => `${a}:${p.k}`)).filter(id => (pot[id] ?? 0) < MAX_POT)).map(id => ({accion:'pot', id}));
+  return [...supers.slice(0, 1), ...normales].slice(0, n);
+}
+/** Superpotenciadores que ya se pueden tomar (condiciones de la partida + Ruta). */
+function superDisponibles(app, run){
+  if (!app.progreso.data.todo && !app.ruta.hitos().some(h => h.supers && h.ok)) return [];
+  const pot = run.potenciadores ?? {}, maximos = Object.values(pot).filter(n => n >= MAX_POT).length;
+  const tacticoMax = (run.loadout?.tacticos ?? []).some(b => b.nivel >= MAX_NIVEL);
+  return Object.entries(SUPERPOTENCIADORES).filter(([id, s]) => !(run.supers ?? []).includes(id) && (s.clase === 'arma' ? maximos >= 2 : maximos >= 1 && tacticoMax)).map(([id]) => id);
 }
 
 /* =====================================================================
@@ -2087,7 +2147,7 @@ class BattleScene extends Scene {
     Object.assign(this.cfg, {velocidad:this.cfg.velocidad * df.vel, vida:this.cfg.vida * df.vida, minimo:Math.round(this.cfg.minimo * df.cantidad), intervalo:this.cfg.intervalo / df.cantidad});
     this.director = new WaveDirector(this.cfg, this.app.rng);
     const P = this.app.progreso;
-    this.mundo ??= new World({bus:this.bus, loadout:r.loadout, energia:r.energia, base:r.base, extraSoldados:r.extraSoldados, mej:id => P.nivel(id), torreta:P.total('torreta'), soldadosOk:id => this.app.soldadoDesbloqueado(id), perfil:uid => perfilSoldado(P, uid), titular:tipo => titularDe(this.app, tipo), peloton:this.app.pelotonActivo() ? P.data.peloton : null});
+    this.mundo ??= new World({bus:this.bus, loadout:r.loadout, energia:r.energia, base:r.base, extraSoldados:r.extraSoldados, mej:id => P.nivel(id), torreta:P.total('torreta'), soldadosOk:id => this.app.soldadoDesbloqueado(id), perfil:uid => perfilSoldado(P, uid), titular:tipo => titularDe(this.app, tipo), potencia:armaId => efectoPotencia(r, armaId), peloton:this.app.pelotonActivo() ? P.data.peloton : null});
     const clima = r.mision === 1 && r.oleada === 1 ? 'despejado' : this.app.rng.pick(CLIMAS_ROTACION);
     this.mundo.ponerClima(clima);
     r.combos.forEach(c => c.usado = false);                          // los combos se recargan cada ronda
@@ -2349,6 +2409,7 @@ class BattleScene extends Scene {
   elegirBonificadores(){
     const l = this.run.loadout, rng = this.app.rng, elegido = {};
     const ops = {arma: l.opciones('arma', rng), tactico: l.opciones('tactico', rng)};
+    this.run.loadout = l; const opsPot = opcionesPotencia(this.app, this.run, rng);     // ⚡ potenciadores de las armas de los soldados
     const rec = {};
     if (this.ayuda >= 1){
       const w = this.mundo, v = w.vistos, total = Math.max(1, Object.values(v).reduce((a, b) => a + b, 0)), cuenta = ids => ids.reduce((s, id) => s + (v[id] ?? 0), 0) / total;
@@ -2364,16 +2425,20 @@ class BattleScene extends Scene {
       [BONUS_DEFS[op.id].icon, `${BONUS_DEFS[op.id].name} (nuevo)`, BONUS_DEFS[op.id].desc];
     const espacios = tipo => `${l.lista(tipo).map(b => `${b.def.icon}<sub>${b.nivel}</sub>`).join(' ')} <span class="text-zinc-500">${l.lista(tipo).length}/${ESPACIOS[tipo]}</span>`;
     const pintar = () => this.abrirCapa(`
-      <h2 class="text-center text-2xl font-black">⬆️ ¡Nivel ${this.run.nivel}!</h2><p class="text-center text-sm text-zinc-400">Elige 1 arma y 1 táctico</p>
+      <h2 class="text-center text-2xl font-black">⬆️ ¡Nivel ${this.run.nivel}!</h2><p class="text-center text-sm text-zinc-400">Elige 1 arma, 1 táctico${opsPot.length ? ' y 1 potenciador' : ''}</p>
+      ${opsPot.length ? `<div class="mt-4 flex items-baseline justify-between"><b>⚡ Potenciadores de tus soldados</b></div>
+        <div class="mt-2 grid gap-2">${opsPot.map((op, i) => { const on = elegido.pot === i, s = op.accion === 'super' ? SUPERPOTENCIADORES[op.id] : POTENCIADORES[op.id], n = op.accion === 'pot' ? (this.run.potenciadores[op.id] ?? 0) : 0;
+          return `<button data-pot="${i}" class="relative flex items-center gap-3 rounded-2xl border-2 p-3 text-left touch-manipulation ${on ? 'border-emerald-400 bg-emerald-400/10' : op.accion === 'super' ? 'border-amber-400/70 bg-zinc-900' : 'border-zinc-700 bg-zinc-900'}">${op.accion === 'super' ? '<span class="absolute -top-2 right-3 rounded-full bg-amber-400 px-2 text-[10px] font-black text-zinc-950">SÚPER</span>' : ''}<span class="text-3xl">${s.icon}</span><span><b>${s.nombre}</b>${op.accion === 'pot' ? ` ${pips(n + 1)}` : ''}<br><small class="text-zinc-400">${op.accion === 'pot' ? `${s.armaIcon} ${s.armaNombre}: ` : ''}${s.desc}</small></span></button>`; }).join('')}</div>` : ''}
       ${['arma', 'tactico'].map(tipo => `
         <div class="mt-4 flex items-baseline justify-between"><b>${tipo === 'arma' ? '🔫 Armas' : '🧠 Tácticos'}</b><span class="text-sm">${espacios(tipo)}</span></div>
         <div class="mt-2 grid gap-2">${ops[tipo].map((op, i) => { const [ic, n, d] = etiqueta(op), on = elegido[tipo] === i;
           const sug = rec[tipo]?.i === i;
           return `<button data-op="${tipo}|${i}" class="relative flex items-center gap-3 rounded-2xl border-2 p-3 text-left touch-manipulation ${on ? 'border-emerald-400 bg-emerald-400/10' : sug ? 'border-sky-500/70 bg-zinc-900' : 'border-zinc-700 bg-zinc-900'}">${sug ? '<span class="absolute -top-2 right-3 rounded-full bg-sky-400 px-2 text-[10px] font-black text-zinc-950">⭐ SUGERIDO</span>' : ''}<span class="text-3xl">${ic}</span><span><b>${n}</b><br><small class="text-zinc-400">${d}</small>${sug && this.ayuda >= 2 ? `<br><small class="text-sky-300">💡 ${rec[tipo].razon}</small>` : ''}<span class="mt-1 flex flex-wrap gap-1">${chipsProps(propsDe(op))}</span></span></button>`; }).join('')}</div>`).join('')}
-      <button data-a="ok" class="${UI.btnP} mt-5" ${elegido.arma != null && elegido.tactico != null ? '' : 'disabled'}>Continuar</button>`,
+      <button data-a="ok" class="${UI.btnP} mt-5" ${elegido.arma != null && elegido.tactico != null && (!opsPot.length || elegido.pot != null) ? '' : 'disabled'}>Continuar</button>`,
     e => {
       const op = e.target.closest('[data-op]')?.dataset.op;
       if (op){ const [tipo, i] = op.split('|'); elegido[tipo] = +i; return pintar(); }
+      const po = e.target.closest('[data-pot]')?.dataset.pot; if (po != null){ elegido.pot = +po; return pintar(); }
       if (e.target.closest('[data-a="ok"]')){
         for (const tipo of ['arma', 'tactico']){
           const o = ops[tipo][elegido[tipo]];
@@ -2381,6 +2446,8 @@ class BattleScene extends Scene {
           const nuevoId = o.accion === 'nuevo' ? o.id : o.accion === 'fusionar' ? o.receta.resultado : null;
           if (nuevoId) this.app.progreso.descubrir(BONUS_DEFS[nuevoId].fusion ? 'fusiones' : BONUS_DEFS[nuevoId].tipo === 'arma' ? 'armas' : 'tacticos', nuevoId);
         }
+        const po = opsPot[elegido.pot];
+        if (po){ if (po.accion === 'pot') this.run.potenciadores[po.id] = (this.run.potenciadores[po.id] ?? 0) + 1; else this.run.supers.push(po.id); this.app.progreso.descubrir('potenciadores', po.id); }
         const b = this.run.base, nuevaMax = this.run.vidaBase + l.efecto('vida', 0);
         b.vida += Math.max(0, nuevaMax - b.vidaMax); b.vidaMax = nuevaMax;
         this.mundo.sincronizarArmas(); this.cerrarCapa(); this.dibujarMano();
@@ -2623,6 +2690,9 @@ class CatalogoScene extends Scene {
     if (this.tab === 'armas') return Object.entries(BONUS_DEFS).filter(([, d]) => d.tipo === 'arma' && !d.fusion).map(([id, d]) => ({kind:'arma', id, d, ok:this.conocido('armas', id), name:d.name}));
     if (this.tab === 'tacticos') return Object.entries(BONUS_DEFS).filter(([, d]) => d.tipo === 'tactico' && !d.fusion).map(([id, d]) => ({kind:'tactico', id, d, ok:this.conocido('tacticos', id), name:d.name}));
     // Fusiones: se sabe que existen, pero no cómo se consiguen (se descubren jugando)
+    // ⚡ Potenciadores: 6 superpotenciadores + 6 por cada una de las 15 armas de los soldados
+    if (this.tab === 'potenciadores') return [...Object.entries(SUPERPOTENCIADORES).map(([id, x]) => ({kind:'pot', id, d:{icon:x.icon}, x, grupo:'super', ok:this.conocido('potenciadores', id), name:x.nombre})),
+      ...Object.values(POTENCIADORES).map(x => ({kind:'pot', id:x.id, d:{icon:x.icon}, x, grupo:x.arma, ok:this.conocido('potenciadores', x.id), name:x.nombre}))];
     if (this.tab === 'fusiones') return FUSIONES.map(f => ({kind:'fusion', id:f.resultado, d:BONUS_DEFS[f.resultado], ok:this.conocido('fusiones', f.resultado), name:BONUS_DEFS[f.resultado].name}));
     // Entidades en dos grupos: 🪖 Soldados y 👽 Alienígenas (comunes, Comandantes y Soberanos)
     const g = id => INFO_ENEMIGO[id].grupo ?? (ENEMIGOS[id](0, {vida:1, velocidad:1}).jefe ? 'soberano' : 'comun');
@@ -2634,7 +2704,7 @@ class CatalogoScene extends Scene {
     const desconocido = !it.ok, nombre = desconocido ? (it.kind === 'carta' ? '🔒 ' + it.name : 'Desconocido') : it.name;
     const vista = it.kind === 'fusion' ? fusionAnim(it.d.icon, desconocido)
       : it.kind === 'carta' ? `<div class="flex justify-center py-1 ${desconocido ? 'grayscale opacity-40' : ''}">${cartaHTML(it.c, it.dom, {attr:'', chica:true})}</div>`
-      : it.kind === 'tactico' ? `<div class="flex h-[4.4rem] items-center justify-center text-4xl ${desconocido ? 'brightness-0 opacity-50' : '[animation:flotar_2s_ease-in-out_infinite]'}">${it.d.icon}</div>`
+      : (it.kind === 'tactico' || it.kind === 'pot') ? `<div class="flex h-[4.4rem] items-center justify-center text-4xl ${desconocido ? 'brightness-0 opacity-50' : '[animation:flotar_2s_ease-in-out_infinite]'}">${it.d.icon}</div>`
       : `<canvas data-prev="${i}" class="block aspect-[120/70] w-full rounded-lg ${desconocido ? 'brightness-0 opacity-60' : ''}"></canvas>`;
     return `<button data-item="${i}" class="rounded-2xl border border-zinc-800 bg-zinc-900 p-1.5 text-left touch-manipulation active:scale-[0.98] transition-transform">${vista}<div class="mt-1 truncate px-1 text-xs font-semibold ${desconocido ? 'text-zinc-500' : ''}">${nombre}</div></button>`;
   }
@@ -2646,11 +2716,11 @@ class CatalogoScene extends Scene {
     <div class="mx-auto flex h-full max-w-2xl flex-col px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
       <div class="flex items-center justify-between">${btnVolver}${this.app.progreso.data.todo ? '<span class="text-xs text-amber-300">🧪 Modo desarrollador: todo visible</span>' : ''}</div>
       <h2 class="mt-3 text-2xl font-black">📚 Catálogo</h2>
-      ${tabs([['cartas', '🃏', 'Cartas'], ['armas', '🔫', 'Armas'], ['tacticos', '🧠', 'Tácticos'], ['fusiones', '⚗️', 'Fusiones'], ['entidades', '👽', 'Entidades']], this.tab)}
+      ${tabs([['cartas', '🃏', 'Cartas'], ['armas', '🔫', 'Armas'], ['tacticos', '🧠', 'Tácticos'], ['fusiones', '⚗️', 'Fusiones'], ['potenciadores', '⚡', 'Potenciadores'], ['entidades', '👽', 'Entidades']], this.tab)}
       <p class="mt-1 text-xs text-zinc-400">${this.tab === 'cartas' ? `${ok}/${items.length} cartas disponibles · las demás se desbloquean en la 🗺️ Ruta o avanzando en Aprender`
         : this.tab === 'fusiones' ? `${ok}/${items.length} fusiones descubiertas · existen fusiones entre armas, entre tácticos y entre armas y tácticos. ¿Cuáles? Descúbrelo jugando.`
         : `${ok}/${items.length} descubiertos · se descubren al obtenerlos o verlos en una partida`}</p>
-      <div class="mt-2 grid flex-1 grid-cols-2 content-start gap-2 overflow-y-auto pb-4 sm:grid-cols-3">${items.map((it, i) => (it.grupo && it.grupo !== items[i - 1]?.grupo ? `<div class="col-span-full mt-2 text-sm font-black text-zinc-300">${{soldados:'🪖 Soldados', comun:'👽 Alienígenas · comunes y de cada mundo', comandante:'🎖️ Alienígenas · Comandantes (subjefes)', soberano:'👑 Alienígenas · Soberanos (jefes)'}[it.grupo]}</div>` : '') + this.tile(it, i)).join('')}</div>
+      <div class="mt-2 grid flex-1 grid-cols-2 content-start gap-2 overflow-y-auto pb-4 sm:grid-cols-3">${items.map((it, i) => (it.grupo && it.grupo !== items[i - 1]?.grupo ? `<div class="col-span-full mt-2 text-sm font-black text-zinc-300">${it.kind === 'pot' ? (it.grupo === 'super' ? '🌟 Superpotenciadores' : `${it.x.armaIcon} ${it.x.armaNombre}`) : {soldados:'🪖 Soldados', comun:'👽 Alienígenas · comunes y de cada mundo', comandante:'🎖️ Alienígenas · Comandantes (subjefes)', soberano:'👑 Alienígenas · Soberanos (jefes)'}[it.grupo]}</div>` : '') + this.tile(it, i)).join('')}</div>
       <div data-h="detalle" class="absolute inset-0 z-20 hidden"></div>
     </div>`).onclick = e => this.click(e);
     this.animar();
@@ -2692,6 +2762,11 @@ class CatalogoScene extends Scene {
           <span class="absolute text-emerald-300 [animation:cat-b_4s_ease-in-out_infinite]">${texJuego(despues, false)}</span></div>
         <p class="mt-1 text-center text-xs text-zinc-500">Ejemplo animado: antes → después</p>
         <p class="mt-2 text-xs text-zinc-400">Área: ${it.dom.icon} ${it.dom.nombre} · usada en partidas: ${P.conocido('cartas', it.id) ? 'sí' : 'todavía no'}</p>`;
+    } else if (it.kind === 'pot'){
+      const x = it.x;
+      vista = `<div class="flex h-36 items-center justify-center"><span class="text-7xl [animation:flotar_2s_ease-in-out_infinite]">${x.icon}</span></div>`;
+      cuerpo = `<p class="text-sm text-zinc-300">${x.desc}</p><p class="mt-2 text-xs text-zinc-400">${x.arma ? `${x.armaIcon} Potencia el arma <b>${x.armaNombre}</b> (${SOLDADOS[x.tipo].name}). Se elige al subir de nivel en la partida; hasta nivel ${MAX_POT}.`
+        : `${x.clase === 'arma' ? 'Superpotenciador de arma: aparece cuando tienes 2 potenciadores al máximo.' : 'Superpotenciador con táctica: aparece con 1 potenciador y 1 táctico al máximo.'} Sirve para todas las armas.`}</p>`;
     } else if (it.kind === 'arma' || it.kind === 'tactico' || it.kind === 'fusion'){
       const d = it.d, niveles = d.niveles.map((n, i) => n && [i + 1, n]).filter(Boolean), claves = Object.keys(niveles[0][1]);
       const esArma = d.tipo === 'arma';
@@ -2959,7 +3034,7 @@ function construirRuta(){
       if (T.id === 'logaritmicas') hitos.push(props('alg', ['l-prod', 'l-coc', 'l-pot', 'l-inv'], 'Cartas: propiedades de los logaritmos', 4));
       if (T.id === 'trigonometricas') hitos.push(props('alg', ['t-pit', 't-tan', 't-doble', 't-cos2', 't-par'], 'Cartas: identidades trigonométricas', 5));
     }
-    hitos.push(juego('Primera misión cumplida', 'misiones', 1, {puntos:15}));
+    hitos.push(juego('Primera misión cumplida', 'misiones', 1, {puntos:15, supers:true}));
     for (const T of DIF){
       hitos.push(tema('d', T));
       if (T.id === 'cadena') hitos.push(props('dif', ['d-suma', 'd-kf', 'd-cte', 'd-pot', 'd-tabla', 'd-prod', 'd-cad'], 'Cartas: reglas de derivación', 7));
@@ -3034,6 +3109,7 @@ class Ruta {
             ...(h.difs ?? []).map(id => ({tipo:'dificultad', icon:dificultad(id).icon, nombre:`Dificultad ${dificultad(id).nombre}`})),
             ...(h.bonus ?? []).map(id => ({tipo:'bonus', icon:BONUS_DEFS[id].icon, nombre:BONUS_DEFS[id].name})),
             ...(h.soldados ?? []).map(id => ({tipo:'bonus', icon:SOLDADOS[id].icon, nombre:`Soldado: ${SOLDADOS[id].name}`})),
+            ...(h.supers ? [{tipo:'bonus', icon:'⚡', nombre:'Superpotenciadores (6)'}] : []),
             ...(h.peloton ? [{tipo:'bonus', icon:'🪖', nombre:'Estrategia de pelotón (tipos de soldado y munición)'}] : []),
             ...(h.puntos ? [{tipo:'puntos', icon:'🔬', nombre:`+${h.puntos} puntos de investigación`, reclamable:h.ok && !rec.includes(h.i), reclamado:rec.includes(h.i)}] : []),
           ]};
@@ -3101,7 +3177,7 @@ function fotoPartida(escena, nombre){
   return {
     app:'defensa-algebraica', version:VERSION_PARTIDA, id:r.idPartida ??= 'p' + Date.now().toString(36),
     nombre: nombre || `Misión ${r.mision} · oleada ${r.oleada}`, fecha:new Date().toISOString(), modo:d.modo, dificultad:d.dificultad ?? 'soldado',
-    run:{mundo:r.mundo ?? null, mm:r.mm ?? 0, infinito:!!r.infinito, tipos:r.tipos ? [...r.tipos] : null, mision:r.mision, oleada:r.oleada, nivel:r.nivel, xp:r.xp, xpTotal:r.xpTotal, problemas:r.problemas, eficientes:r.eficientes, bajas:r.bajas, jefes:r.jefes,
+    run:{potenciadores:r.potenciadores ?? {}, supers:r.supers ?? [], mundo:r.mundo ?? null, mm:r.mm ?? 0, infinito:!!r.infinito, tipos:r.tipos ? [...r.tipos] : null, mision:r.mision, oleada:r.oleada, nivel:r.nivel, xp:r.xp, xpTotal:r.xpTotal, problemas:r.problemas, eficientes:r.eficientes, bajas:r.bajas, jefes:r.jefes,
       combosUsados:r.combosUsados, puntosMisiones:r.puntosMisiones, vida:r.base.vida, vidaMax:r.base.vidaMax, energia:r.energia.valor,
       armas:l.armas.map(b => [b.id, b.nivel]), tacticos:l.tacticos.map(b => [b.id, b.nivel]),
       combos:r.combos.filter(c => !c.hecho && !c.mazo).map(c => ({nombre:c.nombre, dominio:c.dominio, cartas:c.cartas}))},
@@ -3114,6 +3190,7 @@ function runDesdeFoto(app, p){
   const r = new Run(app), s = p.run;
   if (s.infinito){ r.infinito = true; r.tipos = new Set(s.tipos ?? []); }
   if (s.mundo){ r.mundo = s.mundo; r.mm = s.mm ?? 0; }
+  r.potenciadores = {...(s.potenciadores ?? {})}; r.supers = [...(s.supers ?? [])];
   Object.assign(r, {mision:s.mision, oleada:s.oleada, nivel:s.nivel, xp:s.xp, xpTotal:s.xpTotal, problemas:s.problemas, eficientes:s.eficientes, bajas:s.bajas, jefes:s.jefes,
     combosUsados:s.combosUsados, puntosMisiones:s.puntosMisiones, proceso:[...p.proceso], idPartida:p.id});
   r.loadout.armas = s.armas.filter(([id]) => BONUS_DEFS[id]).map(([id, n]) => new Bonus(id, n));

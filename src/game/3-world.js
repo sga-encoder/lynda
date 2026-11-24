@@ -162,7 +162,8 @@ class WaveDirector {
 class World {
   enemigos = []; soldados = []; balas = []; balasEnemigas = []; particulas = []; rayos = []; textos = [];
   #balas = new Pool(() => ({})); #parts = new Pool(() => ({}));
-  constructor({bus, loadout, energia, base, extraSoldados = 0, mej = () => 0, torreta = 0, peloton = null, soldadosOk = () => true, perfil = null, titular = null}){
+  constructor({bus, loadout, energia, base, extraSoldados = 0, mej = () => 0, torreta = 0, peloton = null, soldadosOk = () => true, perfil = null, titular = null, potencia = () => null}){
+    this.potencia = potencia;                        // efecto de los potenciadores de la partida para un arma
     this.perfil = perfil; this.titular = titular;   // perfil(uid) → estadísticas del soldado concreto; titular(tipo) → soldado por defecto del tipo
     this.soldadosOk = soldadosOk;                  // tipos de soldado desbloqueados en la Ruta
     this.peloton = peloton;                        // {orden:[tipos], equipo:{tipo:dano}} o null (orden por defecto)
@@ -198,10 +199,12 @@ class World {
       let tipo = perfil?.tipo ?? quien;
       if (!this.soldadosOk(tipo)){ tipo = 'fusilero'; perfil = this.perfil ? this.perfil(this.titular('fusilero')) : null; }   // tipos aún bloqueados → fusileros
       const nuevo = new Soldado(libre, tipo, L.efecto('vidaSoldado', 0), perfil); nuevo.mult = 1 + 0.15 * this.mej('sold-' + tipo);   // mejora permanente del tipo
-      nuevo.vidaMax *= nuevo.mult; nuevo.vida = nuevo.vidaMax; this.soldados.push(nuevo); this.tiposSoldado.add(tipo);
+      nuevo.vidaMax *= nuevo.mult;
+      const ep = perfil && this.potencia(perfil.armaId); if (ep){ nuevo.vidaMax *= 1 + ep.vida; nuevo.regenExtra = ep.regen; }   // Formación Euler
+      nuevo.vida = nuevo.vidaMax; this.soldados.push(nuevo); this.tiposSoldado.add(tipo);
       this.texto(this.base.derecha + 8, MUNDO.suelo - 24, `+${SOLDADOS[tipo].icon}`, '#bbf7d0');
     }
-    for (const s of this.soldados) if (s.perfil?.regen) s.vida = Math.min(s.vidaMax, s.vida + s.perfil.regen * dt);   // blindajes regenerativos
+    for (const s of this.soldados){ const rg = (s.perfil?.regen ?? 0) + (s.regenExtra ?? 0); if (rg) s.vida = Math.min(s.vidaMax, s.vida + rg * dt); }   // blindajes regenerativos
     const curar = L.efecto('curar', 0);
     if (curar) this.soldados.forEach(s => s.vida = Math.min(s.vidaMax, s.vida + curar * dt));
     this.apoyoSoldados(dt);
@@ -240,23 +243,26 @@ class World {
   apoyoSoldados(dt){
     for (const s of this.soldados){
       const d = s.def;
+      const ep = (s.perfil && this.potencia(s.perfil.armaId)) || {dmg:0, cd:0, rango:0, area:0, perf:0, crit:0, extra:0, costo:0};   // potenciadores
       if (d.ataque && (s.apoyoT -= dt) <= 0){
         const o = this.elegir({alcance:'tierra', prioridad:'cercano', desde:{x:s.x, y:s.cy}});
-        if (!o || o.x - s.x > d.ataque.rango * (this.clima.rango ?? 1)){ s.apoyoT = 0.3; continue; }
-        if (!this.energia.gastar(d.ataque.costo)){ s.apoyoT = 0.4; this.sinEnergia = true; continue; }
-        s.apoyoT = d.ataque.cd;
+        if (!o || o.x - s.x > d.ataque.rango * (1 + ep.rango) * (this.clima.rango ?? 1)){ s.apoyoT = 0.3; continue; }
+        if (!this.energia.gastar(d.ataque.costo * Math.max(0.2, 1 + ep.costo))){ s.apoyoT = 0.4; this.sinEnergia = true; continue; }
+        s.apoyoT = d.ataque.cd * Math.max(0.35, 1 + ep.cd);
         const eq = s.perfil ? d.ataque.dano : this.equipoDe(s.tipo), Q = s.perfil ? {} : EQUIPO[eq] ?? {};   // con perfil, el tipo de daño lo da el arma equipada
-        this.disparar({x:s.x + 4, y:s.cy - 3, obj:o, golpe:{dmg:d.ataque.dmg * (s.mult ?? 1) * (eq === d.ataque.dano ? 1 : Q.mult ?? 1), dano:eq, area:Math.max(d.ataque.area ?? 0, Q.area ?? 0), alcance:'tierra'}, parabola:!!d.ataque.parabola,
-          vel:d.ataque.parabola ? 120 : 260, color:d.ataque.area ? '#fb923c' : '#e5e7eb', r:d.ataque.area ? 2 : 1.1});
+        const critico = Math.random() < ep.crit, dmg = d.ataque.dmg * (s.mult ?? 1) * (eq === d.ataque.dano ? 1 : Q.mult ?? 1) * (1 + ep.dmg) * (critico ? 2 : 1);
+        for (let k = 0; k <= ep.extra; k++)                              // Ráfaga Fibonacci: balas extra
+          this.disparar({x:s.x + 4, y:s.cy - 3 - k * 2, obj:o, golpe:{dmg, dano:eq, area:Math.max(d.ataque.area ?? 0, Q.area ?? 0) + ep.area, alcance:'tierra', perf:ep.perf, efecto:ep.congela ? 'congelar' : undefined}, parabola:!!d.ataque.parabola,
+            vel:(d.ataque.parabola ? 120 : 260) * (1 - k * 0.08), color:critico ? '#fde047' : d.ataque.area ? '#fb923c' : '#e5e7eb', r:critico ? 1.8 : d.ataque.area ? 2 : 1.1});
       }
       if (d.apoyo && (s.apoyoT -= dt) <= 0){
-        s.apoyoT = d.apoyo.cd;
+        s.apoyoT = d.apoyo.cd * Math.max(0.35, 1 + ep.cd);
         if (d.apoyo.curar){
           const herido = this.soldados.filter(x => x.vida < x.vidaMax).sort((a, b) => a.vida / a.vidaMax - b.vida / b.vidaMax)[0];
-          if (herido && this.energia.gastar(d.apoyo.costo)){ herido.vida = Math.min(herido.vidaMax, herido.vida + d.apoyo.curar * (s.mult ?? 1)); this.texto(herido.x, herido.cy - 14, '+❤', '#86efac'); }
+          if (herido && this.energia.gastar(d.apoyo.costo)){ herido.vida = Math.min(herido.vidaMax, herido.vida + d.apoyo.curar * (s.mult ?? 1) * (1 + ep.dmg)); this.texto(herido.x, herido.cy - 14, '+❤', '#86efac'); }
         }
         if (d.apoyo.reparar && this.base.vida < this.base.vidaMax && this.energia.gastar(d.apoyo.costo)){
-          this.base.vida = Math.min(this.base.vidaMax, this.base.vida + d.apoyo.reparar * (s.mult ?? 1)); this.texto(this.base.cx, this.base.cy - 22, '+🔧', '#fde68a');
+          this.base.vida = Math.min(this.base.vidaMax, this.base.vida + d.apoyo.reparar * (s.mult ?? 1) * (1 + ep.dmg)); this.texto(this.base.cx, this.base.cy - 22, '+🔧', '#fde68a');
         }
       }
     }
@@ -387,11 +393,11 @@ class World {
   }
   /** Munición equipada para un tipo de soldado (por defecto, la suya). */
   equipoDe(tipo){ return this.peloton?.equipo?.[tipo] ?? SOLDADOS[tipo].ataque?.dano ?? 'fisico'; }
-  golpear(e, {dmg, dano, efecto}){
+  golpear(e, {dmg, dano, efecto, perf: perfExtra = 0}){
     if (e.escudoMental && !(e.escudoT > 0)){ this.texto(e.x, e.cy - 14, '🛡 resuelve un problema', '#f0abfc', 0.6); return; }
     let d = dmg;
-    if (e.armadura && dano === 'fisico'){ const perf = Math.min(1, this.loadout.efecto('perforacion', 0) + (efecto === 'perforar' ? 0.5 : 0)); d *= 1 - e.armadura * (1 - perf); }
-    if (e.escudo && dano === 'energia') d *= 1 - e.escudo;
+    if (e.armadura && dano === 'fisico'){ const perf = Math.min(1, this.loadout.efecto('perforacion', 0) + (efecto === 'perforar' ? 0.5 : 0) + perfExtra); d *= 1 - e.armadura * (1 - perf); }
+    if (e.escudo && dano === 'energia') d *= 1 - e.escudo * (1 - Math.min(1, perfExtra));
     if ((DEBILIDAD[e.tipo] ?? DEBILIDAD[e.forma]) === dano) d *= MULT_DEBIL;
     if (e.blindadoT > 0) d *= 0.4;                                  // armadura temporal de un Comandante               // debilidad: la estrategia del pelotón importa
     if (efecto === 'congelar' && !e.jefe) e.congelado = 2.5;

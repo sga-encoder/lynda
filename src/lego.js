@@ -180,7 +180,7 @@ function zoneHTML(key, zone, depth, sm=false){
          : 'min-h-9 min-w-9 p-0.5 gap-0.5 rounded-lg border-2 border-dashed border-stone-300 bg-white/80 dark:border-zinc-600 dark:bg-zinc-900/80';
   const ring = active ? ' ring-2 ring-blue-400 dark:ring-blue-500' : '';
   const empty = zone.length ? '' : (isRoot ? `<span class="pointer-events-none select-none text-sm text-stone-400 dark:text-zinc-500">Lienzo vacío: abre una categoría y arrastra o toca piezas…</span>` : '');
-  return `<div data-z="${key}|${id}" class="flex ${isRoot ? 'relative min-w-0 max-w-full flex-wrap overflow-x-auto' : 'shrink-0 flex-nowrap'} items-center ${base}${ring}">${zone.map((n,i)=>nodeHTML(key,n,id,i,depth,sm)).join('')}${empty}</div>`;
+  return `<div data-z="${key}|${id}" class="flex ${isRoot ? 'lego-raiz relative min-w-0 max-w-full flex-nowrap overflow-x-auto' : 'shrink-0 flex-nowrap'} items-center ${base}${ring}">${zone.map((n,i)=>nodeHTML(key,n,id,i,depth,sm)).join('')}${empty}</div>`;
 }
 const RADICAL = '<svg viewBox="0 0 12 30" preserveAspectRatio="none" aria-hidden="true" class="w-3 shrink-0 self-stretch text-emerald-700 dark:text-emerald-300"><path d="M0 17 L3 16 L6.5 28 L11 1 L12 1" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>';
 function nodeHTML(key, n, zid, i, depth, sm){
@@ -316,6 +316,9 @@ function renderLego(key){
       <div class="mb-2 flex flex-wrap items-baseline gap-2"><span class="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white dark:bg-blue-400 dark:text-zinc-950">Paso ${st.step+1} de ${steps.length}</span><b>${s.q}</b></div>
       ${editorNumeroHTML(st)}
       <div data-ajuste style="zoom:${z}">${zoneHTML(key, st.root, 0)}</div>
+      <div data-desliza class="hidden mt-1.5">
+        <div data-barra class="relative h-3 touch-none rounded-full bg-stone-200 dark:bg-zinc-800"><div data-pulgar class="absolute inset-y-0 left-0 rounded-full bg-blue-500 shadow"></div></div>
+        <p class="mt-0.5 text-center text-[11px] font-semibold text-blue-700 dark:text-blue-300">↔ Desliza el lienzo o la barra para ver toda la fórmula</p></div>
       <p class="mt-1 text-[11px] text-stone-500 dark:text-zinc-400">Las cifras seguidas forman un solo número. <b>Mantén presionado</b> un número para ver sus cifras y cambiarlas.</p>
       ${allZones(st.root).length>1 ? `<div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-stone-500 dark:text-zinc-400"><span>Las piezas tocadas entran en el espacio <b class="text-blue-700 dark:text-blue-300">azul</b>.</span><span class="flex shrink-0 gap-1.5">${st.active && st.active!==st.root ? `<button class="${C.btn} !min-h-9 !py-1 !text-xs" data-lg="outzone" title="Volver al espacio de afuera">⤴ Salir</button>` : ''}<button class="${C.btn} !min-h-9 !py-1 !text-xs" data-lg="nextzone">⇥ Siguiente espacio</button></span></div>` : ''}
       ${s.reemplazar ? `<div class="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-900 dark:bg-rose-950/40 dark:text-rose-100">🔁 Esta es <b>tu fórmula</b> del paso anterior. Arrastra el <b>${s.reemplazar}</b> desde 🔢 Números y suéltalo <b>encima de cada x</b> (se marca en rojo).</div>` : ''}
@@ -433,15 +436,30 @@ function accionCifras(st, act){
   st.msg = null;
 }
 /** Si las fichas no caben a lo ancho, se achican poco a poco (hasta 60 %); si aun así no caben,
-    los recuadros por fin bajan a otro renglón. */
+    nada baja de renglón: el lienzo muestra una barra de desplazamiento visible y un aviso «desliza». */
 function ajustarLienzo(el, zoom){
   if (!el) return;
   const raiz = el.firstElementChild;
   const cabe = () => raiz.scrollWidth <= raiz.clientWidth + 1;
   let f = 1;
-  el.style.zoom = zoom; raiz.classList.remove('lego-envolver');
+  el.style.zoom = zoom; raiz.classList.remove('lego-scroll');
   while (!cabe() && f > 0.6){ f = +(f - 0.08).toFixed(2); el.style.zoom = zoom * f; }
-  if (!cabe()) raiz.classList.add('lego-envolver');                // último recurso: se permite bajar de renglón
+  const desborda = !cabe();
+  raiz.classList.toggle('lego-scroll', desborda);
+  const aviso = el.parentElement.querySelector('[data-desliza]');
+  if (!aviso) return;
+  aviso.classList.toggle('hidden', !desborda);
+  if (!desborda) return;
+  // Barra de desplazamiento propia (siempre visible, también en celulares donde la del sistema se oculta)
+  const barra = aviso.querySelector('[data-barra]'), pulgar = aviso.querySelector('[data-pulgar]');
+  const pintar = () => { const v = raiz.clientWidth / raiz.scrollWidth, max = raiz.scrollWidth - raiz.clientWidth;
+    pulgar.style.width = (v * 100) + '%'; pulgar.style.left = (max ? (raiz.scrollLeft / max) * (1 - v) * 100 : 0) + '%'; };
+  raiz.onscroll = pintar; pintar();
+  const mover = e => { const r = barra.getBoundingClientRect(), v = raiz.clientWidth / raiz.scrollWidth;
+    const t = Math.min(1, Math.max(0, (e.clientX - r.left - v * r.width / 2) / (r.width * (1 - v))));
+    raiz.scrollLeft = t * (raiz.scrollWidth - raiz.clientWidth); };
+  barra.onpointerdown = e => { e.preventDefault(); e.stopPropagation(); barra.setPointerCapture(e.pointerId); mover(e); barra.onpointermove = mover; };
+  barra.onpointerup = barra.onpointercancel = () => { barra.onpointermove = null; };
 }
 /** Pantalla completa del lienzo: usa la API del navegador si existe; si no, la tarjeta igual ocupa toda la ventana. */
 function pantallaCompleta(key, on){

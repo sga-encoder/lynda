@@ -93,7 +93,15 @@ function splitTop(s){                      // separa por comas fuera de {} y ()
 /** Las piezas con signo se separan: el número va en 🔢 y el signo en ± (−8 → «−» + «8»). */
 /** Una variable es UNA letra (x, y, z, A…; mayúsculas y minúsculas son distintas): «7x» se separa en el número 7 y la letra x. */
 const separarCoef = t => { const m = /^(\d+(?:\.\d+)?)([a-zA-Zπ])$/.exec(t); return m ? [m[1], m[2]] : [t]; };
-const piezasDe = k => [...new Set(k.flatMap(t => /^[-+]./.test(t) ? [t[0], t.slice(1)] : [t]).flatMap(separarCoef))];
+/** En el menú solo hay cifras sueltas (0–9): «12» se arma con 1 y 2, que en el lienzo se juntan en una sola ficha. */
+const separarCifras = t => /^\d{2,}$/.test(t) ? t.split('') : [t];
+const piezasDe = k => [...new Set(k.flatMap(t => /^[-+]./.test(t) ? [t[0], t.slice(1)] : [t]).flatMap(separarCoef).flatMap(separarCifras))];
+/** Cifras seguidas en un mismo espacio se agrupan en UNA ficha (1, 2 → 12). Se modifica el mismo arreglo. */
+const esCifras = n => !n.z && !n.sub && /^\d+$/.test(n.t);
+function fusionarNumeros(zone){
+  for (let i = zone.length - 1; i > 0; i--)
+    if (esCifras(zone[i]) && esCifras(zone[i-1])){ zone[i-1].t += zone[i].t; zone.splice(i, 1); }
+}
 const ABC = [...'abcdefghijklmnopqrstuvwxyz', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
 const LIM_RE = /^lim_\{(.+?)→(.+?)\}\((.*)\)$/;
 function checkAnswer(step, built, numerico = false){
@@ -163,6 +171,7 @@ function containsZone(node, zone){
 const ZREG = {};   // registro de zonas del último render, por ejercicio
 function zoneHTML(key, zone, depth, sm=false){
   const st = legoState(key);
+  fusionarNumeros(zone);
   const id = ZREG[key].push(zone)-1;
   const isRoot = depth===0, active = st.active===zone || (!st.active && isRoot);
   const base = isRoot
@@ -305,7 +314,9 @@ function renderLego(key){
     <div class="rounded-xl border border-blue-300 bg-blue-50/40 p-3 dark:border-blue-800 dark:bg-blue-950/20 ${full ? 'landscape:grid landscape:grid-cols-[minmax(0,1fr)_minmax(16rem,42%)] landscape:gap-3' : ''}"><div class="min-w-0">
       ${herr}
       <div class="mb-2 flex flex-wrap items-baseline gap-2"><span class="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white dark:bg-blue-400 dark:text-zinc-950">Paso ${st.step+1} de ${steps.length}</span><b>${s.q}</b></div>
+      ${editorNumeroHTML(st)}
       <div style="zoom:${z}">${zoneHTML(key, st.root, 0)}</div>
+      <p class="mt-1 text-[11px] text-stone-500 dark:text-zinc-400">Las cifras seguidas forman un solo número. <b>Mantén presionado</b> un número para ver sus cifras y cambiarlas.</p>
       ${allZones(st.root).length>1 ? `<div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-stone-500 dark:text-zinc-400"><span>Las piezas tocadas entran en el espacio <b class="text-blue-700 dark:text-blue-300">azul</b>.</span><span class="flex shrink-0 gap-1.5">${st.active && st.active!==st.root ? `<button class="${C.btn} !min-h-9 !py-1 !text-xs" data-lg="outzone" title="Volver al espacio de afuera">⤴ Salir</button>` : ''}<button class="${C.btn} !min-h-9 !py-1 !text-xs" data-lg="nextzone">⇥ Siguiente espacio</button></span></div>` : ''}
       ${s.reemplazar ? `<div class="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-900 dark:bg-rose-950/40 dark:text-rose-100">🔁 Esta es <b>tu fórmula</b> del paso anterior. Arrastra el <b>${s.reemplazar}</b> desde 🔢 Números y suéltalo <b>encima de cada x</b> (se marca en rojo).</div>` : ''}
       </div><div class="min-w-0">
@@ -363,6 +374,7 @@ function legoAction(key, act){
     return renderLego(key);
   }
   const st = legoState(key), ex = legoEx(key), s = ex.steps[st.step];
+  if (!act.startsWith('dig') && !/^(zoom|abc|closecat|nextzone|outzone|props)/.test(act)) st.editNum = null;   // el número editado puede desaparecer
   if (act==='check'){
     if (!st.root.length){ st.msg = {ok:false, t:'El lienzo está vacío. Arrastra piezas del banco.'}; }
     else if (s.reemplazar ? (st.rep = checkReemplazo(s, st.root)).ok : checkAnswer(s, ser(st.root), ex.num)){
@@ -383,6 +395,7 @@ function legoAction(key, act){
   if (act==='nextzone'){ const zs = allZones(st.root); st.active = zs[(zs.indexOf(st.active||st.root)+1) % zs.length]; }
   if (act==='outzone'){ st.active = (st.active && parentZone(st.root, st.active)) || null; }
   if (act==='props'){ st.verProps = !st.verProps; }
+  if (act.startsWith('dig')) accionCifras(st, act);
   if (act==='zoom+') st.zoom = Math.min(1.6, +((st.zoom ?? 1) + 0.1).toFixed(1));
   if (act==='zoom-') st.zoom = Math.max(0.5, +((st.zoom ?? 1) - 0.1).toFixed(1));
   if (act==='full') pantallaCompleta(key, !st.full);
@@ -391,6 +404,32 @@ function legoAction(key, act){
     if (c){ snapshot(st); st.root = clonar(c.piezas); st.active = null; st.verProps = false; st.msg = {ok:true, t:`🃏 Aplicaste «${c.name}». Revisa el resultado y pulsa Verificar.`}; } }
   if (act==='check' && navigator.vibrate){ try{ navigator.vibrate(st.msg && st.msg.ok ? 30 : [60,40,60]); }catch(e){} }
   renderLego(key);
+}
+/** Panel para editar un número agrupado: sus cifras se despliegan arriba; se pueden reordenar o borrar. */
+function editorNumeroHTML(st){
+  const ed = st.editNum; if (!ed) return '';
+  const cifras = ed.node.t.split(''), b = 'inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border px-2 text-sm touch-manipulation active:scale-95';
+  return `<div class="mb-2 rounded-xl border-2 border-blue-400 bg-white p-2.5 shadow-lg dark:bg-zinc-900">
+    <div class="flex items-center justify-between text-sm"><span>✏️ Cifras del número <b>${ed.node.t}</b></span><button data-lg="dig-ok" class="${b} border-blue-600 bg-blue-600 font-semibold text-white">✓ Listo</button></div>
+    <div class="mt-2 flex flex-wrap justify-center gap-1.5">${cifras.map((c, i) => `<button data-lg="dig:${i}" class="${b} min-h-12 min-w-12 border-b-4 border-blue-500 bg-blue-50 font-serif text-xl text-blue-950 dark:bg-blue-950/60 dark:text-blue-100 ${ed.sel === i ? 'ring-4 ring-amber-400' : ''}">${c}</button>`).join('')}</div>
+    <p class="mt-1.5 text-center text-xs text-stone-500 dark:text-zinc-400">${ed.sel == null ? 'Toca una cifra para moverla o borrarla.' : `Cifra «${cifras[ed.sel]}» seleccionada:`}</p>
+    ${ed.sel == null ? '' : `<div class="mt-1 flex justify-center gap-1.5"><button data-lg="dig-izq" class="${b} border-stone-300 bg-white dark:border-zinc-600 dark:bg-zinc-800" ${ed.sel === 0 ? 'disabled' : ''}>◀ Mover</button><button data-lg="dig-der" class="${b} border-stone-300 bg-white dark:border-zinc-600 dark:bg-zinc-800" ${ed.sel === cifras.length - 1 ? 'disabled' : ''}>Mover ▶</button><button data-lg="dig-del" class="${b} border-rose-300 bg-rose-50 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200">🗑 Borrar</button></div>`}
+  </div>`;
+}
+/** Acciones del editor de cifras. */
+function accionCifras(st, act){
+  const ed = st.editNum; if (!ed) return;
+  const d = ed.node.t.split('');
+  if (act === 'dig-ok'){ st.editNum = null; return; }
+  if (act.startsWith('dig:')){ const i = +act.slice(4); ed.sel = ed.sel === i ? null : i; return; }
+  if (ed.sel == null) return;
+  snapshot(st);
+  if (act === 'dig-izq' && ed.sel > 0){ [d[ed.sel-1], d[ed.sel]] = [d[ed.sel], d[ed.sel-1]]; ed.sel--; }
+  if (act === 'dig-der' && ed.sel < d.length-1){ [d[ed.sel+1], d[ed.sel]] = [d[ed.sel], d[ed.sel+1]]; ed.sel++; }
+  if (act === 'dig-del'){ d.splice(ed.sel, 1); ed.sel = null; }
+  if (d.length){ ed.node.t = d.join(''); if (d.length === 1) st.editNum = null; }
+  else { const z = allZones(st.root).find(z => z.includes(ed.node)); if (z) z.splice(z.indexOf(ed.node), 1); st.editNum = null; }
+  st.msg = null;
 }
 /** Pantalla completa del lienzo: usa la API del navegador si existe; si no, la tarjeta igual ocupa toda la ventana. */
 function pantallaCompleta(key, on){
@@ -503,6 +542,11 @@ document.addEventListener('pointerdown', e=>{
   } else {
     const [key, zid, i] = nEl.dataset.n.split('|');
     DRAG = {key, src:'node', zone:ZREG[key][+zid], i:+i, el, x0:e.clientX, y0:e.clientY, moved:false, lift:e.pointerType==='mouse'?0:48};
+    const nodo = DRAG.zone[DRAG.i];
+    if (!LEGO_HOOKS[key] && esCifras(nodo) && nodo.t.length > 1){          // mantener presionado un número → editar sus cifras
+      const d = DRAG;
+      d.timer = setTimeout(() => { if (DRAG !== d || d.moved) return; DRAG = null; legoState(key).editNum = {node:nodo, sel:null}; try { navigator.vibrate?.(20); } catch {} renderLego(key); }, 450);
+    }
   }
 });
 document.addEventListener('pointermove', e=>{

@@ -255,9 +255,9 @@ const hoja = t => ({t});
 const T_ = s => treeOf(s);
 /** Se arma al abrir el tutorial (usa treeOf, que se define después). */
 const DEMOS = () => [
-  {icon:'🔢', titulo:'Números', cat:'🔢 Números', fichas:['3','12'], txt:'Cada número es una ficha (12 es una sola ficha). Los negativos se arman con el signo − de ± Signos más el número.',
-    pasos:['Toca 🔢 Números y toca el 3: entra al lienzo.', 'Toca el 12: queda a la derecha del 3.', 'Para un negativo: primero «−» y luego el número.'],
-    frames:[T_('3'), [hoja('3'), hoja('+'), hoja('12')], T_('-5')]},
+  {icon:'🔢', titulo:'Números', cat:'🔢 Números', fichas:['1','2','5'], txt:'En el menú solo hay cifras del 0 al 9. Las cifras que pones seguidas se JUNTAN en una sola ficha (1 y 2 → 12). Para cambiar un número, mantenlo presionado: arriba aparecen sus cifras y puedes moverlas o borrarlas. Los negativos llevan el signo − de ± Signos.',
+    pasos:['Toca el 1: entra al lienzo.', 'Toca el 2: se junta con el 1 y queda la ficha 12.', 'Mantén presionado el 12 para editar sus cifras; para −5 pon «−» y luego 5.'],
+    frames:[[hoja('1')], [hoja('12')], [hoja('12'), hoja('+'), hoja('-'), hoja('5')]]},
   {icon:'𝑥', titulo:'Variables', cat:'𝑥 Variables', fichas:['x','y'], txt:'Una variable es UNA letra. «3x» se arma con el número 3 y la letra x. Mayúsculas y minúsculas son variables distintas (a ≠ A). Con 🔤 Más letras tienes todo el abecedario.',
     pasos:['Toca la x.', 'Para 3x: primero el 3 (🔢) y luego la x.', 'Otras letras: y, A, t… cada una es distinta.'], frames:[T_('x'), T_('3x'), [hoja('3'), hoja('x'), hoja('+'), hoja('A')]]},
   {icon:'±', titulo:'Signos', cat:'± Signos', fichas:['+','-','·','=','≤'], txt:'Suma, resta, multiplicación, división, igual y desigualdades. Se ponen entre las otras fichas.',

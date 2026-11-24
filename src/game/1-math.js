@@ -294,7 +294,7 @@ const isSolved = root => root instanceof Eq
 
 class Solver {
   /** @param {Card[]} cards cartas automáticas que puede usar */
-  constructor(cards, {maxDepth = 10, cap = 4000} = {}){ this.cards = cards; this.maxDepth = maxDepth; this.cap = cap; this.cache = new Map(); }
+  constructor(cards, {maxDepth = 10, cap = 4000, key = keyOf, resuelto = isSolved} = {}){ Object.assign(this, {cards, maxDepth, cap, key, resuelto}); this.cache = new Map(); this.finales = new Map(); }
   neighbors(root){
     const out = [];
     for (const c of this.cards) for (const p of c.targets(root)){ try { out.push(c.apply(root, p)); } catch {} }
@@ -302,20 +302,23 @@ class Solver {
   }
   /** Mínimo número de cartas para llegar al resultado (Infinity si no se encuentra). */
   distance(root){
-    const k0 = keyOf(root);
+    const k0 = this.key(root);
     if (this.cache.has(k0)) return this.cache.get(k0);
-    let frontier = [root], seen = new Set([k0]), d = 0, count = 0, res = Infinity;
+    let frontier = [root], seen = new Set([k0]), d = 0, count = 0, res = Infinity, final = null;
     while (frontier.length && d <= this.maxDepth && count < this.cap){
-      if (frontier.some(isSolved)){ res = d; break; }
+      final = frontier.find(this.resuelto);
+      if (final){ res = d; break; }
       const next = [];
       for (const n of frontier) for (const m of this.neighbors(n)){
-        const k = keyOf(m); if (seen.has(k)) continue; seen.add(k); next.push(m); count++;
+        const k = this.key(m); if (seen.has(k)) continue; seen.add(k); next.push(m); count++;
       }
       frontier = next; d++;
     }
-    this.cache.set(k0, res);
+    this.cache.set(k0, res); this.finales.set(k0, final);
     return res;
   }
+  /** Un resultado final alcanzable (para comprobar el paso libre en derivadas e integrales). */
+  resolver(root){ this.distance(root); return this.finales.get(this.key(root)) ?? null; }
 }
 
 /* ---------- Generadores de problemas (Factory + Registry) ---------- */
@@ -344,20 +347,22 @@ const PROBLEM_TYPES = [
 ];
 
 class ProblemFactory {
-  constructor(types, solver, rng){ this.types = types; this.solver = solver; this.rng = rng; }
-  available(doneKeys){ return this.types.filter(t => t.unlocked(doneKeys)); }
-  /** Problema con dificultad acorde a la misión: preferimos los tipos de mayor nivel desbloqueados. */
-  create(doneKeys, mission){
-    const pool = this.available(doneKeys);
+  /** @param {Object<string,Dominio>} dominios  @param {Rng} rng */
+  constructor(dominios, rng){ this.dominios = dominios; this.rng = rng; }
+  tipos(modo){ return Object.values(this.dominios).filter(d => modo === 'todo' || d.id === modo).flatMap(d => d.tipos); }
+  disponibles(modo, doneKeys, todo){ return this.tipos(modo).filter(t => todo || t.unlocked(doneKeys)); }
+  /** Problema según el modo; en misiones altas pesan más los tipos difíciles. */
+  create({doneKeys, mision, modo, todo}){
+    let pool = this.disponibles(modo, doneKeys, todo);
+    if (!pool.length) pool = this.tipos(modo).filter(t => t.tier === 1);
     const maxTier = Math.max(...pool.map(t => t.tier));
-    const weighted = pool.flatMap(t => Array(t.tier >= Math.min(maxTier, mission) ? 3 : 1).fill(t));
-    for (let tries = 0; tries < 30; tries++){
-      const type = this.rng.pick(weighted), root = normalize(type.make(this.rng));
-      if (isSolved(root)) continue;
-      const par = this.solver.distance(root);
-      if (Number.isFinite(par) && par >= (type.mode === 'eq' ? 2 : 1) && par <= 9) return {type, root, par};
+    const weighted = pool.flatMap(t => Array(t.tier >= Math.min(maxTier, mision) ? 3 : 1).fill(t));
+    for (let tries = 0; tries < 40; tries++){
+      const type = this.rng.pick(weighted), dom = type.dominio, root = dom.normalizar(type.make(this.rng));
+      if (dom.resuelto(root)) continue;
+      const par = dom.solver.distance(root);
+      if (Number.isFinite(par) && par >= (type.mode === 'expr' ? 1 : 2) && par <= 10) return {type, dom, root, par, solucion:dom.solver.resolver(root)};
     }
-    const root = normalize(new Eq(new Add([new Mul(2, new X()), new Num(3)]), new Num(11)));
-    return {type: this.types[0], root, par: this.solver.distance(root)};
+    throw new Error('No se pudo generar un problema');
   }
 }

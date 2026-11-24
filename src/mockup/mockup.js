@@ -3,7 +3,7 @@
    Muestra todas las pantallas y todos los objetos con sus propiedades.
    Los dibujos del campo de batalla usan el Renderer del juego.
    ===================================================================== */
-const {Renderer, MUNDO, Base, Alien, Nave, Soldado} = DefensaAlgebraica;
+const {Renderer, MUNDO, Base, ENEMIGOS, Soldado} = DefensaAlgebraica;
 const kt = (tex, d = true) => katex.renderToString(tex, {displayMode:d, throwOnError:false, strict:false, trust:c => c.command === '\\htmlData'});
 
 /* ---------- Propuesta de datos: los bonificadores son objetos de propiedades ---------- */
@@ -146,17 +146,6 @@ const PANTALLAS = [
 
 /* ---------- Escenas del canvas (estáticas) ---------- */
 class MockRenderer extends Renderer {
-  alien(c, a){
-    super.alien(c, a);
-    if (a.blindado){ c.fillStyle = '#94a3b8'; c.fillRect(a.x - 6, a.y - 9, 12, 4); c.fillRect(a.x - 5, a.y - 15, 10, 2.5); }
-  }
-  nave(c, n, t){
-    if (!n.dron) return super.nave(c, n, t);
-    c.fillStyle = '#f472b6'; c.fillRect(n.x - 4, n.y - 2, 8, 4);
-    c.strokeStyle = '#fbcfe8'; c.lineWidth = 1; c.beginPath();
-    for (const dx of [-7, 7]){ c.moveTo(n.x + dx - 3, n.y - 4); c.lineTo(n.x + dx + 3, n.y - 4); }
-    c.stroke(); c.fillStyle = '#fde047'; c.fillRect(n.x - 1, n.y - 1, 2, 2);
-  }
   /** Dibuja un solo objeto centrado en una tarjeta. */
   tile(draw, cx, cy){
     const c = this.ctx, s = this.cv.width / 120;
@@ -166,29 +155,29 @@ class MockRenderer extends Renderer {
     c.setTransform(s, 0, 0, s, s * (60 - cx), s * (58 - cy)); draw(c);
   }
 }
-function alien(x, opts = {}){ const a = new Alien(x, opts.vida ?? 3, 11); a.y = opts.y ?? MUNDO.suelo; a.estado = opts.cae ? 'cae' : 'camina'; a.vida = opts.v ?? a.vida; a.fase = x; return Object.assign(a, opts); }
-function nave(x, y, opts = {}){ const n = new Nave(y, 7, 16); n.x = x; return Object.assign(n, opts); }
+const CFG = {vida:1, velocidad:1};
+function alien(x, opts = {}){ const a = (opts.blindado ? ENEMIGOS.blindado : ENEMIGOS.explorador)(x, CFG); a.y = opts.y ?? MUNDO.suelo; a.estado = opts.cae ? 'cae' : 'camina'; a.vida = opts.v ?? a.vida; a.fase = x; return a; }
+function nave(x, y, opts = {}){ const n = (opts.dron ? ENEMIGOS.dron : ENEMIGOS.nave)(y, CFG); n.x = x; n.y = y; return n; }
 function escena(tipo){
   const base = new Base(100); base.vida = 78;
-  const sold = [0, 1, 2].map(i => new Soldado(i));
-  const m = {base, soldados:sold, aliens:[], naves:[], balas:[], particulas:[], rayos:[], textos:[]};
-  if (tipo === 'calma'){ m.aliens = [alien(250), alien(300, {cae:true, y:90})]; m.naves = [nave(280, 40)]; return m; }
-  m.aliens = [alien(150, {v:2}), alien(205), alien(118, {blindado:true, vida:6, v:4}), alien(300, {cae:true, y:80})];
-  m.naves = [nave(265, 38), nave(190, 70, {dron:true, vida:2})];
+  const sold = [0, 1, 2].map(i => new Soldado(i, 6));
+  const m = {base, soldados:sold, enemigos:[], balas:[], particulas:[], rayos:[], textos:[]};
+  if (tipo === 'calma'){ m.enemigos = [alien(250), alien(300, {cae:true, y:90}), nave(280, 40)]; return m; }
+  m.enemigos = [alien(150, {v:2}), alien(205), alien(118, {blindado:true, v:4}), alien(300, {cae:true, y:80}), nave(265, 38), nave(190, 70, {dron:true})];
   m.balas = [{x:120, y:160, r:1.2, color:'#fde047'}, {x:140, y:159, r:1.2, color:'#fde047'}, {x:220, y:70, r:2.2, color:'#fb923c'}];
-  m.rayos = [{x:base.cx, y:base.cy - 14, tx:150, ty:162, t:1, color:'#f87171'}];
+  m.rayos = [{puntos:[{x:base.cx, y:base.cy - 14}, {x:150, y:162}], t:1, color:'#f87171'}];
   for (let i = 0; i < 14; i++){ const a = i * 0.45; m.particulas.push({x:205 + Math.cos(a) * (4 + i % 5), y:160 + Math.sin(a) * (3 + i % 4), r:1.5, t:0.6, color:'#86efac'}); }
   m.textos = [{x:31, y:110, txt:'+24⚡', color:'#fde047', t:1}, {x:150, y:145, txt:'-4', color:'#fecaca', t:1}, {x:86, y:150, txt:'+🪖', color:'#bbf7d0', t:1}];
   return m;
 }
 const OBJETOS = [
   ['Base', 'Vida con barra · recluta soldados cuando hay espacio · dispara sola (gratis, débil) si no quedan soldados', c => R.base(c, Object.assign(new Base(100), {vida:70})), 31, MUNDO.suelo, ['❤ 100 + mejoras', '🪖 Recluta cada 5 s', '🔫 Torreta de emergencia']],
-  ['Soldado', 'Dispara con el arma de pelotón; pelea cuerpo a cuerpo si un alien lo alcanza', c => R.soldado(c, {x:60}), 62, MUNDO.suelo, ['❤ 6', '📍 Frente de la base']],
+  ['Soldado', 'Dispara con el arma de pelotón; pelea cuerpo a cuerpo si un alien lo alcanza', c => R.soldado(c, {x:60, vida:6, vidaMax:6}), 62, MUNDO.suelo, ['❤ 6', '📍 Frente de la base']],
   ['Alien explorador', 'Cae en cápsula y camina hacia la base', c => R.alien(c, alien(60)), 60, MUNDO.suelo, ['🟫 Tierra', '❤ 3', '🏃 Media'], true],
   ['Alien en cápsula', 'Estado de caída antes de aterrizar', c => R.alien(c, alien(60, {cae:true, y:MUNDO.suelo - 14})), 60, MUNDO.suelo, ['🪂 Cayendo', 'No ataca']],
-  ['Alien blindado', 'Resiste el daño físico: conviene energía o explosivo', c => R.alien(c, alien(60, {blindado:true, vida:6, v:4})), 60, MUNDO.suelo, ['🟫 Tierra', '❤ 6', '🛡 Físico −50 %'], false],
+  ['Alien blindado', 'Resiste el daño físico: conviene energía o explosivo', c => R.alien(c, alien(60, {blindado:true, v:4})), 60, MUNDO.suelo, ['🟫 Tierra', '❤ 6', '🛡 Físico −50 %'], false],
   ['Nave nodriza', 'Vuela y suelta exploradores lejos de la base', c => R.nave(c, nave(60, MUNDO.suelo - 30), 0), 60, MUNDO.suelo, ['✈️ Aire', '❤ 7', '👽 Suelta aliens'], true],
-  ['Dron', 'Volador rápido que se lanza contra la base', c => R.nave(c, nave(60, MUNDO.suelo - 26, {dron:true}), 0), 60, MUNDO.suelo, ['✈️ Aire', '❤ 2', '🏃 Rápida'], false],
+  ['Dron', 'Volador rápido que se lanza contra la base', c => R.dron(c, nave(60, MUNDO.suelo - 26, {dron:true}), 0), 60, MUNDO.suelo, ['✈️ Aire', '❤ 2', '🏃 Rápida'], false],
   ['Bala de rifle', 'Movimiento: bala recta · Daño: físico', c => { c.fillStyle = '#fde047'; for (let i = 0; i < 3; i++){ c.beginPath(); c.arc(40 + i * 18, MUNDO.suelo - 20, 1.6, 0, 6.28); c.fill(); } }, 60, MUNDO.suelo, ['➰ Bala', '💥 Físico']],
   ['Misil guiado', 'Persigue a su objetivo y explota en área', c => { c.fillStyle = '#fb923c'; c.beginPath(); c.arc(55, MUNDO.suelo - 25, 2.4, 0, 6.28); c.fill(); c.strokeStyle = '#fb923c66'; c.beginPath(); c.moveTo(30, MUNDO.suelo - 10); c.quadraticCurveTo(40, MUNDO.suelo - 30, 55, MUNDO.suelo - 25); c.stroke(); }, 60, MUNDO.suelo, ['➰ Guiado', '🎯 Área']],
   ['Rayo láser', 'Instantáneo, un objetivo', c => { c.strokeStyle = '#f87171'; c.lineWidth = 2.2; c.beginPath(); c.moveTo(20, MUNDO.suelo - 30); c.lineTo(100, MUNDO.suelo - 8); c.stroke(); }, 60, MUNDO.suelo, ['➰ Rayo', '💥 Energía']],

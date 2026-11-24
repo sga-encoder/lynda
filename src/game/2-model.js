@@ -7,38 +7,83 @@
    - Mejoras permanentes + Repository (guardado en el navegador).
    ===================================================================== */
 
-/** Definiciones de bonificadores (añadir uno = añadir datos, sin tocar la lógica). */
+/** Valores posibles de cada propiedad (las cambia el juego al subir de nivel o fusionar; el jugador no las edita). */
+const PROPIEDADES = {
+  objetivo:  {icon:'🎯', name:'Objetivo',   vals:{unico:'Único', area:'Área', cadena:'Cadena'}},
+  alcance:   {icon:'✈️', name:'Alcance',    vals:{tierra:'Solo tierra', aire:'Solo aire', ambos:'Tierra y aire'}},
+  dano:      {icon:'💥', name:'Daño',       vals:{fisico:'Físico', energia:'Energía', explosivo:'Explosivo'}},
+  movimiento:{icon:'➰', name:'Movimiento', vals:{bala:'Bala recta', rayo:'Rayo instantáneo', guiado:'Guiado', parabola:'Parábola'}},
+  origen:    {icon:'📍', name:'Origen',     vals:{soldados:'Cada soldado', base:'Torreta de la base'}},
+  prioridad: {icon:'👁️', name:'Prioridad',  vals:{cercano:'Más cercano', fuerte:'Más vida', aire:'Voladores primero'}},
+  efecto:    {icon:'✨', name:'Efecto',     vals:{congelar:'Congela', perforar:'Perfora armadura'}},
+  afecta:    {icon:'🧭', name:'Afecta a',   vals:{energia:'Energía', base:'Base', soldados:'Soldados', enemigos:'Enemigos', armas:'Armas', cartas:'Cartas'}},
+  modo:      {icon:'🔁', name:'Modo',       vals:{pasivo:'Pasivo', aura:'Aura'}},
+};
+/** Definiciones de bonificadores: propiedades (props) + números por nivel. Añadir uno = añadir datos. */
 const BONUS_DEFS = {
   // ---- Armas ----
-  rifle:   {tipo:'arma', icon:'🔫', name:'Rifle de pelotón', desc:'Los soldados disparan al enemigo más cercano.',
+  rifle:   {tipo:'arma', icon:'🔫', name:'Rifle de pelotón', desc:'Cada soldado dispara al enemigo más cercano.',
+            props:{origen:'soldados', objetivo:'unico', alcance:'ambos', dano:'fisico', movimiento:'bala', prioridad:'cercano'},
             niveles:[{dmg:1, cd:0.9, costo:1}, {dmg:1.5, cd:0.75, costo:1}, {dmg:2, cd:0.6, costo:1}]},
   laser:   {tipo:'arma', icon:'🔴', name:'Láser de la base', desc:'Rayo instantáneo al enemigo con más vida.',
+            props:{origen:'base', objetivo:'unico', alcance:'ambos', dano:'energia', movimiento:'rayo', prioridad:'fuerte'},
             niveles:[{dmg:4, cd:2.0, costo:4}, {dmg:6, cd:1.7, costo:4}, {dmg:8, cd:1.4, costo:4}]},
-  misil:   {tipo:'arma', icon:'🚀', name:'Misiles antiaéreos', desc:'Prefieren naves; explotan en área.',
+  misil:   {tipo:'arma', icon:'🚀', name:'Misiles', desc:'Persiguen a los voladores y explotan en área.',
+            props:{origen:'base', objetivo:'area', alcance:'ambos', dano:'explosivo', movimiento:'guiado', prioridad:'aire'},
             niveles:[{dmg:5, cd:2.6, costo:5, area:26}, {dmg:7, cd:2.2, costo:5, area:30}, {dmg:9, cd:1.9, costo:5, area:34}]},
-  foton:   {tipo:'arma', icon:'🌟', name:'Rayo de fotones', desc:'Fusión: atraviesa hasta 3 enemigos y gasta poca energía.', fusion:true,
-            niveles:[null, null, null, {dmg:12, cd:1.0, costo:2, objetivos:3}]},
+  mortero: {tipo:'arma', icon:'💣', name:'Mortero', desc:'Proyectil en parábola; gran área, solo enemigos en tierra.',
+            props:{origen:'base', objetivo:'area', alcance:'tierra', dano:'explosivo', movimiento:'parabola', prioridad:'cercano'},
+            niveles:[{dmg:6, cd:3.0, costo:4, area:30}, {dmg:8, cd:2.6, costo:4, area:34}, {dmg:10, cd:2.2, costo:4, area:40}]},
+  tesla:   {tipo:'arma', icon:'⚡', name:'Bobina Tesla', desc:'Descarga que salta entre enemigos cercanos.',
+            props:{origen:'base', objetivo:'cadena', alcance:'ambos', dano:'energia', movimiento:'rayo', prioridad:'cercano'},
+            niveles:[{dmg:2, cd:1.8, costo:3, saltos:3}, {dmg:3, cd:1.5, costo:3, saltos:4}, {dmg:4, cd:1.2, costo:3, saltos:5}]},
+  franco:  {tipo:'arma', icon:'🎯', name:'Francotirador', desc:'Disparo lento y potente; ignora parte de la armadura.',
+            props:{origen:'base', objetivo:'unico', alcance:'ambos', dano:'fisico', movimiento:'bala', prioridad:'fuerte', efecto:'perforar'},
+            niveles:[{dmg:10, cd:3.5, costo:5, vel:420}, {dmg:14, cd:3.0, costo:5, vel:420}, {dmg:18, cd:2.5, costo:5, vel:420}]},
+  // ---- Fusiones (nivel 4) ----
+  foton:   {tipo:'arma', fusion:true, icon:'🌟', name:'Rayo de fotones', desc:'Láser + Amplificador: cadena de 3, poca energía, más energía por paso.',
+            props:{origen:'base', objetivo:'cadena', alcance:'ambos', dano:'energia', movimiento:'rayo', prioridad:'fuerte'},
+            niveles:[null, null, null, {dmg:12, cd:1.0, costo:2, saltos:3, energia:1.6}]},
+  escuadron:{tipo:'arma', fusion:true, icon:'🎖️', name:'Escuadrón élite', desc:'Rifle + Reclutamiento: +3 soldados que disparan muy rápido.',
+            props:{origen:'soldados', objetivo:'unico', alcance:'ambos', dano:'fisico', movimiento:'bala', prioridad:'cercano'},
+            niveles:[null, null, null, {dmg:3, cd:0.45, costo:1, soldados:3, reclutar:0.5}]},
+  crio:    {tipo:'arma', fusion:true, icon:'❄️', name:'Misiles criogénicos', desc:'Misiles + Cámara lenta: área enorme que congela.',
+            props:{origen:'base', objetivo:'area', alcance:'ambos', dano:'explosivo', movimiento:'guiado', prioridad:'aire', efecto:'congelar'},
+            niveles:[null, null, null, {dmg:10, cd:1.8, costo:5, area:44, lentitud:0.8}]},
   // ---- Tácticos ----
-  amplificador: {tipo:'tactico', icon:'⚡', name:'Amplificador', desc:'Más energía por cada paso matemático.',
+  amplificador: {tipo:'tactico', icon:'🔋', name:'Amplificador', desc:'Más energía por cada paso matemático.', props:{afecta:'energia', modo:'pasivo'},
             niveles:[{energia:1.2}, {energia:1.4}, {energia:1.6}]},
-  escudo:  {tipo:'tactico', icon:'🛡️', name:'Escudo de la base', desc:'Más vida máxima y regeneración.',
+  escudo:  {tipo:'tactico', icon:'🛡️', name:'Escudo de la base', desc:'Más vida máxima y regeneración.', props:{afecta:'base', modo:'pasivo'},
             niveles:[{vida:25, regen:0.5}, {vida:50, regen:1}, {vida:75, regen:1.5}]},
-  lenta:   {tipo:'tactico', icon:'⏳', name:'Cámara lenta', desc:'Los aliens avanzan más despacio.',
+  lenta:   {tipo:'tactico', icon:'⏳', name:'Cámara lenta', desc:'Los enemigos avanzan más despacio.', props:{afecta:'enemigos', modo:'aura'},
             niveles:[{lentitud:0.85}, {lentitud:0.72}, {lentitud:0.6}]},
-  reclutas:{tipo:'tactico', icon:'🪖', name:'Reclutamiento', desc:'Más soldados y aparecen más rápido.',
+  reclutas:{tipo:'tactico', icon:'🪖', name:'Reclutamiento', desc:'Más soldados y aparecen más rápido.', props:{afecta:'soldados', modo:'pasivo'},
             niveles:[{soldados:1, reclutar:0.85}, {soldados:2, reclutar:0.7}, {soldados:3, reclutar:0.55}]},
+  municion:{tipo:'tactico', icon:'🔩', name:'Munición perforante', desc:'El daño físico atraviesa la armadura.', props:{afecta:'armas', modo:'pasivo'},
+            niveles:[{perforacion:0.35}, {perforacion:0.65}, {perforacion:1}]},
+  concentracion:{tipo:'tactico', icon:'🧘', name:'Concentración', desc:'Más segundos para el bono de rapidez.', props:{afecta:'cartas', modo:'pasivo'},
+            niveles:[{ventana:2}, {ventana:4}, {ventana:6}]},
+  botiquin:{tipo:'tactico', icon:'⛑️', name:'Botiquín', desc:'Soldados con más vida que se curan.', props:{afecta:'soldados', modo:'pasivo'},
+            niveles:[{vidaSoldado:3, curar:0.3}, {vidaSoldado:6, curar:0.6}, {vidaSoldado:9, curar:1}]},
 };
-/** Recetas de fusión: ambos en nivel 3 → el resultado ocupa el espacio de `a` y libera el de `b`. */
-const FUSIONES = [{a:'laser', b:'amplificador', resultado:'foton'}];
+/** Recetas de fusión: ambos en nivel 3 → el arma `a` cambia sus propiedades (nivel 4) y se libera el espacio de `b`. */
+const FUSIONES = [
+  {a:'laser', b:'amplificador', resultado:'foton'},
+  {a:'rifle', b:'reclutas', resultado:'escuadron'},
+  {a:'misil', b:'lenta', resultado:'crio'},
+];
 const MAX_NIVEL = 3, ESPACIOS = {arma:3, tactico:3};
 
 class Bonus {
   constructor(id, nivel = 1){ this.id = id; this.nivel = nivel; }
   get def(){ return BONUS_DEFS[this.id]; }
   get tipo(){ return this.def.tipo; }
+  get props(){ return this.def.props; }
   get stats(){ return this.def.niveles[this.nivel - 1]; }
   get maximo(){ return this.nivel >= MAX_NIVEL; }
   subir(){ if (this.maximo) throw new Error('Ya está al máximo'); this.nivel++; return this; }
+  /** La fusión no crea un objeto nuevo: este mismo bonificador cambia sus propiedades. */
+  fusionarEn(id){ this.id = id; this.nivel = MAX_NIVEL + 1; return this; }
 }
 
 class Loadout {
@@ -51,15 +96,15 @@ class Loadout {
     const propios = this.lista(tipo);
     const mejoras = propios.filter(b => !b.maximo && !b.def.fusion).map(b => ({accion:'mejorar', bonus:b}));
     const nuevos = propios.length < ESPACIOS[tipo]
-      ? Object.entries(BONUS_DEFS).filter(([id, d]) => d.tipo === tipo && !d.fusion && !this.tiene(id)).map(([id]) => ({accion:'nuevo', id}))
+      ? Object.entries(BONUS_DEFS).filter(([id, d]) => d.tipo === tipo && !d.fusion && !this.tiene(id) && !this.fusionado(id)).map(([id]) => ({accion:'nuevo', id}))
       : [];
     const fusiones = tipo === 'arma' ? this.fusionesDisponibles().map(f => ({accion:'fusionar', receta:f})) : [];
     const todas = [...fusiones, ...rng.shuffle([...mejoras, ...nuevos])];
     return todas.length ? todas.slice(0, n) : [{accion:'reparar'}];
   }
-  fusionesDisponibles(){
-    return FUSIONES.filter(f => this.tiene(f.a)?.maximo && this.tiene(f.b)?.maximo && !this.tiene(f.resultado));
-  }
+  /** ¿Ese bonificador ya se consumió en una fusión? */
+  fusionado(id){ return FUSIONES.some(f => (f.a === id || f.b === id) && this.tiene(f.resultado)); }
+  fusionesDisponibles(){ return FUSIONES.filter(f => this.tiene(f.a)?.maximo && this.tiene(f.b)?.maximo && !this.tiene(f.resultado)); }
   aplicar(op){
     if (op.accion === 'mejorar') op.bonus.subir();
     if (op.accion === 'nuevo'){
@@ -69,23 +114,22 @@ class Loadout {
     }
     if (op.accion === 'fusionar'){
       const {a, b, resultado} = op.receta, A = this.tiene(a), B = this.tiene(b);
-      A.id = resultado; A.nivel = MAX_NIVEL + 1;               // el objeto cambia sus propiedades: cuenta como un nivel más
-      const lb = this.lista(B.tipo); lb.splice(lb.indexOf(B), 1); // libera el espacio de B
+      A.fusionarEn(resultado);
+      const lb = this.lista(B.tipo); lb.splice(lb.indexOf(B), 1);   // libera el espacio de B
     }
   }
-  /** Multiplicador/suma de un efecto táctico (1 o 0 si no se tiene). */
+  /** Efecto acumulado de una estadística en todo el equipo (los fusionados conservan el efecto del táctico). */
   efecto(stat, neutro){
-    return this.tacticos.reduce((acc, b) => {
+    return [...this.armas, ...this.tacticos].reduce((acc, b) => {
       const v = b.stats?.[stat]; if (v == null) return acc;
       return neutro === 1 ? acc * v : acc + v;
     }, neutro);
   }
-  /** Los efectos de bonificadores fusionados se conservan (p. ej. el amplificador vive dentro del fotón). */
-  get energiaMult(){ return this.efecto('energia', 1) * (this.tiene('foton') ? 1.6 : 1); }
+  get energiaMult(){ return this.efecto('energia', 1); }
 }
 
 /* ---------- Puntuación de cada paso (Strategy compuesta) ---------- */
-class ReglaVelocidad   { nombre = 'rápido';    mult(c){ return c.segundos < 6 ? 1.5 : c.segundos < 12 ? 1.25 : 1; } }
+class ReglaVelocidad   { nombre = 'rápido';    mult(c){ const v = c.ventana ?? 0; return c.segundos < 6 + v ? 1.5 : c.segundos < 12 + v ? 1.25 : 1; } }
 class ReglaCombo       { nombre = 'combo';     mult(c){ return 1 + Math.min(c.combo, 5) * 0.1; } }
 class ReglaCreatividad { nombre = 'creativo';  mult(c){ return c.libre ? (c.avance >= 2 ? 2 : 1.3) : 1; } }
 class Puntuador {
@@ -115,7 +159,7 @@ class SaveRepository {                               // patrón Repository: el r
   save(data){ try { localStorage.setItem(this.#key, JSON.stringify(data)); } catch {} }
 }
 class Progreso {
-  constructor(repo){ this.repo = repo; this.data = {puntos:0, mejoras:{}, record:0, partidas:0, ...repo.load()}; }
+  constructor(repo){ this.repo = repo; this.data = {puntos:0, mejoras:{}, record:0, partidas:0, modo:'fund', todo:true, ...repo.load()}; }
   nivel(id){ return this.data.mejoras[id] ?? 0; }
   costo(id){ return MEJORAS[id].costo(this.nivel(id)); }
   puedeComprar(id){ return this.nivel(id) < MEJORAS[id].max && this.data.puntos >= this.costo(id); }
@@ -135,7 +179,9 @@ function configOleada(mision, oleada){
     intervalo: Math.max(2.2, 5.5 - t * 0.35),          // segundos entre apariciones
     velocidad: 1 + t * 0.08,
     vida: 1 + t * 0.15,
-    probNave: Math.min(0.45, 0.1 + t * 0.05),
+    probNave: Math.min(0.4, 0.1 + t * 0.04),
+    probBlindado: t >= 2 ? Math.min(0.35, 0.1 + (t - 2) * 0.05) : 0,
+    probDron: t >= 4 ? Math.min(0.3, 0.1 + (t - 4) * 0.05) : 0,
   };
 }
 const xpParaNivel = n => 60 + n * 45;

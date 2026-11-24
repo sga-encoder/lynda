@@ -117,7 +117,7 @@ const Calc = (() => {
         if (e.f === 'exp') return w(`e^{${arg}}`);
         if (e.f === 'sqrt') return w(`\\sqrt{${arg}}`);
         if (e.f === 'lnabs') return w(`\\ln\\left|${arg}\\right|`);
-        const simple = e.a.k === 'v' || (e.a.k === '*' && e.a.a.length === 2 && isNum(e.a.a[0]) && isX(e.a.a[1]));
+        const simple = e.a.k === 'v' || (e.a.k === '*' && e.a.a.length === 2 && isNum(e.a.a[0]) && e.a.a[0].q.sign > 0 && e.a.a[0].q.isInt && isX(e.a.a[1]));
         return w(`\\${e.f}${simple ? ' ' + arg : `\\left(${arg}\\right)`}`);
       }
       case 'D': return w(`\\dfrac{d}{dx}\\left[${sub(e.a, 0)}\\right]`);
@@ -142,13 +142,15 @@ const Calc = (() => {
         }
         const [first] = e.a;
         const partes = e.a.map((f, i) => { const s = sub(f, i); return f.k === '+' ? `\\left(${s}\\right)` : s; });
+        // entre letras y funciones basta un espacio fino; el punto solo antes de un número
+        const unir = ps => ps.reduce((acc, p) => acc ? acc + (/^(\\htmlData\{[^}]*\}\{)?-?\d/.test(p) ? ' \\cdot ' : '\\,') + p : p, '');
         if (isNum(first) && e.a.length > 1){
-          const q = first.q, resto = partes.slice(1).join(' \\cdot ');
+          const q = first.q, resto = unir(partes.slice(1));
           const pre = q.isOne ? '' : q.equals(-1) ? '-' : q.toTex();
           const sep = q.isOne || q.equals(-1) || /^[a-z\\]/i.test(resto.replace(/^\\htmlData\{[^}]*\}\{/, '')) ? '' : ' \\cdot ';
           return w(`${pre}${sep}${resto}`);
         }
-        return w(partes.join(' \\cdot '));
+        return w(unir(partes));
       }
       case '+': return w(e.a.map((t, i) => {
         let s = sub(t, i);

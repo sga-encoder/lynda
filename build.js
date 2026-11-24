@@ -18,6 +18,6 @@ console.log('OK',(html.length/1024|0)+' KB');
 
 // Mockup visual del juego (no funcional): mockup-juego.html
 const mock = fs.readFileSync(S+'mockup/shell.html','utf8').split('<!--@@VENDOR@@-->').join(vendor)
-  .split('<!--@@APP@@-->').join(gameModule('Renderer, MUNDO, Base, Alien, Nave, Soldado') + fs.readFileSync(S+'mockup/mockup.js','utf8'));
+  .split('<!--@@APP@@-->').join(gameModule('Renderer, MUNDO, Base, ENEMIGOS, Soldado') + fs.readFileSync(S+'mockup/mockup.js','utf8'));
 fs.writeFileSync('mockup-juego.html', mock);
 console.log('OK mockup', (mock.length/1024|0)+' KB');

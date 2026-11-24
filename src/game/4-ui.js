@@ -9,6 +9,11 @@ const UI = {
   btnP: 'inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-2 font-bold text-zinc-950 touch-manipulation select-none transition-transform active:scale-95 disabled:opacity-40',
   card: 'rounded-2xl border border-zinc-800 bg-zinc-900/80 p-3',
 };
+/** Chips de colores con las propiedades de un bonificador. */
+const TONO_PROP = {objetivo:'bg-rose-900/70 text-rose-200', alcance:'bg-sky-900/70 text-sky-200', dano:'bg-amber-900/70 text-amber-200', movimiento:'bg-violet-900/70 text-violet-200', efecto:'bg-cyan-900/70 text-cyan-200', afecta:'bg-emerald-900/70 text-emerald-200'};
+const chipsProps = props => Object.entries(props ?? {}).map(([k, v]) =>
+  `<span class="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-semibold ${TONO_PROP[k] ?? 'bg-zinc-800 text-zinc-300'}">${PROPIEDADES[k].icon} ${PROPIEDADES[k].vals[v]}</span>`).join(' ');
+const pips = (n, max = 3) => `<span class="tracking-tight ${n > 3 ? 'text-amber-300' : 'text-emerald-400'}">${'●'.repeat(Math.min(n, 4))}<span class="text-zinc-600">${'●'.repeat(Math.max(0, max - n))}</span></span>`;
 const texJuego = (tex, display = true) => window.katex
   ? katex.renderToString(tex, {displayMode:display, throwOnError:false, strict:false, trust:c => c.command === '\\htmlData'})
   : tex;
@@ -20,10 +25,8 @@ class GameApp {
   constructor(root, deps){
     Object.assign(this, {root, ...deps});
     this.progreso = new Progreso(new SaveRepository());
-    this.cartas = defaultCards();
     this.rng = new Rng();
-    this.solver = new Solver(this.cartas.auto('eq'));
-    this.problemas = new ProblemFactory(PROBLEM_TYPES, this.solver, this.rng);
+    this.problemas = new ProblemFactory(DOMINIOS, this.rng);
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.scene?.pause(); });
   }
   go(scene){ this.scene?.exit(); this.scene = scene; scene.enter(); }
@@ -33,25 +36,28 @@ class GameApp {
 }
 
 /* ---------- Menú ---------- */
+const MODOS = [['fund', '🧱', 'Fundamentos'], ['dif', '📈', 'Diferencial'], ['int', '∫', 'Integral'], ['todo', '🌐', 'Todo junto']];
 class MenuScene extends Scene {
   enter(){
-    const p = this.app.progreso, hechos = this.app.doneKeys();
-    const tipos = PROBLEM_TYPES.map(t => {
-      const ok = t.unlocked(hechos);
-      const req = t.needs.map(n => n.replace(/^f-|-$/g, '')).join(' y ');
-      return `<li class="flex items-start gap-2 py-1"><span>${ok ? '✅' : '🔒'}</span><span>${t.name}${ok ? '' : `<br><small class="text-zinc-400">Completa un ejercicio de “${req}” en Aprender</small>`}</span></li>`;
-    }).join('');
+    const p = this.app.progreso, d = p.data, hechos = this.app.doneKeys();
+    const disp = this.app.problemas.disponibles(d.modo, hechos, d.todo), total = this.app.problemas.tipos(d.modo).length;
     this.app.html(`
     <div class="mx-auto flex h-full max-w-xl flex-col gap-4 overflow-y-auto px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
       <div class="flex items-center justify-between"><span class="text-sm text-zinc-400">🎮 Practicar</span><button data-a="salir" class="${UI.btn} !min-h-10 !px-3">✕ Salir</button></div>
       <div class="text-center"><div class="text-6xl">👽🛸</div><h2 class="mt-2 text-3xl font-black tracking-tight">Defensa Algebraica</h2>
-        <p class="mt-2 text-zinc-300">Los aliens aterrizan. Los soldados solo pueden disparar con la <b class="text-amber-300">energía</b> que generan los científicos… y los científicos eres tú. Cada paso que te acerca a la solución carga energía. Más rápido, más creativo y con menos pasos = energía de mayor calidad = más XP.</p></div>
-      <button data-a="jugar" class="${UI.btnP} !min-h-14 text-lg">▶ Jugar</button>
-      <div class="grid grid-cols-2 gap-3"><button data-a="mejoras" class="${UI.btn}">🛠 Mejoras <span class="text-amber-300">${p.data.puntos} 🔬</span></button><button data-a="ayuda" class="${UI.btn}">❓ Cómo jugar</button></div>
-      <div class="${UI.card}"><b>Problemas desbloqueados</b><ul class="mt-1 text-sm">${tipos}</ul></div>
-      <p class="text-center text-xs text-zinc-500">Récord: ${p.data.record} XP · Partidas: ${p.data.partidas}</p>
+        <p class="mt-2 text-zinc-300">Los soldados solo disparan con la <b class="text-amber-300">energía</b> que generan los científicos… y los científicos eres tú. Cada paso que te acerca a la solución carga energía: más rápido, más creativo y con menos pasos = más XP.</p></div>
+      <div><b class="text-sm">¿Qué quieres practicar?</b>
+        <div class="mt-2 grid grid-cols-2 gap-2">${MODOS.map(([id, ic, n]) => `<button data-modo="${id}" class="flex min-h-14 items-center justify-center gap-2 rounded-2xl border-2 px-3 font-semibold touch-manipulation ${d.modo === id ? 'border-emerald-400 bg-emerald-400/15 text-emerald-200' : 'border-zinc-700 bg-zinc-900'}"><span class="text-xl">${ic}</span>${n}</button>`).join('')}</div>
+        <p class="mt-2 text-xs text-zinc-400">${disp.length ? `${disp.length} tipo(s) de problema disponibles` : 'Aún no hay problemas: completa ejercicios en Aprender'}${disp.length < total ? ' · más se desbloquean avanzando en Aprender' : ''}.</p></div>
+      <button data-a="jugar" class="${UI.btnP} !min-h-14 text-lg" ${disp.length ? '' : 'disabled'}>▶ Jugar</button>
+      <div class="grid grid-cols-2 gap-3"><button data-a="mejoras" class="${UI.btn}">🛠 Mejoras <span class="text-amber-300">${d.puntos} 🔬</span></button><button data-a="ayuda" class="${UI.btn}">❓ Cómo jugar</button></div>
+      <label class="${UI.card} flex items-center gap-3 text-sm"><input type="checkbox" data-a="todo" class="h-5 w-5 accent-amber-400" ${d.todo ? 'checked' : ''}><span><b>🧪 Todo desbloqueado</b> <span class="text-zinc-400">(modo desarrollo: ignora el avance en Aprender)</span></span></label>
+      <p class="text-center text-xs text-zinc-500">Récord: ${d.record} XP · Partidas: ${d.partidas}</p>
     </div>`).onclick = e => {
+      const modo = e.target.closest('[data-modo]')?.dataset.modo;
+      if (modo){ d.modo = modo; p.guardar(); return this.enter(); }
       const a = e.target.closest('[data-a]')?.dataset.a;
+      if (a === 'todo'){ d.todo = e.target.checked; p.guardar(); return this.enter(); }
       if (a === 'jugar') this.app.go(new BattleScene(this.app, new Run(this.app)));
       if (a === 'mejoras') this.app.go(new ShopScene(this.app));
       if (a === 'ayuda') this.app.go(new HelpScene(this.app));
@@ -72,7 +78,10 @@ class HelpScene extends Scene {
         <li><b>✍️ Paso libre</b>: escribe tú el siguiente paso con piezas. Si es correcto y te acerca mucho, la energía vale doble (creatividad).</li>
         <li>Cada paso que te <b>acerca</b> a la solución da ⚡ energía y XP. Bonos: <b>rápido</b> (menos de 6 s), <b>combo</b> (pasos buenos seguidos) y <b>creativo</b>. Terminar con los pasos mínimos da bono de <b>eficiencia</b>.</li>
         <li>Los soldados y las armas gastan energía al disparar. Sin soldados, la base dispara sola (débil). La base recluta soldados cuando hay espacio.</li>
-        <li>Cada oleada pide resolver 1 o más problemas. Al subir de nivel eliges <b>1 arma y 1 táctico</b> (3 espacios de cada tipo, nivel máximo 3). <b>Láser 3 + Amplificador 3</b> se fusionan en <b>🌟 Rayo de fotones</b> y liberan un espacio.</li>
+        <li>Elige qué practicar: <b>Fundamentos</b> (ecuaciones y simplificar), <b>Diferencial</b> (derivadas), <b>Integral</b> (integrales) o <b>Todo junto</b>.</li>
+        <li>Cada oleada pide resolver 1 o más problemas. Al subir de nivel eliges <b>1 arma y 1 táctico</b> (3 espacios de cada tipo, nivel máximo 3).</li>
+        <li>Los bonificadores tienen <b>propiedades</b> (objetivo, alcance, tipo de daño, movimiento…) que cambian al mejorar. Algunas parejas en nivel 3 se <b>fusionan</b> (nivel 4) y liberan un espacio: 🌟 Láser + Amplificador, 🎖️ Rifle + Reclutamiento, ❄️ Misiles + Cámara lenta.</li>
+        <li>El <b>alien blindado</b> resiste el daño físico; los <b>drones</b> vuelan directo a la base: no todas las armas alcanzan voladores.</li>
         <li>Al terminar la partida, tu XP se convierte en 🔬 puntos para <b>mejoras permanentes</b>.</li>
         <li>Los tipos de problema se desbloquean avanzando en <b>Aprender</b>.</li>
       </ul></div>`).onclick = e => { if (e.target.closest('[data-a="volver"]')) this.app.go(new MenuScene(this.app)); };
@@ -160,8 +169,9 @@ class BattleScene extends Scene {
     this.nuevoProblema();
   }
   nuevoProblema(){
-    const {type, root, par} = this.app.problemas.create(this.app.doneKeys(), this.run.mision);
-    Object.assign(this, {tipo:type, raiz:root, par, dist:par, pasos:0, combo:this.combo ?? 0, carta:null, historial:new Set([keyOf(root)]), tPaso:performance.now()});
+    const d = this.app.progreso.data;
+    const {type, dom, root, par, solucion} = this.app.problemas.create({doneKeys:this.app.doneKeys(), mision:this.run.mision, modo:d.modo, todo:d.todo});
+    Object.assign(this, {tipo:type, dom, solucion, raiz:root, par, dist:par, pasos:0, combo:this.combo ?? 0, carta:null, historial:new Set([dom.key(root)]), tPaso:performance.now()});
     this.dibujarProblema(); this.dibujarMano();
   }
 
@@ -192,16 +202,16 @@ class BattleScene extends Scene {
   /* ---- Problema y cartas ---- */
   dibujarProblema(){
     const marcas = this.carta ? new Map(this.objetivos.map((p, i) => [p.join('.'), i])) : null;
-    this.$('expr').innerHTML = texJuego(texOf(this.raiz, marcas));
-    this.$('tipo').textContent = (this.director.generando ? '' : '⭐ Extra · ') + this.tipo.name;
+    this.$('expr').innerHTML = texJuego(this.dom.tex(this.raiz, marcas));
+    this.$('tipo').textContent = (this.director.generando ? '' : '⭐ Extra · ') + `${this.dom.icon} ${this.dom.consigna(this.raiz)}`;   // consigna neutra: no revela el método
     this.$('pasos').textContent = `Pasos ${this.pasos} · mínimo ${this.par}`;
   }
   dibujarMano(){
-    const mano = this.app.cartas.forMode(this.tipo.mode);
+    const mano = this.dom.mano(this.raiz);
     this.$('mano').innerHTML = mano.map(c => {
-      const n = c.free ? 1 : c.targets(this.raiz).length, sel = this.carta === c;
+      const sel = this.carta === c;          // todas las cartas se ven igual: no se revela cuáles sirven
       return `<button data-carta="${c.id}" class="flex h-32 w-[6.75rem] shrink-0 flex-col items-center justify-between rounded-2xl border-2 p-2 text-center touch-manipulation select-none transition-transform active:scale-95
-        ${sel ? 'border-amber-300 bg-amber-400/20 -translate-y-1.5' : n ? 'border-zinc-600 bg-gradient-to-b from-zinc-800 to-zinc-900' : 'border-zinc-800 bg-zinc-900 opacity-40'}">
+        ${sel ? 'border-amber-300 bg-amber-400/20 -translate-y-1.5' : 'border-zinc-600 bg-gradient-to-b from-zinc-800 to-zinc-900'}">
         <span class="text-3xl leading-none">${c.icon}</span><b class="text-[13px] leading-tight">${c.name}</b><span class="text-[10px] leading-tight text-zinc-400">${c.desc}</span></button>`;
     }).join('');
   }
@@ -214,14 +224,14 @@ class BattleScene extends Scene {
     const a = e.target.closest('[data-a]')?.dataset.a;
     if (a === 'pausa') return this.mostrarPausa();
     const cid = e.target.closest('[data-carta]')?.dataset.carta;
-    if (cid) return this.jugarCarta(this.app.cartas.get(cid));
+    if (cid) return this.jugarCarta(this.dom.cartas.get(cid));
     const t = e.target.closest('[data-t]');
     if (t && this.carta){ const path = this.objetivos[+t.dataset.t]; const c = this.carta; this.carta = null; return this.aplicar(c.apply(this.raiz, path), {carta:c}); }
   }
   jugarCarta(c){
     if (this.carta === c){ this.carta = null; this.dibujarProblema(); this.dibujarMano(); return this.mensaje(''); }
     if (c.free) return this.app.piezas.abrir({
-      expr: texOf(this.raiz), conIgual: this.raiz instanceof Eq,
+      expr: this.dom.tex(this.raiz), piezas: this.dom.piezas(this.raiz), ayuda: this.dom.ayudaLibre(this.raiz),
       confirmar: src => this.pasoLibre(src), cancelar: () => {},
     });
     const objs = c.targets(this.raiz);
@@ -233,22 +243,20 @@ class BattleScene extends Scene {
   }
   /** Devuelve un mensaje de error o null si el paso libre fue aceptado. */
   pasoLibre(src){
-    let nueva;
-    try { nueva = parsePieces(src); } catch (err){ return err.message; }
-    if (!equivalent(this.raiz, nueva)) return 'Ese paso cambia la solución: no es equivalente.';
-    if (keyOf(nueva) === keyOf(this.raiz)) return 'Es igual a lo que ya tienes: escribe el siguiente paso.';
-    if (!Number.isFinite(this.app.solver.distance(nueva))) return 'Es correcto, pero no puedo seguir desde esa forma. Prueba escribirlo de otra manera.';
-    this.aplicar(nueva, {libre:true});
+    const r = this.dom.libre(src, this.raiz, this.solucion);
+    if (r.error) return r.error;
+    if (!Number.isFinite(this.dom.solver.distance(r.raiz))) return 'Es correcto, pero no puedo seguir desde esa forma. Prueba escribirlo de otra manera.';
+    this.aplicar(r.raiz, {libre:true});
     return null;
   }
   aplicar(nueva, {carta = null, libre = false} = {}){
-    const r = this.run, k = keyOf(nueva), d = this.app.solver.distance(nueva);
+    const r = this.run, k = this.dom.key(nueva), d = this.dom.solver.distance(nueva);
     const repetido = this.historial.has(k), avance = repetido ? 0 : Math.max(0, this.dist - d);
     const segundos = (performance.now() - this.tPaso) / 1000;
     this.raiz = nueva; this.dist = d; this.pasos++; this.historial.add(k); this.tPaso = performance.now(); this.carta = null;
     if (avance > 0){
       this.combo++;
-      const pts = this.puntuador.puntuar({avance, segundos, combo:this.combo - 1, libre});
+      const pts = this.puntuador.puntuar({avance, segundos, combo:this.combo - 1, libre, ventana:r.loadout.efecto('ventana', 0)});
       const energia = pts.energia * r.loadout.energiaMult;
       r.energia.agregar(energia); this.ganarXP(pts.xp * r.xpMult);
       const extras = pts.detalle.map(d => `${d.nombre} ×${d.mult.toFixed(1)}`).join(' · ');
@@ -258,7 +266,7 @@ class BattleScene extends Scene {
       this.combo = 0;
       this.mensaje(repetido ? '↩️ Volviste a un paso anterior: sin energía.' : 'Paso válido, pero no te acerca al resultado: sin energía.', 'zinc');
     }
-    if (isSolved(this.raiz)) return this.problemaResuelto();
+    if (this.dom.resuelto(this.raiz)) return this.problemaResuelto();
     this.dibujarProblema(); this.dibujarMano();
   }
   problemaResuelto(){
@@ -286,6 +294,7 @@ class BattleScene extends Scene {
   elegirBonificadores(){
     const l = this.run.loadout, rng = this.app.rng, elegido = {};
     const ops = {arma: l.opciones('arma', rng), tactico: l.opciones('tactico', rng)};
+    const propsDe = op => op.accion === 'fusionar' ? BONUS_DEFS[op.receta.resultado].props : op.accion === 'mejorar' ? op.bonus.props : op.accion === 'nuevo' ? BONUS_DEFS[op.id].props : null;
     const etiqueta = op => op.accion === 'reparar' ? ['🔧', 'Reparar base', '+30 de vida'] :
       op.accion === 'fusionar' ? [BONUS_DEFS[op.receta.resultado].icon, `Fusionar: ${BONUS_DEFS[op.receta.resultado].name}`, `${BONUS_DEFS[op.receta.a].name} + ${BONUS_DEFS[op.receta.b].name} → nivel 4 y libera un espacio`] :
       op.accion === 'mejorar' ? [op.bonus.def.icon, `${op.bonus.def.name} → Nv ${op.bonus.nivel + 1}`, op.bonus.def.desc] :
@@ -296,7 +305,7 @@ class BattleScene extends Scene {
       ${['arma', 'tactico'].map(tipo => `
         <div class="mt-4 flex items-baseline justify-between"><b>${tipo === 'arma' ? '🔫 Armas' : '🧠 Tácticos'}</b><span class="text-sm">${espacios(tipo)}</span></div>
         <div class="mt-2 grid gap-2">${ops[tipo].map((op, i) => { const [ic, n, d] = etiqueta(op), on = elegido[tipo] === i;
-          return `<button data-op="${tipo}|${i}" class="flex items-center gap-3 rounded-2xl border-2 p-3 text-left touch-manipulation ${on ? 'border-emerald-400 bg-emerald-400/10' : 'border-zinc-700 bg-zinc-900'}"><span class="text-3xl">${ic}</span><span><b>${n}</b><br><small class="text-zinc-400">${d}</small></span></button>`; }).join('')}</div>`).join('')}
+          return `<button data-op="${tipo}|${i}" class="flex items-center gap-3 rounded-2xl border-2 p-3 text-left touch-manipulation ${on ? 'border-emerald-400 bg-emerald-400/10' : 'border-zinc-700 bg-zinc-900'}"><span class="text-3xl">${ic}</span><span><b>${n}</b><br><small class="text-zinc-400">${d}</small><span class="mt-1 flex flex-wrap gap-1">${chipsProps(propsDe(op))}</span></span></button>`; }).join('')}</div>`).join('')}
       <button data-a="ok" class="${UI.btnP} mt-5" ${elegido.arma != null && elegido.tactico != null ? '' : 'disabled'}>Continuar</button>`,
     e => {
       const op = e.target.closest('[data-op]')?.dataset.op;
@@ -315,8 +324,8 @@ class BattleScene extends Scene {
   }
   mostrarPausa(){
     this.abrirCapa(`<div class="m-auto flex w-full max-w-sm flex-col gap-3"><h2 class="text-center text-2xl font-black">⏸ Pausa</h2>
-      <div class="${UI.card} text-sm"><b>Tu equipo</b><div class="mt-1">🔫 ${this.run.loadout.armas.map(b => `${b.def.icon} ${b.def.name} Nv${b.nivel}`).join(' · ')}</div>
-      <div class="mt-1">🧠 ${this.run.loadout.tacticos.map(b => `${b.def.icon} ${b.def.name} Nv${b.nivel}`).join(' · ') || '—'}</div></div>
+      ${['arma', 'tactico'].map(tipo => `<div class="text-sm font-bold">${tipo === 'arma' ? '🔫 Armas' : '🧠 Tácticos'} ${this.run.loadout.lista(tipo).length}/${ESPACIOS[tipo]}</div>
+        ${this.run.loadout.lista(tipo).map(b => `<div class="${UI.card} !p-2.5"><div class="flex items-center gap-2"><span class="text-xl">${b.def.icon}</span><b class="flex-1 text-sm">${b.def.name}</b>${pips(b.nivel, b.nivel > 3 ? 4 : 3)}</div><div class="mt-1 flex flex-wrap gap-1">${chipsProps(b.props)}</div></div>`).join('') || '<div class="text-xs text-zinc-500">Sin tácticos todavía</div>'}`).join('')}
       <button data-a="seguir" class="${UI.btnP}">▶ Continuar</button><button data-a="menu" class="${UI.btn}">Abandonar partida</button></div>`,
     e => {
       if (e.target.closest('[data-a="seguir"]')) this.cerrarCapa();
@@ -357,10 +366,9 @@ class BattleScene extends Scene {
 /* ---------- Adaptador de la paleta de piezas de "Aprender" (patrón Adapter) ---------- */
 class TableroPiezas {
   static KEY = 'g-libre';
-  static PIEZAS = ['1','2','3','4','5','6','7','8','9','0','x','+','-','=','(',')','·','frac'];
   constructor(host){ this.host = host; this.abierto = false; LEGO_HOOKS[TableroPiezas.KEY] = () => this.render(); }
-  abrir({expr, conIgual, confirmar, cancelar}){
-    Object.assign(this, {expr, conIgual, confirmar, cancelar, error:''});
+  abrir({expr, piezas, ayuda, confirmar, cancelar}){
+    Object.assign(this, {expr, piezas, ayuda, confirmar, cancelar, error:''});
     LEGO[TableroPiezas.KEY] = undefined;                      // lienzo limpio
     this.abierto = true; this.host().classList.remove('hidden'); this.render();
   }
@@ -368,12 +376,12 @@ class TableroPiezas {
   render(){
     if (!this.abierto) return;
     const key = TableroPiezas.KEY, st = legoState(key); ZREG[key] = [];
-    const piezas = this.conIgual ? TableroPiezas.PIEZAS : TableroPiezas.PIEZAS.filter(t => t !== '=');
+    const piezas = this.piezas;
     const h = this.host();
     h.innerHTML = `<div data-lego="${key}" class="absolute inset-x-0 bottom-0 max-h-[85%] overflow-y-auto rounded-t-3xl border-t border-zinc-700 bg-zinc-100 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] text-zinc-900 shadow-2xl">
       <div class="flex items-center justify-between"><b>✍️ Paso libre</b><button data-pl="cancelar" class="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-300 bg-white">✕</button></div>
       <div class="mt-1 text-xs text-zinc-500">Tienes:</div><div class="overflow-x-auto text-center text-lg">${texJuego(this.expr)}</div>
-      <div class="mb-1 text-xs text-zinc-500">Escribe el siguiente paso${this.conIgual ? ' (ecuación completa, con =)' : ''}:</div>
+      <div class="mb-1 text-xs text-zinc-500">${this.ayuda}</div>
       ${zoneHTML(key, st.root, 0)}
       ${allZones(st.root).length > 1 ? `<div class="mt-2 text-right"><button class="${C.btn} !min-h-9 !py-1 !text-xs" data-lg="nextzone">⇥ Siguiente espacio</button></div>` : ''}
       ${paletteHTML(key, {k:piezas, orden:true}, st)}

@@ -285,8 +285,8 @@ function configOleada(mision, oleada){
   return {
     t,
     problemas: 1 + Math.floor(t / 4) + (oleada === OLEADAS ? 1 : 0),
-    minimo: 7 + t,                                       // más enemigos por oleada
-    intervalo: Math.max(0.9, 3.4 - t * 0.18),           // segundos entre apariciones
+    minimo: 12 + Math.round(t * 1.5),                    // muchos más enemigos por oleada
+    intervalo: Math.max(0.6, 2.3 - t * 0.14),           // aparecen más seguido
     velocidad: 1 + t * 0.07,
     vida: 1 + t * 0.14,
     jefe: oleada === OLEADAS ? JEFES[(mision - 1) % JEFES.length] : null, // un jefe al final de cada misión (en modo infinito se repiten)

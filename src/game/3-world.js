@@ -60,7 +60,7 @@ const ORDEN_RECLUTA = ['fusilero', 'pesado', 'fusilero', 'granadero', 'medico', 
 class Soldado {
   constructor(i, tipo, extraVida = 0, perfil = null){
     const d = SOLDADOS[tipo], vida = (perfil?.vida ?? d.vida) + extraVida;
-    Object.assign(this, {i, tipo, perfil, x:MUNDO.base.x + MUNDO.base.w + 10 + i * 9, vida, vidaMax:vida, cds:{}, apoyoT:Math.random()});
+    Object.assign(this, {i, tipo, perfil, x:MUNDO.base.x + MUNDO.base.w + 8 + i * 7, vida, vidaMax:vida, cds:{}, apoyoT:Math.random()});
     // Con perfil (soldado concreto con su arma y blindaje) el ataque o apoyo sale de su equipo
     this._def = perfil ? {...d, ataque:perfil.ataque, apoyo:perfil.apoyo} : d;
   }
@@ -152,8 +152,11 @@ class WaveDirector {
     const opciones = [...TABLA_APARICION, ...(this.cfg.extra ?? [])].filter(([id, desde]) => t >= desde && (voladores < 7 || !esAire(id)));
     let r = this.rng.next() * opciones.reduce((s, o) => s + o[2], 0), id = opciones[0][0];
     for (const [k, , w] of opciones){ if ((r -= w) <= 0){ id = k; break; } }
-    const aire = esAire(id);
-    m.enemigos.push(ENEMIGOS[id](aire ? 24 + this.rng.int(0, 50) : this.rng.int(200, MUNDO.W - 12), this.cfg));
+    const aire = esAire(id), grupo = Math.min(24 - m.enemigos.length, 1 + this.rng.int(0, 1 + Math.floor(t / 3)));   // llegan en grupos
+    for (let g = 0; g < grupo; g++){
+      const e = ENEMIGOS[id](aire ? 24 + this.rng.int(0, 50) : this.rng.int(200, MUNDO.W - 12), this.cfg);
+      e.x += g * 9; m.enemigos.push(e); if (g) this.generados++;
+    }
   }
   terminada(m){ return !this.generando && !m.enemigos.length; }
 }
@@ -176,7 +179,7 @@ class World {
   get naves(){ return this.enemigos.filter(e => e.vuela); }
   get jefe(){ return this.enemigos.find(e => e.jefe); }
   sincronizarArmas(){ this.armas = this.loadout.armas.map(b => new Arma(b)); }
-  get capacidad(){ return 4 + this.extraSoldados + this.loadout.efecto('soldados', 0); }
+  get capacidad(){ return 8 + this.extraSoldados + this.loadout.efecto('soldados', 0); }   // pelotón más grande: batallas más movidas
   ponerClima(id){ this.clima = CLIMAS[id]; }
   /** Resolver un problema abre el escudo de la Mente maestra durante unos segundos. */
   debilitarJefes(){ this.enemigos.filter(e => e.escudoMental).forEach(e => { e.escudoT = 7; this.texto(e.x, e.cy - 30, '🧠 ¡Escudo abierto!', '#f0abfc', 1.5); }); }
@@ -192,7 +195,7 @@ class World {
     // Base: regeneración y reclutamiento cuando hay espacio
     this.base.vida = Math.min(this.base.vidaMax, this.base.vida + L.efecto('regen', 0) * dt);
     if (this.soldados.length < this.capacidad && (this.reclutarT -= dt) <= 0){
-      this.reclutarT = 3.5 * L.efecto('reclutar', 1);
+      this.reclutarT = 2.2 * L.efecto('reclutar', 1);
       const libre = [...Array(this.capacidad).keys()].find(i => !this.soldados.some(s => s.i === i));
       const orden = this.peloton?.orden?.length ? this.peloton.orden : ORDEN_RECLUTA;
       let quien = orden[this.reclutados++ % orden.length];
@@ -254,6 +257,7 @@ class World {
         const critico = Math.random() < ep.crit, dmg = d.ataque.dmg * (s.mult ?? 1) * (eq === d.ataque.dano ? 1 : Q.mult ?? 1) * (1 + ep.dmg) * (critico ? 2 : 1);
         for (let k = 0; k <= ep.extra; k++)                              // Ráfaga Fibonacci: balas extra
           { const fx = s.perfil ? this.fx(s.perfil.armaId) : null;          // partículas propias del arma (cambian con sus potenciadores)
+          if (k === 0 && fx) this.chispas(s.x + 6, s.cy - 3, fx.color, 2);   // fogonazo
           this.disparar({x:s.x + 4, y:s.cy - 3 - k * 2, obj:o, golpe:{dmg, dano:eq, area:Math.max(d.ataque.area ?? 0, Q.area ?? 0) + ep.area, alcance:'tierra', perf:ep.perf, efecto:ep.congela ? 'congelar' : undefined}, parabola:!!d.ataque.parabola,
             vel:(d.ataque.parabola ? 120 : 260) * (1 - k * 0.08), fx, hist:fx?.estela ? [] : null, color:critico ? '#fde047' : fx?.color ?? (d.ataque.area ? '#fb923c' : '#e5e7eb'), r:(critico ? 1.6 : 1) * (fx?.r ?? 1) * (d.ataque.area ? 1.8 : 1.1)}); }
       }
@@ -409,6 +413,7 @@ class World {
   dañarSoldado(s, n){ s.vida -= n * (1 - (s.perfil?.reduccion ?? 0)); }   // el blindaje reduce el daño
   impacto(b, vivo){
     b.muerta = true;
+    if (b.fx) this.chispas(b.tx, b.ty, b.color, b.fx.anillo ? 6 : 3);   // chispas del impacto con el color del arma
     if (b.golpe.area){
       this.explosion(b.tx, b.ty, b.golpe.efecto === 'congelar' ? '#bae6fd' : '#fdba74', 14);
       for (const e of [...this.enemigos]) if (!e.bajoTierra && Math.hypot(e.x - b.tx, e.cy - b.ty) <= b.golpe.area + 6 * (e.escala - 1) && (!e.vuela || b.golpe.alcance !== 'tierra')) this.golpear(e, b.golpe);
@@ -421,6 +426,7 @@ class World {
   }
   rayo(desde, objs, color){ this.rayos.push({puntos:[desde, ...objs.map(e => ({x:e.x, y:e.cy}))], t:0.2, color}); }
   explosion(x, y, color, n){ for (let i = 0; i < n; i++){ const a = Math.random() * 6.28, v = 30 + Math.random() * 60; this.particulas.push(this.#parts.tomar({x, y, vx:Math.cos(a) * v, vy:Math.sin(a) * v - 30, t:0.5 + Math.random() * 0.4, color, r:1 + Math.random() * 1.6})); } }
+  chispas(x, y, color, n){ for (let i = 0; i < n; i++){ const a = Math.random() * 6.28, v = 20 + Math.random() * 40; this.particulas.push(this.#parts.tomar({x, y, vx:Math.cos(a) * v, vy:Math.sin(a) * v - 20, t:0.18 + Math.random() * 0.2, color, r:0.6 + Math.random() * 0.8})); } }
   polvo(x, y){ this.explosion(x, y - 1, '#a8a29e', 5); }
   texto(x, y, txt, color, t = 0.9){ this.textos.push({x, y, txt, color, t}); }
 }

@@ -108,7 +108,7 @@ class Arma {
       if (!primero){ o.cds[this.id] = 0.2; continue; }
       if (!m.energia.gastar(this.s.costo)){ o.cds[this.id] = 0.35; m.sinEnergia = true; continue; }
       o.cds[this.id] = this.s.cd;
-      const golpe = {dmg:this.s.dmg, dano:this.p.dano, efecto:this.p.efecto, alcance:this.p.alcance, area:this.p.objetivo === 'area' ? this.s.area : 0};
+      const golpe = {dmg:this.s.dmg * (1 + 0.1 * m.mej('arma-' + armaBase(this.bonus.id))), dano:this.p.dano, efecto:this.p.efecto, alcance:this.p.alcance, area:this.p.objetivo === 'area' ? this.s.area : 0};
       if (this.p.movimiento === 'rayo'){
         const objs = this.p.objetivo === 'cadena' ? m.cadena(primero, this.s.saltos ?? 3, this.p.alcance) : [primero];
         m.rayo(desde, objs, this.bonus.id === 'tesla' ? '#93c5fd' : this.bonus.id === 'foton' ? '#a5f3fc' : '#f87171');
@@ -148,8 +148,8 @@ class WaveDirector {
 class World {
   enemigos = []; soldados = []; balas = []; balasEnemigas = []; particulas = []; rayos = []; textos = [];
   #balas = new Pool(() => ({})); #parts = new Pool(() => ({}));
-  constructor({bus, loadout, energia, base, extraSoldados = 0}){
-    Object.assign(this, {bus, loadout, energia, base, extraSoldados});
+  constructor({bus, loadout, energia, base, extraSoldados = 0, mej = () => 0, torreta = 0}){
+    Object.assign(this, {bus, loadout, energia, base, extraSoldados, mej, torreta}); this.tiposSoldado = new Set();
     this.reclutarT = 0.8; this.reclutados = 0; this.vistos = {}; this.tiempoSinEnergia = 0; this.tiempo = 0; this.bajasPropias = 0; this.armas = []; this.clima = CLIMAS.despejado; this.rayoT = 6; this.flash = 0; this.shake = 0; this.anuncio = null;
     this.sincronizarArmas();
   }
@@ -176,7 +176,8 @@ class World {
       this.reclutarT = 3.5 * L.efecto('reclutar', 1);
       const libre = [...Array(this.capacidad).keys()].find(i => !this.soldados.some(s => s.i === i));
       const tipo = ORDEN_RECLUTA[this.reclutados++ % ORDEN_RECLUTA.length];
-      this.soldados.push(new Soldado(libre, tipo, L.efecto('vidaSoldado', 0)));
+      const nuevo = new Soldado(libre, tipo, L.efecto('vidaSoldado', 0)); nuevo.mult = 1 + 0.15 * this.mej('sold-' + tipo);   // mejora permanente del tipo
+      nuevo.vidaMax *= nuevo.mult; nuevo.vida = nuevo.vidaMax; this.soldados.push(nuevo); this.tiposSoldado.add(tipo);
       this.texto(this.base.derecha + 8, MUNDO.suelo - 24, `+${SOLDADOS[tipo].icon}`, '#bbf7d0');
     }
     const curar = L.efecto('curar', 0);
@@ -185,7 +186,7 @@ class World {
     // La base dispara sola (gratis, débil) solo si no hay soldados
     if (!this.soldados.length && (this.base.cd -= dt) <= 0){
       const o = this.elegir({alcance:'ambos', prioridad:'cercano', desde:{x:this.base.cx, y:this.base.cy}});
-      if (o){ this.base.cd = 1.3; this.disparar({x:this.base.cx, y:this.base.cy - 14, obj:o, golpe:{dmg:1, dano:'fisico'}, vel:200, color:'#e5e7eb', r:1.4}); }
+      if (o){ this.base.cd = 1.3; this.disparar({x:this.base.cx, y:this.base.cy - 14, obj:o, golpe:{dmg:1 + this.torreta, dano:'fisico'}, vel:200, color:'#e5e7eb', r:1.4}); }
     }
     this.armas.forEach(a => a.update(dt, this));
     // Clima: rayos de tormenta
@@ -222,17 +223,17 @@ class World {
         if (!o || o.x - s.x > d.ataque.rango * (this.clima.rango ?? 1)){ s.apoyoT = 0.3; continue; }
         if (!this.energia.gastar(d.ataque.costo)){ s.apoyoT = 0.4; this.sinEnergia = true; continue; }
         s.apoyoT = d.ataque.cd;
-        this.disparar({x:s.x + 4, y:s.cy - 3, obj:o, golpe:{dmg:d.ataque.dmg, dano:d.ataque.dano, area:d.ataque.area ?? 0, alcance:'tierra'}, parabola:!!d.ataque.parabola,
+        this.disparar({x:s.x + 4, y:s.cy - 3, obj:o, golpe:{dmg:d.ataque.dmg * (s.mult ?? 1), dano:d.ataque.dano, area:d.ataque.area ?? 0, alcance:'tierra'}, parabola:!!d.ataque.parabola,
           vel:d.ataque.parabola ? 120 : 260, color:d.ataque.area ? '#fb923c' : '#e5e7eb', r:d.ataque.area ? 2 : 1.1});
       }
       if (d.apoyo && (s.apoyoT -= dt) <= 0){
         s.apoyoT = d.apoyo.cd;
         if (d.apoyo.curar){
           const herido = this.soldados.filter(x => x.vida < x.vidaMax).sort((a, b) => a.vida / a.vidaMax - b.vida / b.vidaMax)[0];
-          if (herido && this.energia.gastar(d.apoyo.costo)){ herido.vida = Math.min(herido.vidaMax, herido.vida + d.apoyo.curar); this.texto(herido.x, herido.cy - 14, '+❤', '#86efac'); }
+          if (herido && this.energia.gastar(d.apoyo.costo)){ herido.vida = Math.min(herido.vidaMax, herido.vida + d.apoyo.curar * (s.mult ?? 1)); this.texto(herido.x, herido.cy - 14, '+❤', '#86efac'); }
         }
         if (d.apoyo.reparar && this.base.vida < this.base.vidaMax && this.energia.gastar(d.apoyo.costo)){
-          this.base.vida = Math.min(this.base.vidaMax, this.base.vida + d.apoyo.reparar); this.texto(this.base.cx, this.base.cy - 22, '+🔧', '#fde68a');
+          this.base.vida = Math.min(this.base.vidaMax, this.base.vida + d.apoyo.reparar * (s.mult ?? 1)); this.texto(this.base.cx, this.base.cy - 22, '+🔧', '#fde68a');
         }
       }
     }

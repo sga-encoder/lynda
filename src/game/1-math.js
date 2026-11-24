@@ -217,28 +217,39 @@ class Card {
   /** @param {{id:string,name:string,icon:string,desc:string,free?:boolean}} info */
   constructor(info){ Object.assign(this, {modes:['eq', 'expr']}, info); }
   /** Rutas donde se puede aplicar. */ targets(root){ return []; }
+  /** Rutas de los nodos que se resaltan para un objetivo (un grupo puede abarcar varios términos). */ marcas(root, path){ return [path]; }
   /** Devuelve el nuevo árbol (normalizado). */ apply(root, path){ return root; }
 }
 class DistributivaCard extends Card {
   constructor(){ super({id:'dist', name:'Distributiva', icon:'✳️', desc:'Reparte el número del paréntesis', formula:String.raw`k(a+b)=ka+kb`}); }
-  targets(root){ return [...walk(root)].filter(([n]) => n instanceof Mul && n.f instanceof Add).map(([, p]) => p); }
-  apply(root, path){ const m = nodeAt(root, path); return normalize(replaceAt(root, path, new Add(m.f.terms.map(t => scale(t, m.k))))); }
+  targets(root){ return [...walk(root)].filter(([n]) => (n instanceof Mul && n.f instanceof Add) || (n instanceof Div && n.num instanceof Add)).map(([, p]) => p); }
+  apply(root, path){
+    const m = nodeAt(root, path);
+    if (m instanceof Div) return normalize(replaceAt(root, path, new Add(m.num.terms.map(t => scale(t, Q.of(1).div(m.den))))));
+    return normalize(replaceAt(root, path, new Add(m.f.terms.map(t => scale(t, m.k)))));
+  }
 }
 class SemejantesCard extends Card {
-  constructor(){ super({id:'seme', name:'Términos semejantes', icon:'🧲', desc:'Junta los términos iguales', formula:String.raw`3x+2x=5x`}); }
+  constructor(){ super({id:'seme', name:'Términos semejantes', icon:'🧲', desc:'Junta un grupo de términos iguales', formula:String.raw`3x+2x=5x`}); }
+  /** Un objetivo por grupo: [...ruta de la suma, 'gx' | 'gc']. */
   targets(root){
-    return [...walk(root)].filter(([n]) => n instanceof Add && ['x', 'c'].some(k => n.terms.filter(t => likeKey(t) === k).length > 1)).map(([, p]) => p);
+    return [...walk(root)].filter(([n]) => n instanceof Add).flatMap(([n, p]) =>
+      ['x', 'c'].filter(k => n.terms.filter(t => likeKey(t) === k).length > 1).map(k => [...p, 'g' + k]));
+  }
+  marcas(root, path){
+    const k = path.at(-1).slice(1), base = path.slice(0, -1);
+    return nodeAt(root, base).terms.flatMap((t, i) => likeKey(t) === k ? [[...base, i]] : []);
   }
   apply(root, path){
-    const add = nodeAt(root, path), sums = {x: Q.of(0), c: Q.of(0)}, seen = new Set(), out = [];
-    add.terms.forEach(t => { const k = likeKey(t); if (k) sums[k] = sums[k].add(coefOf(t)); });
-    add.terms.forEach(t => {
-      const k = likeKey(t);
-      if (!k){ out.push(t); return; }
-      if (seen.has(k)) return; seen.add(k);
-      if (!sums[k].isZero) out.push(k === 'x' ? new Mul(sums[k], new X()) : new Num(sums[k]));
-    });
-    return normalize(replaceAt(root, path, new Add(out)));
+    const k = path.at(-1).slice(1), base = path.slice(0, -1), add = nodeAt(root, base);
+    const suma = add.terms.filter(t => likeKey(t) === k).reduce((q, t) => q.add(coefOf(t)), Q.of(0));
+    let puesto = false; const out = [];
+    for (const t of add.terms){
+      if (likeKey(t) !== k){ out.push(t); continue; }
+      if (puesto) continue; puesto = true;               // el resultado queda donde estaba el primer término del grupo
+      if (!suma.isZero) out.push(k === 'x' ? new Mul(suma, new X()) : new Num(suma));
+    }
+    return normalize(replaceAt(root, base, new Add(out)));
   }
 }
 class MoverCard extends Card {
@@ -255,14 +266,14 @@ class MoverCard extends Card {
   }
 }
 class DividirCard extends Card {
-  constructor(){ super({id:'div', name:'Dividir ambos lados', icon:'➗', desc:'Despeja el coeficiente de x', formula:String.raw`ax=b\Rightarrow x=\tfrac{b}{a}`, modes:['eq']}); }
+  constructor(){ super({id:'div', name:'Dividir ambos lados', icon:'➗', desc:'Quita el número que multiplica a un lado', formula:String.raw`k\,A=b\Rightarrow A=\tfrac{b}{k}`, modes:['eq']}); }
   targets(root){
     if (!(root instanceof Eq)) return [];
-    return [0, 1].filter(s => { const n = root.children[s]; return n instanceof Mul && n.f instanceof X && !n.k.isOne; }).map(s => [s]);
+    return [0, 1].filter(s => { const n = root.children[s]; return n instanceof Mul && !n.k.isOne; }).map(s => [s]);
   }
   apply(root, [s]){
-    const k = root.children[s].k, other = root.children[1 - s];
-    return normalize(s === 0 ? new Eq(new X(), new Div(other, k)) : new Eq(new Div(other, k), new X()));
+    const {k, f} = root.children[s], other = root.children[1 - s];
+    return normalize(s === 0 ? new Eq(f, new Div(other, k)) : new Eq(new Div(other, k), f));
   }
 }
 class OperarCard extends Card {
@@ -291,7 +302,7 @@ const defaultCards = () => new CardRegistry()
 const isSolved = root => root instanceof Eq
   ? ((root.l instanceof X && root.r instanceof Num) || (root.r instanceof X && root.l instanceof Num))
   : ![...walk(root)].some(([n]) =>
-      (n instanceof Mul && n.f instanceof Add) || (n instanceof Div && n.num instanceof Num) ||
+      (n instanceof Mul && n.f instanceof Add) || (n instanceof Div && (n.num instanceof Num || n.num instanceof Add)) ||
       (n instanceof Add && ['x', 'c'].some(k => n.terms.filter(t => likeKey(t) === k).length > 1)));
 
 class Solver {

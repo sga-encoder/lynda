@@ -50,7 +50,7 @@ class MenuScene extends Scene {
         <div class="mt-2 grid grid-cols-2 gap-2">${MODOS.map(([id, ic, n]) => `<button data-modo="${id}" class="flex min-h-14 items-center justify-center gap-2 rounded-2xl border-2 px-3 font-semibold touch-manipulation ${d.modo === id ? 'border-emerald-400 bg-emerald-400/15 text-emerald-200' : 'border-zinc-700 bg-zinc-900'}"><span class="text-xl">${ic}</span>${n}</button>`).join('')}</div>
         <p class="mt-2 text-xs text-zinc-400">${disp.length ? `${disp.length} tipo(s) de problema disponibles` : 'Aún no hay problemas: completa ejercicios en Aprender'}${disp.length < total ? ' · más se desbloquean avanzando en Aprender' : ''}.</p></div>
       <button data-a="jugar" class="${UI.btnP} !min-h-14 text-lg" ${disp.length ? '' : 'disabled'}>▶ Jugar</button>
-      <div class="grid grid-cols-2 gap-3"><button data-a="mejoras" class="${UI.btn}">🛠 Mejoras <span class="text-amber-300">${d.puntos} 🔬</span></button><button data-a="ayuda" class="${UI.btn}">❓ Cómo jugar</button></div>
+      <div class="grid grid-cols-2 gap-3"><button data-a="catalogo" class="${UI.btn}">📚 Catálogo</button><button data-a="mejoras" class="${UI.btn}">🛠 Mejoras <span class="text-amber-300">${d.puntos} 🔬</span></button><button data-a="mazo" class="${UI.btn}">🃏 Mazo</button><button data-a="ayuda" class="${UI.btn}">❓ Cómo jugar</button></div>
       <div><b class="text-sm">Modo asistido</b>
         <div class="mt-2 grid grid-cols-4 gap-1.5">${NIVELES_AYUDA.map((n, i) => `<button data-ayuda="${i}" class="flex min-h-14 flex-col items-center justify-center rounded-2xl border-2 px-1 text-xs font-semibold touch-manipulation ${(d.asistido ?? 0) === i ? 'border-sky-400 bg-sky-400/15 text-sky-200' : 'border-zinc-700 bg-zinc-900'}"><span class="text-lg">${n.icon}</span>${n.nombre}</button>`).join('')}</div>
         <p class="mt-1.5 text-xs text-zinc-400">${NIVELES_AYUDA[d.asistido ?? 0].desc}${(d.asistido ?? 0) ? ` XP ×${NIVELES_AYUDA[d.asistido].xp}.` : ''}</p></div>
@@ -66,7 +66,9 @@ class MenuScene extends Scene {
       if (a === 'todo'){ d.todo = e.target.checked; p.guardar(); return this.enter(); }
       if (a === 'semi'){ d.semi = e.target.checked; p.guardar(); return this.enter(); }
       if (a === 'jugar') this.app.go(new BattleScene(this.app, new Run(this.app)));
-      if (a === 'mejoras') this.app.go(new ShopScene(this.app));
+      if (a === 'mejoras') this.app.go(new MejorasScene(this.app));
+      if (a === 'catalogo') this.app.go(new CatalogoScene(this.app));
+      if (a === 'mazo') this.app.go(new MazoScene(this.app));
       if (a === 'ayuda') this.app.go(new HelpScene(this.app));
       if (a === 'salir') this.app.onExit();
     };
@@ -93,7 +95,9 @@ class HelpScene extends Scene {
         <li>Cada oleada pide resolver 1 o más problemas. Al subir de nivel eliges <b>1 arma y 1 táctico</b> (3 espacios de cada tipo, nivel máximo 3).</li>
         <li>Los bonificadores tienen <b>propiedades</b> (objetivo, alcance, tipo de daño, movimiento…) que cambian al mejorar. Algunas parejas en nivel 3 se <b>fusionan</b> (nivel 4) y liberan un espacio: 🌟 Láser + Amplificador, 🎖️ Rifle + Reclutamiento, ❄️ Misiles + Cámara lenta.</li>
         <li>Enemigos con propiedades y armas: el <b>blindado</b> resiste lo físico, el <b>escudero</b> resiste la energía, el <b>saltador</b> brinca sobre tus soldados, el <b>excavador</b> va bajo tierra, el <b>escupeácido</b> dispara de lejos, y en el aire hay naves, drones, bombarderos, cazas y portadrones.</li>
-        <li>Al terminar la partida, tu XP se convierte en 🔬 puntos para <b>mejoras permanentes</b>.</li>
+        <li>🔬 <b>Puntos de investigación</b>: ganas al completar cada misión y con tu XP. Gástalos en <b>🛠 Mejoras</b> (científicos, base, soldados, armas y tácticos).</li>
+        <li><b>📚 Catálogo</b>: cartas, armas, tácticos y entidades con vista previa y estadísticas; lo que no has encontrado aparece como «Desconocido».</li>
+        <li><b>🃏 Mazo</b>: guarda combinaciones de propiedades (una lista por área) que te acompañan en todas las partidas.</li>
         <li>Los tipos de problema se desbloquean avanzando en <b>Aprender</b>.</li>
       </ul></div>`).onclick = e => { if (e.target.closest('[data-a="volver"]')) this.app.go(new MenuScene(this.app)); };
   }
@@ -129,8 +133,11 @@ class Run {
     this.extraSoldados = p.total('soldados');
     this.xpMult = 1 + p.total('xp');
     // Combos: los ya montados de cada área + hasta 3 propios; se recargan en cada ronda
-    this.combos = Object.entries(COMBOS_HECHOS).flatMap(([dominio, l]) => l.map(c => new Combo({...c, dominio, hecho:true})));
-    Object.assign(this, {mision:1, oleada:1, nivel:1, xp:0, xpTotal:0, problemas:0, eficientes:0, bajas:0, jefes:0, combosUsados:0});
+    this.combos = [...Object.entries(COMBOS_HECHOS).flatMap(([dominio, l]) => l.map(c => new Combo({...c, dominio, hecho:true}))),
+                   ...Object.entries(p.data.mazo).flatMap(([dominio, l]) => l.map(c => new Combo({...c, dominio, mazo:true})))];   // tu mazo viaja a todas las partidas
+    this.loadout.potencia = id => p.nivel('tac-' + id);
+    this.energiaPaso = 1 + p.total('energiaPaso'); this.ventanaExtra = p.total('ventana');
+    Object.assign(this, {mision:1, oleada:1, nivel:1, xp:0, xpTotal:0, problemas:0, eficientes:0, bajas:0, jefes:0, combosUsados:0, puntosMisiones:0});
   }
   get xpSiguiente(){ return xpParaNivel(this.nivel); }
   combosDe(dom){ return this.combos.filter(c => c.dominio === dom); }
@@ -157,7 +164,7 @@ function comboHTML(cb, dom){
     <span class="flex h-full flex-col rounded-[14px] bg-zinc-950/95 p-1.5">
       <span class="text-[9.5px] font-black uppercase leading-tight tracking-wide text-amber-200">🔗 ${cb.nombre}</span>
       <span class="mt-1 flex flex-wrap items-center justify-center gap-0.5 text-base leading-none">${iconos}</span>
-      <span class="mt-auto text-center text-[8px] leading-tight text-zinc-400">${cb.usado ? '↻ se recarga la próxima ronda' : cb.hecho ? 'Combo ya montado · 1 vez por ronda' : 'Tu combo · 1 vez por ronda'}</span>
+      <span class="mt-auto text-center text-[8px] leading-tight text-zinc-400">${cb.usado ? '↻ se recarga la próxima ronda' : cb.hecho ? 'Combo ya montado · 1 vez por ronda' : cb.mazo ? '🃏 De tu mazo · 1 vez por ronda' : 'Tu combo · 1 vez por ronda'}</span>
     </span></button>`;
 }
 
@@ -183,7 +190,7 @@ class BattleScene extends Scene {
       <div data-h="zona" class="relative flex min-h-0 flex-1 flex-col">
         <div class="flex min-h-0 flex-1 flex-col px-3 pt-1.5">
           <div class="flex items-center justify-between gap-2 text-xs text-zinc-400"><span data-h="tipo"></span><span class="flex items-center gap-2"><span data-h="pasos"></span><button data-a="pista" data-h="btnPista" class="hidden rounded-full border border-sky-500/60 bg-sky-500/10 px-2 py-1 text-sky-200 touch-manipulation">💡 Pista</button></span></div>
-          <div data-h="expr" class="mt-1 flex min-h-16 items-center justify-center overflow-x-auto rounded-2xl bg-zinc-900 px-2 text-xl text-white [&_[data-mejor]]:!bg-emerald-400/40 [&_[data-mejor]]:!outline-emerald-300 [&_[data-t]]:cursor-pointer [&_[data-t]]:rounded-md [&_[data-t]]:bg-amber-400/30 [&_[data-t]]:outline [&_[data-t]]:outline-2 [&_[data-t]]:outline-amber-300"></div>
+          <div data-h="expr" class="mt-1 flex min-h-16 items-center justify-center overflow-x-auto rounded-2xl bg-zinc-900 px-2 text-xl text-white [&_[data-mejor]]:!bg-emerald-400/40 [&_[data-mejor]]:!outline-emerald-300 [&_[data-t]]:cursor-pointer [&_[data-t]]:rounded-md [&_[data-t]]:bg-amber-400/30 [&_[data-t]]:outline [&_[data-t]]:outline-2 [&_[data-t]]:outline-amber-300 [&_[data-t='1']]:bg-sky-400/30 [&_[data-t='1']]:outline-sky-300 [&_[data-t='2']]:bg-fuchsia-400/30 [&_[data-t='2']]:outline-fuchsia-300 [&_[data-t='3']]:bg-lime-400/30 [&_[data-t='3']]:outline-lime-300"></div>
           <div data-h="msg" class="min-h-9 py-1 text-center text-sm"></div>
         </div>
         <div data-h="quiz" class="hidden px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"></div>
@@ -203,14 +210,15 @@ class BattleScene extends Scene {
     this.pausado = false; this.ultimo = performance.now(); this.t = 0;
     this.loop = this.loop.bind(this); this.raf = requestAnimationFrame(this.loop);
   }
-  exit(){ cancelAnimationFrame(this.raf); window.removeEventListener('resize', this.onResize); this.app.piezas.cerrar(); }
+  exit(){ this.terminado = true; cancelAnimationFrame(this.raf); window.removeEventListener('resize', this.onResize); this.app.piezas.cerrar(); }
   pause(){ if (!this.terminado && !this.capaAbierta) this.mostrarPausa(); }
 
   iniciarOleada(){
     const r = this.run;
     this.cfg = configOleada(r.mision, r.oleada);
     this.director = new WaveDirector(this.cfg, this.app.rng);
-    this.mundo ??= new World({bus:this.bus, loadout:r.loadout, energia:r.energia, base:r.base, extraSoldados:r.extraSoldados});
+    const P = this.app.progreso;
+    this.mundo ??= new World({bus:this.bus, loadout:r.loadout, energia:r.energia, base:r.base, extraSoldados:r.extraSoldados, mej:id => P.nivel(id), torreta:P.total('torreta')});
     const clima = r.mision === 1 && r.oleada === 1 ? 'despejado' : this.app.rng.pick(CLIMAS_ROTACION);
     this.mundo.ponerClima(clima);
     r.combos.forEach(c => c.usado = false);                          // los combos se recargan cada ronda
@@ -258,14 +266,14 @@ class BattleScene extends Scene {
     if (j){ this.$('jefeN').textContent = `👹 ${j.name}`; this.$('jefeV').style.width = `${100 * Math.max(0, j.vida) / j.vidaMax}%`;
       this.$('jefeE').textContent = j.escudoMental ? (j.escudoT > 0 ? `🧠 escudo abierto ${Math.ceil(j.escudoT)} s` : '🛡 resuelve un problema para abrir su escudo') : ''; }
   }
-  aviso(txt){ const el = this.$('aviso'); el.innerHTML = txt.replace('\n', '<br><span class="text-xs font-semibold">') + (txt.includes('\n') ? '</span>' : ''); clearTimeout(this.tAviso); this.tAviso = setTimeout(() => el.textContent = '', 2600); }
+  aviso(txt){ const el = this.$('aviso'); if (!el) return; /* la batalla ya se cerró */ el.innerHTML = txt.replace('\n', '<br><span class="text-xs font-semibold">') + (txt.includes('\n') ? '</span>' : ''); clearTimeout(this.tAviso); this.tAviso = setTimeout(() => el.textContent = '', 2600); }
 
 
   /* ---- Problema y cartas ---- */
   get ayuda(){ return this.app.progreso.data.asistido ?? 0; }
   dibujarProblema(){
     const mejor = this.ayuda >= 3 && this.carta ? this.dom.mejorJugada(this.raiz) : null;
-    const marcas = this.carta ? new Map(this.objetivos.map((p, i) => [p.join('.'), mejor && mejor.carta === this.carta && mejor.path.join('.') === p.join('.') ? `${i},mejor=1` : i])) : null;
+    const marcas = this.carta ? new Map(this.objetivos.flatMap((p, i) => this.carta.marcas(this.raiz, p).map(q => [q.join('.'), mejor && mejor.carta === this.carta && mejor.path.join('.') === p.join('.') ? `${i},mejor=1` : i]))) : null;
     this.$('expr').innerHTML = texJuego(this.dom.tex(this.raiz, marcas));
     this.$('tipo').textContent = (this.director.generando ? '' : '⭐ Extra · ') + `${this.dom.icon} ${this.dom.consigna(this.raiz)}`;   // consigna neutra: no revela el método
     this.$('pasos').textContent = `Pasos ${this.pasos} · mínimo ${this.par}`;
@@ -297,7 +305,7 @@ class BattleScene extends Scene {
   }
   mensaje(html, tono = 'zinc'){
     const color = {zinc:'text-zinc-300', rose:'text-rose-300', amber:'text-amber-300', emerald:'text-emerald-300'}[tono];
-    const el = this.$('msg'); el.innerHTML = html; el.className = `min-h-9 py-1 text-center text-sm ${color}`;
+    const el = this.$('msg'); if (!el) return; el.innerHTML = html; el.className = `min-h-9 py-1 text-center text-sm ${color}`;
   }
 
   click(e){
@@ -323,7 +331,7 @@ class BattleScene extends Scene {
     if (objs.length === 1) return this.resultadoDe(c, objs[0]);
     this.carta = c; this.objetivos = objs;
     this.dibujarProblema(); this.dibujarMano();
-    this.mensaje(`Toca en la expresión dónde aplicar <b>${c.name}</b>.`, 'amber');
+    this.mensaje(c.id === 'seme' ? 'Elige qué grupo juntar: toca uno de sus términos (se resaltan juntos).' : `Toca en la expresión dónde aplicar <b>${c.name}</b>.`, 'amber');
   }
   /** Semiautomático: el jugador elige cuál es el resultado correcto de aplicar la carta. */
   resultadoDe(c, path){
@@ -353,7 +361,7 @@ class BattleScene extends Scene {
     if (cb.usado) return this.mensaje('Ese combo ya se usó en esta ronda.', 'zinc');
     const estados = cb.ejecutar(this.raiz, this.dom);
     if (!estados.length){ this.combo = 0; return this.mensaje(`🔗 <b>${cb.nombre}</b> no se pudo aplicar aquí (ni se gastó).`, 'rose'); }
-    cb.usado = true; this.run.combosUsados++;
+    cb.usado = true; this.run.combosUsados++; cb.cartas.forEach(id => this.app.progreso.descubrir('cartas', id));
     estados.slice(0, -1).forEach(s => this.historial.add(this.dom.key(s)));
     this.pasos += estados.length - 1;
     this.aplicar(estados[estados.length - 1], {cadena:true});
@@ -406,8 +414,8 @@ class BattleScene extends Scene {
     r.tPasos = (r.tPasos ?? 0) + segundos; r.nPasos = (r.nPasos ?? 0) + 1;
     if (avance > 0){
       this.combo++;
-      const pts = this.puntuador.puntuar({avance, segundos, combo:this.combo - 1, libre, cadena, ventana:r.loadout.efecto('ventana', 0)});
-      const energia = pts.energia * r.loadout.energiaMult;
+      const pts = this.puntuador.puntuar({avance, segundos, combo:this.combo - 1, libre, cadena, ventana:r.loadout.efecto('ventana', 0) + r.ventanaExtra});
+      const energia = pts.energia * r.loadout.energiaMult * r.energiaPaso;
       r.energia.agregar(energia); this.ganarXP(pts.xp * r.xpMult * NIVELES_AYUDA[this.ayuda].xp);
       const extras = pts.detalle.map(d => `${d.nombre} ×${d.mult.toFixed(1)}`).join(' · ');
       this.mensaje(`+${Math.round(energia)} ⚡ ${extras ? `<span class="text-sky-300">(${extras})</span>` : ''}`, 'emerald');
@@ -416,7 +424,9 @@ class BattleScene extends Scene {
       this.combo = 0;
       this.mensaje(repetido ? '↩️ Volviste a un paso anterior: sin energía.' : 'Paso válido, pero no te acerca al resultado: sin energía.', 'zinc');
     }
+    if (carta) this.app.progreso.descubrir('cartas', carta.id);
     if (this.dom.resuelto(this.raiz)) return this.problemaResuelto();
+    if (carta?.id === 'seme' && carta.targets(this.raiz).length) this.mensaje(this.$('msg').innerHTML + ' · 🧲 Aún puedes juntar otro grupo o usar otra propiedad.', avance > 0 ? 'emerald' : 'zinc');
     this.dibujarProblema(); this.dibujarMano();
   }
   problemaResuelto(){
@@ -477,6 +487,8 @@ class BattleScene extends Scene {
         for (const tipo of ['arma', 'tactico']){
           const o = ops[tipo][elegido[tipo]];
           if (o.accion === 'reparar') this.run.base.vida = Math.min(this.run.base.vidaMax, this.run.base.vida + 30); else l.aplicar(o);
+          const nuevoId = o.accion === 'nuevo' ? o.id : o.accion === 'fusionar' ? o.receta.resultado : null;
+          if (nuevoId) this.app.progreso.descubrir(BONUS_DEFS[nuevoId].tipo === 'arma' ? 'armas' : 'tacticos', nuevoId);
         }
         const b = this.run.base, nuevaMax = this.run.vidaBase + l.efecto('vida', 0);
         b.vida += Math.max(0, nuevaMax - b.vidaMax); b.vidaMax = nuevaMax;
@@ -498,8 +510,17 @@ class BattleScene extends Scene {
 
 
   /* ---- Progresión ---- */
+  /** Lo visto en la batalla pasa al catálogo. */
+  sincronizarCatalogo(){
+    const P = this.app.progreso, nuevos = [];
+    for (const id of Object.keys(this.mundo.vistos)) if (P.descubrir('enemigos', id)) nuevos.push(id);
+    for (const id of this.mundo.tiposSoldado) if (P.descubrir('soldados', id)) nuevos.push(id);
+    return nuevos;
+  }
   oleadaTerminada(){
-    const r = this.run;
+    const r = this.run, nuevos = this.sincronizarCatalogo();
+    if (r.oleada === OLEADAS){ const pts = puntosMision(r.mision); this.app.progreso.ganarPuntos(pts); r.puntosMisiones += pts; const m = r.mision; setTimeout(() => this.aviso(`🏅 ¡Misión ${m} cumplida! +${pts} 🔬`), 2700); }
+    if (nuevos.length) setTimeout(() => this.aviso(`📚 Nuevo en el catálogo (${nuevos.length})`), 5300);
     if (r.oleada < OLEADAS){ r.oleada++; }
     else if (r.mision < MISIONES){ r.mision++; r.oleada = 1; r.base.vida = Math.min(r.base.vidaMax, r.base.vida + 25); }
     else return this.fin(true);
@@ -507,6 +528,7 @@ class BattleScene extends Scene {
   }
   fin(victoria, abandono = false){
     if (this.terminado) return; this.terminado = true;
+    this.sincronizarCatalogo();
     const r = this.run, pts = this.app.progreso.registrarPartida(r.xpTotal);
     this.abrirCapa(`<div class="m-auto flex w-full max-w-sm flex-col gap-3 text-center">
       <div class="text-6xl">${victoria ? '🏆' : '💥'}</div><h2 class="text-2xl font-black">${victoria ? '¡La Tierra está a salvo!' : abandono ? 'Partida abandonada' : 'La base cayó'}</h2>
@@ -518,12 +540,13 @@ class BattleScene extends Scene {
         <span>Enemigos derrotados</span><b class="text-right">${r.bajas}</b>
         <span>Jefes derrotados</span><b class="text-right">${r.jefes}/${MISIONES}</b>
         <span>XP total</span><b class="text-right">${Math.round(r.xpTotal)}</b>
-        <span>Puntos de investigación</span><b class="text-right text-amber-300">+${pts} 🔬</b></div>
+        <span>🔬 por misiones</span><b class="text-right text-amber-300">+${r.puntosMisiones}</b>
+        <span>🔬 por XP</span><b class="text-right text-amber-300">+${pts}</b></div>
       <button data-a="otra" class="${UI.btnP}">↻ Jugar otra vez</button><button data-a="mejoras" class="${UI.btn}">🛠 Mejoras</button><button data-a="menu" class="${UI.btn}">Menú</button></div>`,
     e => {
       const a = e.target.closest('[data-a]')?.dataset.a;
       if (a === 'otra') this.app.go(new BattleScene(this.app, new Run(this.app)));
-      if (a === 'mejoras') this.app.go(new ShopScene(this.app));
+      if (a === 'mejoras') this.app.go(new MejorasScene(this.app));
       if (a === 'menu') this.app.go(new MenuScene(this.app));
     });
   }

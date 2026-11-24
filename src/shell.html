@@ -14,6 +14,12 @@
      · Fórmulas: KaTeX v0.16.9 (con sus fuentes).
      · Lógica: JavaScript puro (al final del archivo). -->
 <!--@@VENDOR@@-->
+<style>
+  /* Animaciones del juego (catálogo): cambio antes → después y flotación */
+  @keyframes cat-a{0%,42%{opacity:1}50%,92%{opacity:0}100%{opacity:1}}
+  @keyframes cat-b{0%,42%{opacity:0}50%,92%{opacity:1}100%{opacity:0}}
+  @keyframes flotar{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+</style>
 <script>
   // Tema claro/oscuro antes de pintar (evita parpadeo)
   (function(){

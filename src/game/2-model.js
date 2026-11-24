@@ -121,7 +121,9 @@ class Loadout {
   /** Efecto acumulado de una estadística en todo el equipo (los fusionados conservan el efecto del táctico). */
   efecto(stat, neutro){
     return [...this.armas, ...this.tacticos].reduce((acc, b) => {
-      const v = b.stats?.[stat]; if (v == null) return acc;
+      let v = b.stats?.[stat]; if (v == null) return acc;
+      const k = 1 + 0.1 * (this.potencia?.(b.id) ?? 0);            // mejora permanente del táctico
+      if (b.tipo === 'tactico') v = neutro === 1 ? 1 + (v - 1) * k : v * k;
       return neutro === 1 ? acc * v : acc + v;
     }, neutro);
   }
@@ -132,7 +134,7 @@ class Loadout {
    Un combo aplica varias cartas en un orden fijo. Cada carta se aplica a todos sus
    objetivos (en orden) antes de pasar a la siguiente. Se puede usar una vez por ronda. */
 class Combo {
-  constructor({nombre, dominio, cartas, hecho = false}){ Object.assign(this, {nombre, dominio, cartas, hecho, usado:false, id:'cb' + Math.random().toString(36).slice(2, 8)}); }
+  constructor({nombre, dominio, cartas, hecho = false, mazo = false}){ Object.assign(this, {nombre, dominio, cartas, hecho, mazo, usado:false, id:'cb' + Math.random().toString(36).slice(2, 8)}); }
   /** Ejecuta el combo; devuelve la lista de estados intermedios. */
   ejecutar(raiz, dom){
     const estados = []; let actual = raiz;
@@ -206,25 +208,50 @@ class Puntuador {
   bonoProblema(pasos, par){ const eficiente = pasos <= par; return {xp: eficiente ? 30 : 15, energia: 20, eficiente}; }
 }
 
-/* ---------- Mejoras permanentes (fuera de la partida) ---------- */
+/* ---------- Mejoras permanentes (fuera de la partida) ----------
+   Se compran con 🔬 puntos de investigación (misiones completadas + XP). */
+const CATEGORIAS_MEJORA = [['cientificos', '🧪', 'Científicos'], ['base', '🏰', 'Base'], ['soldados', '🪖', 'Soldados'], ['armas', '🔫', 'Armas'], ['tacticos', '🧠', 'Tácticos']];
+const TIPOS_SOLDADO = [['fusilero', '🔫', 'Fusilero'], ['pesado', '🛡️', 'Pesado'], ['granadero', '💣', 'Granadero'], ['medico', '⛑️', 'Médico'], ['ingeniero', '🔧', 'Ingeniero']];
 const MEJORAS = {
-  blindaje:    {icon:'🧱', name:'Blindaje', desc:'+20 de vida máxima de la base', max:5, costo:n => 8 + 6 * n,  efecto:{vida:20}},
-  bateria:     {icon:'🔋', name:'Batería', desc:'+15 de energía al empezar', max:5, costo:n => 6 + 5 * n,  efecto:{energia:15}},
-  academia:    {icon:'🎖️', name:'Academia', desc:'+1 soldado en el pelotón', max:3, costo:n => 15 + 10 * n, efecto:{soldados:1}},
-  laboratorio: {icon:'🔬', name:'Laboratorio', desc:'+10 % de XP en cada paso', max:5, costo:n => 10 + 8 * n, efecto:{xp:0.1}},
+  laboratorio:{cat:'cientificos', icon:'🔬', name:'Laboratorio', desc:'+10 % de XP en cada paso', max:5, costo:n => 10 + 8 * n, efecto:{xp:0.1}},
+  bateria:    {cat:'cientificos', icon:'🔋', name:'Batería', desc:'+15 de energía al empezar', max:5, costo:n => 6 + 5 * n, efecto:{energia:15}},
+  eficiencia: {cat:'cientificos', icon:'⚗️', name:'Eficiencia', desc:'+8 % de energía por cada paso', max:5, costo:n => 10 + 7 * n, efecto:{energiaPaso:0.08}},
+  intuicion:  {cat:'cientificos', icon:'🧠', name:'Intuición', desc:'+1 s de margen para el bono de rapidez', max:3, costo:n => 12 + 8 * n, efecto:{ventana:1}},
+  blindaje:   {cat:'base', icon:'🧱', name:'Blindaje', desc:'+20 de vida máxima de la base', max:5, costo:n => 8 + 6 * n, efecto:{vida:20}},
+  academia:   {cat:'base', icon:'🎖️', name:'Academia', desc:'+1 soldado en el pelotón', max:3, costo:n => 15 + 10 * n, efecto:{soldados:1}},
+  torreta:    {cat:'base', icon:'🗼', name:'Torreta', desc:'La torreta de emergencia hace +1 de daño', max:3, costo:n => 8 + 6 * n, efecto:{torreta:1}},
+  ...Object.fromEntries(TIPOS_SOLDADO.map(([id, icon, name]) => ['sold-' + id, {cat:'soldados', icon, name, desc:'+15 % de vida y de daño o efecto', max:3, costo:n => 10 + 8 * n, requiere:['soldados', id]}])),
+  ...Object.fromEntries(Object.entries(BONUS_DEFS).filter(([, d]) => d.tipo === 'arma' && !d.fusion).map(([id, d]) => ['arma-' + id, {cat:'armas', icon:d.icon, name:d.name, desc:'+10 % de daño (también en su fusión)', max:3, costo:n => 10 + 8 * n, requiere:['armas', id]}])),
+  ...Object.fromEntries(Object.entries(BONUS_DEFS).filter(([, d]) => d.tipo === 'tactico').map(([id, d]) => ['tac-' + id, {cat:'tacticos', icon:d.icon, name:d.name, desc:'+10 % de potencia de su efecto', max:3, costo:n => 10 + 8 * n, requiere:['tacticos', id]}])),
 };
+/** Arma base de una fusión (para aplicar las mejoras del arma original). */
+const armaBase = id => FUSIONES.find(f => f.resultado === id)?.a ?? id;
+const puntosMision = m => 10 + 5 * m;
+const MAX_MAZO = 4;
+
 class SaveRepository {                               // patrón Repository: el resto del juego no sabe de localStorage
   #key = 'calcint:juego';
   load(){ try { return JSON.parse(localStorage.getItem(this.#key)) ?? {}; } catch { return {}; } }
   save(data){ try { localStorage.setItem(this.#key, JSON.stringify(data)); } catch {} }
 }
 class Progreso {
-  constructor(repo){ this.repo = repo; this.data = {puntos:0, mejoras:{}, record:0, partidas:0, modo:'fund', todo:true, semi:true, asistido:0, ...repo.load()}; }
+  constructor(repo){
+    this.repo = repo;
+    this.data = {puntos:0, mejoras:{}, record:0, partidas:0, modo:'fund', todo:true, semi:true, asistido:0, ...repo.load()};
+    this.data.desc = {armas:['rifle'], tacticos:[], enemigos:[], soldados:[], cartas:[], ...(this.data.desc ?? {})};
+    this.data.mazo = {fund:[], dif:[], int:[], ...(this.data.mazo ?? {})};
+  }
+  /** Registra algo encontrado por primera vez (para el catálogo). Devuelve true si es nuevo. */
+  descubrir(cat, id){ const l = this.data.desc[cat]; if (l.includes(id)) return false; l.push(id); this.guardar(); return true; }
+  conocido(cat, id){ return this.data.desc[cat].includes(id); }
+  disponible(id){ const r = MEJORAS[id].requiere; return !r || this.conocido(...r); }
+  ganarPuntos(n){ this.data.puntos += n; this.guardar(); }
+  guardarMazo(dom, lista){ this.data.mazo[dom] = lista.slice(0, MAX_MAZO); this.guardar(); }
   nivel(id){ return this.data.mejoras[id] ?? 0; }
   costo(id){ return MEJORAS[id].costo(this.nivel(id)); }
-  puedeComprar(id){ return this.nivel(id) < MEJORAS[id].max && this.data.puntos >= this.costo(id); }
+  puedeComprar(id){ return this.disponible(id) && this.nivel(id) < MEJORAS[id].max && this.data.puntos >= this.costo(id); }
   comprar(id){ if (!this.puedeComprar(id)) return false; this.data.puntos -= this.costo(id); this.data.mejoras[id] = this.nivel(id) + 1; this.guardar(); return true; }
-  total(stat){ return Object.entries(MEJORAS).reduce((s, [id, m]) => s + (m.efecto[stat] ?? 0) * this.nivel(id), 0); }
+  total(stat){ return Object.entries(MEJORAS).reduce((s, [id, m]) => s + (m.efecto?.[stat] ?? 0) * this.nivel(id), 0); }
   registrarPartida(xp){ const pts = Math.floor(xp / 10); this.data.puntos += pts; this.data.partidas++; this.data.record = Math.max(this.data.record, Math.round(xp)); this.guardar(); return pts; }
   guardar(){ this.repo.save(this.data); }
 }

@@ -198,8 +198,8 @@ function pageHome(){
   <div class="${C.card}"><b>🧩 ¿Cómo funcionan los ejercicios con piezas?</b>
     <ol>
       <li>Cada paso te dice <b>qué hacer</b> y te da un <b>lienzo en blanco</b>.</li>
-      <li>Abajo está el <b>banco de piezas</b>: números (azul), variables (ámbar), operaciones (gris), funciones (violeta) y piezas para encajar (verde: fracción, raíz y exponente).</li>
-      <li><b>Arrastra</b> las piezas al lienzo, o <b>tócalas</b> y se añaden al espacio marcado en azul. Las piezas verdes tienen espacios internos: toca un espacio para elegirlo y mete piezas dentro.</li>
+      <li>Abajo hay una barra de <b>categorías</b>: 🔢 Números, 𝑥 Variables, ± Signos, ƒ Funciones y 🧩 Agrupar (fracción, raíz, exponente, paréntesis).</li>
+      <li><b>Toca</b> una categoría y su menú queda <b>fijo</b> 📌: toca piezas para añadirlas al espacio azul o arrástralas al lienzo. <b>Mantenla presionada</b> y el menú se <b>asoma</b>: desliza el dedo a la pieza, llévala al lienzo y suelta; el menú se cierra solo.
       <li>Toca una pieza del lienzo para quitarla, o arrástrala para moverla.</li>
       <li>Pulsa <b>Verificar</b>. Si está bien, pasas al siguiente paso; si no, usa la pista o mira la solución.</li>
     </ol></div>`;
@@ -226,7 +226,7 @@ function pageFundTopic(T){
   <p class="${C.src}">Intenta cada uno antes de revelar los pasos.</p>
   ${T.examples.map(exampleCard).join('')}
   <h3 class="${C.h3}">Ejercicios con piezas <small class="${C.src}">(${p.n}/${p.tot} resueltos)</small></h3>
-  <p class="${C.src}">Arma cada paso en el lienzo con las piezas del banco y pulsa Verificar.</p>
+  <p class="${C.src}">Arma cada paso en el lienzo con las piezas de las categorías y pulsa Verificar.</p>
   ${T.lego.map((ex,k)=>legoCard(ex, `f-${T.id}-${k}`, k)).join('')}
   <div class="mt-10 flex flex-wrap justify-between gap-2.5">
    ${prev ? link('#/f/'+prev.id, '◂ '+prev.short) : link('#/f','◂ Fundamentos')}

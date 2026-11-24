@@ -21,7 +21,7 @@ function ansTex(s){
 /* ---------- Modelo ---------- */
 const LEGO = {};          // estado por ejercicio
 function legoState(key){
-  if (!LEGO[key]) LEGO[key] = {step:0, root:[], active:null, hist:[], log:[], tries:0, msg:null};
+  if (!LEGO[key]) LEGO[key] = {step:0, root:[], active:null, hist:[], log:[], tries:0, msg:null, cat:null, pin:false};
   return LEGO[key];
 }
 const newNode = t => STRUCT[t] ? {t, z:Array.from({length:STRUCT[t]},()=>[])} : {t};
@@ -50,24 +50,30 @@ function containsZone(node, zone){
 
 /* ---------- Render ---------- */
 const ZREG = {};   // registro de zonas del último render, por ejercicio
-function zoneHTML(key, zone, depth){
+function zoneHTML(key, zone, depth, sm=false){
   const st = legoState(key);
   const id = ZREG[key].push(zone)-1;
   const isRoot = depth===0, active = st.active===zone || (!st.active && isRoot);
   const base = isRoot
     ? 'min-h-28 w-full p-2.5 gap-1.5 rounded-xl border-2 border-dashed border-stone-300 bg-white bg-[radial-gradient(circle,#e7e5e4_1px,transparent_1px)] [background-size:18px_18px] dark:border-zinc-700 dark:bg-zinc-950 dark:bg-[radial-gradient(circle,#27272a_1px,transparent_1px)]'
-    : 'min-h-11 min-w-11 p-1 gap-1 rounded-lg border-2 border-dashed border-stone-300 bg-stone-50/80 dark:border-zinc-600 dark:bg-zinc-900/80';
+    : sm ? 'min-h-7 min-w-7 p-0.5 gap-0.5 rounded-md border-[1.5px] border-dashed border-stone-300 bg-white/80 dark:border-zinc-600 dark:bg-zinc-900/80'
+         : 'min-h-11 min-w-11 p-1 gap-1 rounded-lg border-2 border-dashed border-stone-300 bg-white/80 dark:border-zinc-600 dark:bg-zinc-900/80';
   const ring = active ? ' ring-2 ring-blue-400 dark:ring-blue-500' : '';
-  const empty = zone.length ? '' : (isRoot ? `<span class="pointer-events-none select-none text-sm text-stone-400 dark:text-zinc-500">Lienzo vacío: arrastra o toca piezas del banco…</span>` : '');
-  return `<div data-z="${key}|${id}" class="flex flex-wrap items-center ${base}${ring}">${zone.map((n,i)=>nodeHTML(key,n,id,i,depth)).join('')}${empty}</div>`;
+  const empty = zone.length ? '' : (isRoot ? `<span class="pointer-events-none select-none text-sm text-stone-400 dark:text-zinc-500">Lienzo vacío: abre una categoría y arrastra o toca piezas…</span>` : '');
+  return `<div data-z="${key}|${id}" class="flex flex-wrap items-center ${base}${ring}">${zone.map((n,i)=>nodeHTML(key,n,id,i,depth,sm)).join('')}${empty}</div>`;
 }
-function nodeHTML(key, n, zid, i, depth){
+const RADICAL = '<svg viewBox="0 0 12 30" preserveAspectRatio="none" aria-hidden="true" class="w-3 shrink-0 self-stretch text-emerald-700 dark:text-emerald-300"><path d="M0 17 L3 16 L6.5 28 L11 1 L12 1" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>';
+function nodeHTML(key, n, zid, i, depth, sm){
   const attr = `data-n="${key}|${zid}|${i}"`;
-  const brick = 'touch-none select-none cursor-grab rounded-md border border-b-4 shadow-sm';
-  if (n.t==='frac') return `<span ${attr} class="${brick} inline-flex flex-col items-center gap-1 border-emerald-500 bg-emerald-50 px-1.5 py-1 dark:border-emerald-600 dark:bg-emerald-950/60">${zoneHTML(key,n.z[0],depth+1)}<span class="h-0.5 w-full rounded bg-emerald-700 dark:bg-emerald-300"></span>${zoneHTML(key,n.z[1],depth+1)}</span>`;
-  if (n.t==='sqrt') return `<span ${attr} class="${brick} inline-flex items-stretch border-emerald-500 bg-emerald-50 px-1.5 py-1 dark:border-emerald-600 dark:bg-emerald-950/60"><span class="pr-0.5 text-xl leading-none text-emerald-800 dark:text-emerald-200">√</span><span class="border-t-2 border-emerald-700 pt-0.5 dark:border-emerald-300">${zoneHTML(key,n.z[0],depth+1)}</span></span>`;
-  if (n.t==='sup')  return `<span ${attr} class="${brick} inline-flex -translate-y-2 scale-90 items-start border-emerald-500 bg-emerald-50 px-1 py-0.5 dark:border-emerald-600 dark:bg-emerald-950/60"><span class="text-[10px] text-emerald-800 dark:text-emerald-200">^</span>${zoneHTML(key,n.z[0],depth+1)}</span>`;
-  return `<span ${attr} class="${brick} ${pieceColor(n.t)} inline-flex min-h-11 min-w-11 items-center justify-center px-2.5 text-lg">${kx(tokTex(n.t))}</span>`;
+  const grab = 'touch-none select-none cursor-grab';
+  const brick = `${grab} rounded-md border ${sm?'border-b-2':'border-b-4'} shadow-sm`;
+  const green = 'border-emerald-500 bg-emerald-50 dark:border-emerald-600 dark:bg-emerald-950/60';
+  if (n.t==='frac') return `<span ${attr} class="${brick} ${green} inline-flex flex-col items-center ${sm?'gap-0.5 p-0.5':'gap-1 px-1.5 py-1'}">${zoneHTML(key,n.z[0],depth+1,sm)}<span class="h-0.5 w-full rounded bg-emerald-700 dark:bg-emerald-300"></span>${zoneHTML(key,n.z[1],depth+1,sm)}</span>`;
+  if (n.t==='sqrt') return `<span ${attr} class="${brick} ${green} inline-flex items-stretch ${sm?'p-0.5':'px-1.5 py-1'}">${RADICAL}<span class="border-t-2 border-emerald-700 pt-0.5 dark:border-emerald-300">${zoneHTML(key,n.z[0],depth+1,sm)}</span></span>`;
+  // Exponente: pequeño, pegado arriba a la derecha de la pieza anterior; lo de adentro se dibuja a escala reducida
+  if (n.t==='sup')  return `<span ${attr} title="Exponente" class="${grab} -ml-1.5 ${sm?'-translate-y-3':'-translate-y-5'} inline-flex self-center rounded-md border border-emerald-500 bg-emerald-50/90 p-0.5 shadow-sm dark:border-emerald-600 dark:bg-emerald-950/70">${zoneHTML(key,n.z[0],depth+1,true)}</span>`;
+  const size = sm ? 'min-h-7 min-w-7 px-1 text-sm' : 'min-h-11 min-w-11 px-2.5 text-lg';
+  return `<span ${attr} class="${brick} ${pieceColor(n.t)} inline-flex ${size} items-center justify-center">${kx(tokTex(n.t))}</span>`;
 }
 function pieceColor(t){
   if (/^[-+]?\d+(\.\d+)?$/.test(t)) return 'border-blue-500 bg-blue-50 text-blue-950 dark:border-blue-500 dark:bg-blue-950/60 dark:text-blue-100';
@@ -77,10 +83,46 @@ function pieceColor(t){
 }
 function bankPiece(key, t){
   const brick = 'touch-none select-none cursor-grab rounded-md border border-b-4 shadow-sm inline-flex min-h-12 min-w-12 items-center justify-center px-3 text-lg touch-manipulation transition-transform active:scale-90 hover:-translate-y-0.5';
-  const label = t==='frac' ? kx('\\frac{\\square}{\\square}') : t==='sqrt' ? kx('\\sqrt{\\square}') : t==='sup' ? kx('\\square^{\\,\\blacksquare}') : kx(tokTex(t));
+  const label = t==='frac' ? kx('\\frac{\\square}{\\square}') : t==='sqrt' ? kx('\\sqrt{\\square}') : t==='sup' ? kx('x^{\\square}') : kx(tokTex(t));
   const cls = STRUCT[t] ? 'border-emerald-500 bg-emerald-50 text-emerald-950 dark:border-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-100' : pieceColor(t);
   const title = {frac:'Fracción: tiene numerador y denominador', sqrt:'Raíz: tiene un espacio dentro', sup:'Exponente: se coloca después de la base'}[t] || 'Pieza';
   return `<button type="button" data-tok="${key}|${encodeURIComponent(t)}" title="${title}" class="${brick} ${cls}">${label}</button>`;
+}
+/* ---------- Paleta por categorías ----------
+   Tocar una categoría  → su menú queda FIJO (📌) hasta tocarla de nuevo o cerrarlo.
+   Mantenerla presionada → el menú se ASOMA; desliza el dedo a una pieza y arrástrala
+   al lienzo (o suelta sobre la pieza para añadirla). Al soltar, el menú se cierra. */
+const CATS = [
+  {id:'num', icon:'🔢', name:'Números'},
+  {id:'var', icon:'𝑥',  name:'Variables'},
+  {id:'sig', icon:'±',  name:'Signos'},
+  {id:'fun', icon:'ƒ',  name:'Funciones'},
+  {id:'agr', icon:'🧩', name:'Agrupar'},
+];
+function catOf(t){
+  if (STRUCT[t] || /^[()\[\]]$/.test(t)) return 'agr';
+  if (/^[-+]?\d+(\.\d+)?$/.test(t)) return 'num';
+  if (/^(ln|log|log_3|sin|cos|tan)$/.test(t)) return 'fun';
+  if (/[a-zπ∞]/i.test(t)) return 'var';
+  return 'sig';
+}
+function paletteHTML(key, step, st){
+  const groups = {}; shuffled(step.k, key+st.step).forEach(t=>(groups[catOf(t)] ||= []).push(t));
+  const cats = CATS.filter(c=>groups[c.id]);
+  if (st.cat && !groups[st.cat]) { st.cat = null; st.pin = false; }
+  const open = st.cat ? CATS.find(c=>c.id===st.cat) : null;
+  const tray = open ? `
+      <div class="mb-1.5 flex items-center justify-between text-xs font-semibold text-stone-500 dark:text-zinc-400">
+        <span>${open.icon} ${open.name} · ${st.pin ? '📌 fijado' : 'suelta para cerrar'}</span>
+        ${st.pin ? `<button data-lg="closecat" class="flex h-8 w-8 items-center justify-center rounded-lg border border-stone-300 bg-white text-sm touch-manipulation dark:border-zinc-600 dark:bg-zinc-900" aria-label="Cerrar menú">✕</button>` : ''}
+      </div>
+      <div class="flex flex-wrap justify-center gap-2 sm:justify-start">${groups[open.id].map(t=>bankPiece(key,t)).join('')}</div>`
+    : `<div class="flex h-full min-h-[5.5rem] items-center justify-center px-2 text-center text-sm text-stone-500 dark:text-zinc-400">Toca una categoría para <b class="mx-1">fijar</b> su menú, o <b class="mx-1">mantenla presionada</b> para asomarlo y arrastrar.</div>`;
+  const btn = c => { const on = st.cat===c.id;
+    return `<button type="button" data-cat="${key}|${c.id}" aria-pressed="${on}" class="flex min-h-14 touch-none select-none flex-col items-center justify-center gap-0.5 rounded-xl border px-1 py-1 text-[11px] leading-tight transition-transform active:scale-95 ${on ? 'border-blue-600 bg-blue-600 text-white dark:border-blue-400 dark:bg-blue-400 dark:text-zinc-950' : 'border-stone-200 bg-white dark:border-zinc-700 dark:bg-zinc-900'}"><span class="text-lg leading-none">${c.icon}</span>${c.name}<span class="opacity-70">${groups[c.id].length}</span></button>`; };
+  return `
+      <div data-tray class="mt-3 min-h-[7.5rem] rounded-xl bg-stone-100 p-2.5 dark:bg-zinc-800/60">${tray}</div>
+      <div class="mt-2 grid gap-1.5" style="grid-template-columns:repeat(${cats.length},minmax(0,1fr))">${cats.map(btn).join('')}</div>`;
 }
 function shuffled(arr, seed){
   const a=[...new Set(arr)]; let h=0; for(const c of seed) h=(h*31+c.charCodeAt(0))>>>0;
@@ -117,8 +159,7 @@ function renderLego(key){
       <div class="mb-2 flex flex-wrap items-baseline gap-2"><span class="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white dark:bg-blue-400 dark:text-zinc-950">Paso ${st.step+1} de ${steps.length}</span><b>${s.q}</b></div>
       ${zoneHTML(key, st.root, 0)}
       ${allZones(st.root).length>1 ? `<div class="mt-2 flex items-center justify-between gap-2 text-xs text-stone-500 dark:text-zinc-400"><span>Las piezas tocadas entran en el espacio <b class="text-blue-700 dark:text-blue-300">azul</b>.</span><button class="${C.btn} !min-h-9 shrink-0 !py-1 !text-xs" data-lg="nextzone">⇥ Siguiente espacio</button></div>` : ''}
-      <div class="mt-3 text-xs font-semibold uppercase tracking-wide text-stone-500 dark:text-zinc-400">Banco de piezas · toca o arrastra</div>
-      <div class="mt-1.5 flex flex-wrap justify-center gap-2 rounded-xl bg-stone-100 p-2.5 sm:justify-start dark:bg-zinc-800/60">${shuffled(s.k, key+st.step).map(t=>bankPiece(key,t)).join('')}</div>
+      ${paletteHTML(key, s, st)}
       ${fb}
       <button class="${C.btnP} mt-3 !min-h-12 w-full !text-base" data-lg="check">✔ Verificar</button>
       <div class="mt-2 grid grid-cols-4 gap-2">
@@ -158,6 +199,7 @@ function legoAction(key, act){
   if (act==='hint'){ st.msg = {ok:true, t:'💡 '+s.h}; }
   if (act==='reveal'){ st.log.push({seen:true}); st.step++; st.root=[]; st.hist=[]; st.active=null; st.tries=0; st.msg=null; }
   if (act==='restart'){ delete LEGO[key]; }
+  if (act==='closecat'){ st.cat=null; st.pin=false; }
   if (act==='nextzone'){ const zs = allZones(st.root); st.active = zs[(zs.indexOf(st.active||st.root)+1) % zs.length]; }
   if (act==='check' && navigator.vibrate){ try{ navigator.vibrate(st.msg && st.msg.ok ? 30 : [60,40,60]); }catch(e){} }
   renderLego(key);
@@ -263,4 +305,63 @@ document.addEventListener('click', e=>{
   }
   const lg = e.target.closest('[data-lg]');
   if (lg) legoAction(lg.closest('[data-lego]').dataset.lego, lg.dataset.lg);
+});
+
+/* ---------- Gestos de la paleta: tocar = fijar · mantener = asomar ---------- */
+const HOLD_MS = 260;
+let CATP = null;
+const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch(e){} };
+const trayOf = key => document.querySelector(`[data-lego="${CSS.escape(key)}"] [data-tray]`);
+document.addEventListener('pointerdown', e=>{
+  const c = e.target.closest('[data-cat]'); if (!c) return;
+  e.preventDefault();
+  const [key, cat] = c.dataset.cat.split('|');
+  const lift = e.pointerType==='mouse' ? 0 : 48;
+  CATP = {key, cat, lift, peeked:false, sel:null, dragged:false};
+  CATP.timer = setTimeout(()=>{
+    if (!CATP) return;
+    const st = legoState(key);
+    CATP.peeked = true; CATP.prev = {cat:st.cat, pin:st.pin};
+    st.cat = cat; st.pin = false; renderLego(key); buzz(15);
+  }, HOLD_MS);
+});
+document.addEventListener('pointermove', e=>{
+  if (!CATP || !CATP.peeked || DRAG) return;
+  const tray = trayOf(CATP.key); if (!tray) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const tok = el && el.closest('[data-tok]');
+  if (tok && tray.contains(tok)){                       // el dedo pasa sobre una pieza: se selecciona
+    if (CATP.sel !== tok){ CATP.sel?.classList.remove('ring-4','ring-blue-400'); tok.classList.add('ring-4','ring-blue-400'); CATP.sel = tok; }
+    return;
+  }
+  if (CATP.sel && !tray.contains(el)){                  // sale del menú con una pieza: empieza a arrastrarla
+    const [key, t] = CATP.sel.dataset.tok.split('|');
+    DRAG = {key, src:'bank', t:decodeURIComponent(t), el:CATP.sel, x0:e.clientX, y0:e.clientY, moved:false, lift:CATP.lift};
+    CATP.dragged = true;
+  }
+});
+document.addEventListener('pointerup', e=>{               // se ejecuta después de soltar una pieza arrastrada
+  if (!CATP) return;
+  const c = CATP; CATP = null; clearTimeout(c.timer);
+  const st = legoState(c.key);
+  if (!c.peeked){                                        // toque corto: fija o quita el menú
+    if (st.cat===c.cat && st.pin){ st.cat = null; st.pin = false; } else { st.cat = c.cat; st.pin = true; }
+    renderLego(c.key); return;
+  }
+  if (!c.dragged){                                       // soltar sobre una pieza del menú asomado la añade
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const tok = el && el.closest('[data-tok]');
+    if (tok && trayOf(c.key)?.contains(tok)) insertNode(c.key, st.active || st.root, null, newNode(decodeURIComponent(tok.dataset.tok.split('|')[1])));
+  }
+  st.cat = c.prev.pin ? c.prev.cat : null; st.pin = c.prev.pin;   // el menú asomado se cierra al soltar
+  renderLego(c.key);
+});
+document.addEventListener('pointercancel', ()=>{ if (CATP){ clearTimeout(CATP.timer); CATP = null; } });
+// Teclado: Enter/Espacio sobre una categoría la fija o la quita
+document.addEventListener('click', e=>{
+  const c = e.target.closest('[data-cat]');
+  if (!c || e.detail!==0) return;
+  const [key, cat] = c.dataset.cat.split('|'); const st = legoState(key);
+  if (st.cat===cat && st.pin){ st.cat=null; st.pin=false; } else { st.cat=cat; st.pin=true; }
+  renderLego(key);
 });

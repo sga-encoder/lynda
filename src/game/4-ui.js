@@ -41,6 +41,9 @@ class GameApp {
     return Object.values(DOMINIOS).some(d => d.tipos.some(t => (CARTAS_DE_TIPO[t.id] ?? []).includes(id) && this.tipoDesbloqueado(t)));
   }
   bonusDesbloqueado(id){ return !!this.progreso.data.todo || this.ruta.bonus().has(id); }
+  /** El pelotón personalizado se desbloquea en la Ruta (misiones avanzadas) o en modo desarrollo. */
+  pelotonDisponible(){ return !!this.progreso.data.todo || this.ruta.hitos().some(h => h.peloton && h.ok); }
+  pelotonActivo(){ return this.pelotonDisponible() && !!this.progreso.data.peloton?.orden?.length; }
   dificultadDesbloqueada(id){ return !!this.progreso.data.todo || this.ruta.difs().has(id); }
 }
 
@@ -66,7 +69,7 @@ class MenuScene extends Scene {
         <p class="mt-1.5 text-xs text-zinc-400">${dificultad(d.dificultad).desc}</p></div>
       <button data-a="jugar" class="${UI.btnP} !min-h-14 text-lg" ${disp.length ? '' : 'disabled'}>▶ Jugar</button>
       <div class="${UI.card} flex items-center gap-3 text-sm"><span class="text-2xl">🗺️</span><span class="flex-1"><b>Ruta · nivel ${ruta.nivelReal + 1}/${ruta.total}</b>${d.todo ? ' <span class="text-amber-300">(desarrollo: todo abierto)</span>' : ''}<div class="mt-1 h-1.5 overflow-hidden rounded bg-zinc-800"><div class="h-full bg-amber-400" style="width:${100 * (ruta.nivelReal + 1) / ruta.total}%"></div></div></span><span class="text-xs text-zinc-400">${ruta.xp} XP</span></div>
-      <div class="grid grid-cols-2 gap-3"><button data-a="catalogo" class="${UI.btn}">📚 Catálogo</button><button data-a="mejoras" class="${UI.btn}">🛠 Mejoras <span class="text-amber-300">${d.puntos} 🔬</span></button><button data-a="mazo" class="${UI.btn}">🃏 Mazo</button><button data-a="partidas" class="${UI.btn}">💾 Partidas${guardadas ? ` <span class="text-sky-300">${guardadas}</span>` : ''}</button><button data-a="ayuda" class="${UI.btn} col-span-2">❓ Cómo jugar</button></div>
+      <div class="grid grid-cols-2 gap-3"><button data-a="catalogo" class="${UI.btn}">📚 Catálogo</button><button data-a="mejoras" class="${UI.btn}">🛠 Mejoras <span class="text-amber-300">${d.puntos} 🔬</span></button><button data-a="mazo" class="${UI.btn}">🃏 Mazo</button><button data-a="peloton" class="${UI.btn}" ${this.app.pelotonDisponible() ? '' : 'disabled'}>🪖 Pelotón${this.app.pelotonDisponible() ? '' : ' 🔒'}</button><button data-a="partidas" class="${UI.btn}">💾 Partidas${guardadas ? ` <span class="text-sky-300">${guardadas}</span>` : ''}</button><button data-a="ayuda" class="${UI.btn}">❓ Cómo jugar</button></div>
       <div><b class="text-sm">Modo asistido</b>
         <div class="mt-2 grid grid-cols-4 gap-1.5">${NIVELES_AYUDA.map((n, i) => `<button data-ayuda="${i}" class="flex min-h-14 flex-col items-center justify-center rounded-2xl border-2 px-1 text-xs font-semibold touch-manipulation ${(d.asistido ?? 0) === i ? 'border-sky-400 bg-sky-400/15 text-sky-200' : 'border-zinc-700 bg-zinc-900'}"><span class="text-lg">${n.icon}</span>${n.nombre}</button>`).join('')}</div>
         <p class="mt-1.5 text-xs text-zinc-400">${NIVELES_AYUDA[d.asistido ?? 0].desc}${(d.asistido ?? 0) ? ` XP ×${NIVELES_AYUDA[d.asistido].xp}.` : ''}</p></div>
@@ -88,6 +91,7 @@ class MenuScene extends Scene {
       if (a === 'catalogo') this.app.go(new CatalogoScene(this.app));
       if (a === 'mazo') this.app.go(new MazoScene(this.app));
       if (a === 'partidas') this.app.go(new PartidasScene(this.app));
+      if (a === 'peloton') this.app.go(new PelotonScene(this.app));
       if (a === 'ayuda') this.app.go(new HelpScene(this.app));
       if (a === 'salir') this.app.onExit();
     };
@@ -168,16 +172,17 @@ class Run {
 const GRAD = {fund:'from-sky-400 to-indigo-500', alg:'from-orange-400 to-rose-500', dif:'from-emerald-400 to-teal-600', int:'from-fuchsia-400 to-violet-600', libre:'from-amber-300 to-orange-500', combo:'from-rose-400 to-amber-400', nuevo:'from-zinc-500 to-zinc-700'};
 const ktMini = tex => window.katex ? katex.renderToString(tex, {throwOnError:false, strict:false}) : tex;
 function cartaHTML(c, dom, {sel = false, attr = `data-carta="${c.id}"`, chica = false, marca = null} = {}){
+  const tag = attr ? 'button' : 'div';     // sin acción es solo una imagen: un <button> dentro de otro rompe el diseño (catálogo)
   const g = c.free ? GRAD.libre : GRAD[dom.id];
   const ayuda = marca === 'mejor' ? 'ring-4 ring-amber-300 animate-pulse' : marca === 'aplica' ? 'ring-2 ring-emerald-300/80' : '';
-  return `<button ${attr} class="relative ${chica ? 'h-[7.5rem] w-[5.4rem]' : 'h-[9.6rem] w-[6.7rem]'} shrink-0 rounded-2xl bg-gradient-to-br ${g} p-[2px] text-left shadow-lg shadow-black/50 touch-manipulation select-none transition-transform active:scale-95 ${sel ? '-translate-y-2 ring-2 ring-amber-300' : ayuda}">
+  return `<${tag} ${attr} class="relative ${chica ? 'h-[7.5rem] w-[5.4rem]' : 'h-[9.6rem] w-[6.7rem]'} shrink-0 rounded-2xl bg-gradient-to-br ${g} p-[2px] text-left shadow-lg shadow-black/50 touch-manipulation select-none transition-transform active:scale-95 ${sel ? '-translate-y-2 ring-2 ring-amber-300' : ayuda}">
     ${marca === 'mejor' ? '<span class="absolute -top-2 left-1/2 z-10 -translate-x-1/2 rounded-full bg-amber-300 px-2 text-[9px] font-black text-zinc-950">SIGUIENTE</span>' : ''}
     <span class="flex h-full flex-col rounded-[14px] bg-zinc-950/95 p-1.5">
       <span class="${chica ? 'text-[8px]' : 'text-[9.5px]'} font-black uppercase leading-tight tracking-wide text-white">${c.name}</span>
       <span class="mx-auto mt-1 flex ${chica ? 'h-8 w-8 text-lg' : 'h-11 w-11 text-2xl'} items-center justify-center rounded-full bg-gradient-to-br ${g} shadow-inner shadow-black/40">${c.icon}</span>
       <span class="mt-1 flex min-h-6 items-center justify-center overflow-hidden text-center ${chica ? 'text-[8px]' : 'text-[9.5px]'} text-zinc-100">${ktMini(c.formula ?? '')}</span>
       ${chica ? '' : `<span class="mt-auto text-center text-[8px] leading-tight text-zinc-400">${c.desc}</span>`}
-    </span></button>`;
+    </span></${tag}>`;
 }
 function comboHTML(cb, dom){
   const iconos = cb.cartas.map(id => dom.cartas.get(id)?.icon ?? '?').join('<span class="text-zinc-500">›</span>');
@@ -241,7 +246,7 @@ class BattleScene extends Scene {
     Object.assign(this.cfg, {velocidad:this.cfg.velocidad * df.vel, vida:this.cfg.vida * df.vida, minimo:Math.round(this.cfg.minimo * df.cantidad), intervalo:this.cfg.intervalo / df.cantidad});
     this.director = new WaveDirector(this.cfg, this.app.rng);
     const P = this.app.progreso;
-    this.mundo ??= new World({bus:this.bus, loadout:r.loadout, energia:r.energia, base:r.base, extraSoldados:r.extraSoldados, mej:id => P.nivel(id), torreta:P.total('torreta')});
+    this.mundo ??= new World({bus:this.bus, loadout:r.loadout, energia:r.energia, base:r.base, extraSoldados:r.extraSoldados, mej:id => P.nivel(id), torreta:P.total('torreta'), peloton:this.app.pelotonActivo() ? P.data.peloton : null});
     const clima = r.mision === 1 && r.oleada === 1 ? 'despejado' : this.app.rng.pick(CLIMAS_ROTACION);
     this.mundo.ponerClima(clima);
     r.combos.forEach(c => c.usado = false);                          // los combos se recargan cada ronda

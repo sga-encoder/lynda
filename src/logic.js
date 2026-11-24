@@ -187,30 +187,7 @@ const secTotales = sec => SECCIONES_AP[sec].lista().reduce((a,T)=>{ const p=tema
 const dictBtn = (cat, label='📖 Ver propiedades en el diccionario') =>
   `<button class="${C.chip}" data-dict-cat="${cat}">${label}</button>`;
 
-/* ---------- Tutorial interactivo de fichas (ejercicios con clave t-fichas-<i>) ---------- */
-const TUT = [{id:'fichas', lego:[
-  {src:'Tutorial 1 · Tu primera ficha', p:R`5`, steps:[
-    {q:'Toca la categoría 🔢 Números y luego toca el 5 (o arrástralo al lienzo). Después pulsa ✔ Verificar.', k:['5','3','8'], a:['5'], w:'Tocar una ficha la pone en el espacio azul; arrastrarla te deja elegir el lugar exacto.', h:'Busca el 5 en 🔢 Números.'}]},
-  {src:'Tutorial 2 · El orden importa', p:R`2x+3`, steps:[
-    {q:'Arma 2x + 3. Si una ficha queda en otro lugar, arrástrala: la barra azul te muestra dónde caerá. Tócala para quitarla.', k:['2','x','+','3'], a:['2x+3'], w:'Las fichas se leen de izquierda a derecha y de arriba abajo, como un texto.', h:'2, luego x, luego +, luego 3.'}]},
-  {src:'Tutorial 3 · Recuadros: la potencia', p:R`x^{2}`, steps:[
-    {q:'Abre ƒ Funciones y pon la ficha □^□. Es un recuadro con dos espacios: base (grande) y exponente (pequeño). Toca un espacio para volverlo azul y llénalo.', k:['pot','x','2'], a:['x^{2}'], w:'Todas las funciones son recuadros que CONTIENEN a otras fichas: así nunca queda un exponente flotando.', h:'Base: x. Exponente: 2. Usa ⇥ Siguiente espacio para saltar.'}]},
-  {src:'Tutorial 4 · Recuadros dentro de recuadros', p:R`\frac{\sin(x)}{2}`, steps:[
-    {q:'Pon la fracción (🧩 Agrupar), dentro del numerador la función sin(□) y dentro de ella la x; abajo el 2. «⤴ Salir» te lleva al espacio de afuera.', k:['frac','sin','x','2'], a:['frac{sin(x)}{2}'], w:'Una función puede ir dentro de una fracción, de una raíz o de otra función.', h:'Fracción → numerador: sin → dentro: x. Denominador: 2.'}]},
-  {src:'Tutorial 5 · Límites: escribir y reemplazar', p:R`\lim_{x\to1}(x+4)`, steps:[
-    {q:'Primero escribe la fórmula con la ficha lím: en el primer espacio la variable (x), en el segundo hacia dónde tiende (1) y en el paréntesis la expresión.', k:['lim','x','1','+','4'], a:['lim_{x→1}(x+4)'], w:'El primer paso siempre es escribir la fórmula completa.', h:'lím, x, 1 y adentro x + 4.'},
-    {q:'¡Reemplaza! Esta es tu fórmula: arrastra el 1 y suéltalo ENCIMA de la x de la expresión (se pone roja).', copia:true, reemplazar:'1', valor:5, k:['1'], a:['lim_{x→1}((1)+4)'], w:'Sustituir es cambiar cada x por el valor al que tiende.', h:'Arrastra (no toques) el 1 hasta la x de adentro.'},
-    {q:'Calcula el resultado.', k:['5','4','1'], a:['5'], w:'1 + 4 = 5.', h:'Suma.'}]},
-  {src:'Tutorial 6 · Usar propiedades (cartas)', p:R`2(x+3)`, steps:[
-    {q:'Arma 2(x + 3) con los paréntesis de 🧩 Agrupar.', k:['2','(',')','x','+','3'], a:['2(x+3)'], w:'Los paréntesis agrupan lo que se multiplica por 2.', h:'2, (, x, +, 3, ).'},
-    {q:'Aplica una propiedad: toca 🃏 Propiedades y elige «Distributiva» (o escríbelo tú). Luego verifica.', copia:true, k:['2x','6','+','x','2'], a:['2x+6'], w:'Las cartas del juego son las mismas propiedades: aquí las aplicas directamente sobre tus fichas.', h:'2·x + 2·3.'}]},
-  {src:'Tutorial 7 · Derivadas e integrales', p:R`\frac{d}{dx}\left[x^{3}\right],\ \int 3x^{2}\,dx`, steps:[
-    {q:'La derivada también es un recuadro: pon ƒ d/d□[□], en el espacio pequeño la x y dentro de los corchetes x³.', k:['der','x','pot','3'], a:['deriv{x}{x^{3}}'], w:'d/dx indica que se deriva respecto a x lo que está dentro.', h:'Variable: x. Adentro: la potencia x³.'},
-    {q:'Resuelve la derivada.', k:['3','x','pot','2'], a:['3x^{2}'], w:R`\((x^3)'=3x^2\).`, h:'Baja el 3 y resta 1 al exponente.'},
-    {q:'Ahora la integral: pon ƒ ∫□d□ con 3x² adentro y x en el dx.', k:['int','3','x','pot','2'], a:['integ{x}{3x^{2}}'], w:'La integral contiene al integrando; el dx dice cuál es la variable.', h:'Integrando: 3 y la potencia x². Variable: x.'},
-    {q:'Integral definida: pon ƒ ∫ de □ a □ con límites 0 y 1, el integrando 3x² y la variable x.', k:['intd','0','1','3','x','pot','2'], a:['integ_{0}^{1}{x}{3x^{2}}'], w:'Los límites van en los espacios pequeños: abajo el inferior, arriba el superior.', h:'Abajo 0, arriba 1.'},
-    {q:'Calcula su valor.', k:['1','3','0'], a:['1'], w:R`\(\int_0^1 3x^2\,dx=\big[x^3\big]_0^1=1\).`, h:'La antiderivada es x³.'}]},
-]}];
+
 
 /* Demostración animada: una ficha viaja de la bandeja al lienzo */
 const DEMO_FICHAS = `
@@ -248,7 +225,7 @@ function propsBloque(domId, titulo){
 function pageHome(){
   const fAll = FUND.reduce((a,T)=>a+T.lego.length,0), fOk = FUND.reduce((a,T)=>a+fundProgress(T).n,0);
   const iAll = LESSONS.reduce((a,L)=>a+L.exercises.length,0), iOk = LESSONS.reduce((a,L)=>a+lessonProgress(L).n,0);
-  const tutOk = TUT[0].lego.filter((_,i)=>done[`t-fichas-${i}`]).length, dT = secTotales('d');
+  const dT = secTotales('d');
   const R = rutaApp();
   const btn = (href, icon, title, sub, n, t, tono) => `<a href="${href}" class="group flex items-center gap-4 rounded-2xl border-2 border-stone-200 bg-white p-4 shadow-sm transition-transform hover:border-blue-500 active:scale-[0.98] dark:border-zinc-800 dark:bg-zinc-900">
       <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${tono} text-3xl shadow-inner">${icon}</span>
@@ -259,7 +236,7 @@ function pageHome(){
   <h2 class="${C.h2}">Matemáticas para el cálculo, paso a paso</h2>
   <p class="${C.lead}">Aprende con fichas, practica cada propiedad como carta y ponla a prueba en el juego. Todo avanza tu 🗺️ Ruta.</p>
   <div class="mt-4 grid gap-3 md:grid-cols-2">
-    ${btn('#/tutorial','🧩','Tutorial','Aprende a usar las fichas paso a paso, con animación.', tutOk, TUT[0].lego.length, 'from-sky-200 to-blue-300 dark:from-sky-900 dark:to-blue-900')}
+    ${btn('#/tutorial','🧩','Tutorial', done['t-visto'] ? '✓ Visto · cómo se usa cada ficha y el menú, con animaciones.' : 'Cómo se usa cada ficha y el menú, con animaciones.', null, null, 'from-sky-200 to-blue-300 dark:from-sky-900 dark:to-blue-900')}
     ${btn('#/f','🧱','Fundamentos','Operaciones, potencias, raíces, logaritmos, trigonometría y ecuaciones.', fOk, fAll, 'from-amber-200 to-orange-300 dark:from-amber-900 dark:to-orange-900')}
     ${btn('#/d','📈','Cálculo diferencial','Límites, derivadas y sus aplicaciones.', dT.n, dT.tot, 'from-emerald-200 to-teal-300 dark:from-emerald-900 dark:to-teal-900')}
     ${btn('#/integral','∫','Cálculo integral','Técnicas de integración, impropias y el examen resuelto.', iOk, iAll, 'from-fuchsia-200 to-violet-300 dark:from-fuchsia-900 dark:to-violet-900')}
@@ -270,20 +247,96 @@ function pageHome(){
   <a href="#/ruta" class="mt-4 flex items-center gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-700 dark:bg-amber-950/30"><span class="text-2xl">🗺️</span>
     <span class="flex-1"><b>Ruta · nivel ${R.nivelReal+1} de ${R.total}</b><span class="mt-1 block h-1.5 overflow-hidden rounded-full bg-amber-200 dark:bg-amber-900"><span class="block h-full bg-amber-500" style="width:${100*(R.nivelReal+1)/R.total}%"></span></span></span><span>›</span></a>`;
 }
+/* ---------- Tutorial: cómo se usa cada ficha (solo demostración animada, sin ejercicios) ----------
+   Cada demostración muestra 3 momentos que se repiten en bucle, dibujados con las MISMAS
+   fichas del lienzo real (zoneHTML), para que se vean igual que cuando practicas. */
+const nz = (t, ...z) => ({t, z});
+const hoja = t => ({t});
+const T_ = s => treeOf(s);
+/** Se arma al abrir el tutorial (usa treeOf, que se define después). */
+const DEMOS = () => [
+  {icon:'🔢', titulo:'Números', cat:'🔢 Números', fichas:['3','12'], txt:'Cada número es una ficha (12 es una sola ficha). Los negativos se arman con el signo − de ± Signos más el número.',
+    pasos:['Toca 🔢 Números y toca el 3: entra al lienzo.', 'Toca el 12: queda a la derecha del 3.', 'Para un negativo: primero «−» y luego el número.'],
+    frames:[T_('3'), [hoja('3'), hoja('+'), hoja('12')], T_('-5')]},
+  {icon:'𝑥', titulo:'Variables', cat:'𝑥 Variables', fichas:['x','y'], txt:'Una variable es UNA letra. «3x» se arma con el número 3 y la letra x. Mayúsculas y minúsculas son variables distintas (a ≠ A). Con 🔤 Más letras tienes todo el abecedario.',
+    pasos:['Toca la x.', 'Para 3x: primero el 3 (🔢) y luego la x.', 'Otras letras: y, A, t… cada una es distinta.'], frames:[T_('x'), T_('3x'), [hoja('3'), hoja('x'), hoja('+'), hoja('A')]]},
+  {icon:'±', titulo:'Signos', cat:'± Signos', fichas:['+','-','·','=','≤'], txt:'Suma, resta, multiplicación, división, igual y desigualdades. Se ponen entre las otras fichas.',
+    pasos:['Arma 2x.', 'Pon el signo + a la derecha.', 'Completa: 2x + 1 = 7.'], frames:[T_('2x'), T_('2x+'), T_('2x+1=7')]},
+  {icon:'🧩', titulo:'Paréntesis', cat:'🧩 Agrupar', fichas:['(',')'], txt:'Agrupan lo que va junto. Se ponen como fichas sueltas: primero «(», el contenido y al final «)».',
+    pasos:['Pon el 2 y la ficha «(».', 'Escribe adentro x + 1.', 'Cierra con «)».'], frames:[T_('2('), T_('2(x+1'), T_('2(x+1)')]},
+  {icon:'½', titulo:'Fracción', cat:'🧩 Agrupar', fichas:['frac'], txt:'Es un recuadro con DOS espacios: numerador arriba y denominador abajo. Toca un espacio para volverlo azul y llénalo.',
+    pasos:['Toca la ficha de fracción: aparece vacía.', 'El espacio de arriba está azul: pon x + 1.', '⇥ Siguiente espacio y pon el 2 abajo.'],
+    frames:[[nz('frac',[],[])], [nz('frac',T_('x+1'),[])], T_('frac{x+1}{2}')]},
+  {icon:'xⁿ', titulo:'Potencia', cat:'ƒ Funciones', fichas:['pot'], txt:'Un recuadro con base (grande) y exponente (pequeño). Si la base tiene varias fichas (x + 1), se entiende entre paréntesis.',
+    pasos:['Pon la ficha □^□.', 'En la base pon x.', 'En el exponente pon 2: queda x².'], frames:[[nz('pot',[],[])], [nz('pot',[hoja('x')],[])], T_('x^{2}')]},
+  {icon:'√', titulo:'Raíz', cat:'ƒ Funciones', fichas:['sqrt'], txt:'Un recuadro con un espacio adentro: todo lo que pongas queda bajo la raíz.',
+    pasos:['Pon la ficha √□.', 'Adentro pon x + 1.', 'Puede ir multiplicada: 2√(x + 1).'], frames:[[nz('sqrt',[])], T_('sqrt{x+1}'), T_('2sqrt{x+1}')]},
+  {icon:'eˣ', titulo:'Exponencial', cat:'ƒ Funciones', fichas:['exp'], txt:'La base e ya viene puesta; tú llenas el exponente.',
+    pasos:['Pon la ficha e^□.', 'En el exponente pon 2x.', 'Resultado: e²ˣ.'], frames:[[nz('exp',[])], [nz('exp',[hoja('2')])], T_('e^{2x}')]},
+  {icon:'sin', titulo:'Seno, coseno y tangente', cat:'ƒ Funciones', fichas:['sin','cos','tan'], txt:'Cada función es un recuadro con su argumento adentro, entre paréntesis.',
+    pasos:['Pon sin(□).', 'Adentro pon 2x.', 'Se combinan con signos: sin(2x) + cos(x).'], frames:[[nz('sin',[])], T_('sin(2x)'), T_('sin(2x)+cos(x)')]},
+  {icon:'ln', titulo:'Logaritmos', cat:'ƒ Funciones', fichas:['ln','log'], txt:'ln(□) y log(□) también contienen a su argumento.',
+    pasos:['Pon ln(□).', 'Adentro pon la potencia x².', 'Queda ln(x²).'], frames:[[nz('ln',[])], [nz('ln',[nz('pot',[hoja('x')],[])])], T_('ln(x^{2})')]},
+  {icon:'lím', titulo:'Límite', cat:'ƒ Funciones', fichas:['lim'], txt:'Tres espacios: la variable, hacia dónde tiende y la expresión entre paréntesis. En el paso «reemplazar» recibes una copia y arrastras el número ENCIMA de cada x.',
+    pasos:['Pon lím: llena x y 2.', 'Escribe la expresión: x² + 3x.', 'Reemplazar: suelta el 2 sobre cada x.'],
+    frames:[[nz('lim',[hoja('x')],[hoja('2')],[])], T_('lim_{x→2}(x^{2}+3x)'), [nz('lim',[hoja('x')],[hoja('2')],[nz('pot',[{t:'2',sub:true}],[hoja('2')]), hoja('+'), hoja('3'), {t:'2',sub:true}])]]},
+  {icon:'d/dx', titulo:'Derivada', cat:'ƒ Funciones', fichas:['der'], txt:'El espacio pequeño es la variable (x) y entre corchetes va lo que se deriva.',
+    pasos:['Pon d/d□[□].', 'En el espacio pequeño pon x.', 'Entre corchetes pon x³.'], frames:[[nz('der',[],[])], [nz('der',[hoja('x')],[])], T_('deriv{x}{x^{3}}')]},
+  {icon:'∫', titulo:'Integrales', cat:'ƒ Funciones', fichas:['int','intd'], txt:'∫□d□: integrando y variable. La definida además tiene límite inferior (abajo) y superior (arriba).',
+    pasos:['Pon ∫□d□.', 'Integrando 3x² y variable x.', 'Definida: abajo 0, arriba 1.'], frames:[[nz('int',[],[])], T_('integ{x}{3x^{2}}'), T_('integ_{0}^{1}{x}{3x^{2}}')]},
+];
+let DEMO_N = 0;
+/** Lienzo de solo lectura dibujado con las fichas reales. */
+function lienzoDemo(tree){
+  const key = 'demo-' + (DEMO_N++); ZREG[key] = []; legoState(key).active = tree;
+  return `<div class="pointer-events-none">${zoneHTML(key, tree, 0)}</div>`;
+}
+/** Tres momentos que se repiten (animación con keyframes). */
+const ANIM_ESCENA = ['[animation:escena-0_9s_ease-in-out_infinite]', '[animation:escena-1_9s_ease-in-out_infinite]', '[animation:escena-2_9s_ease-in-out_infinite]'];   // clases completas para que Tailwind las genere
+function escenas(pasos, frames){
+  return `<div class="grid [&>*]:col-start-1 [&>*]:row-start-1">${frames.map((f, i) => `
+    <div class="opacity-0 ${ANIM_ESCENA[i]}">
+      <div class="mb-2 flex items-start gap-2 text-sm"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">${i+1}</span><span>${pasos[i]}</span></div>
+      ${typeof f === 'string' ? f : lienzoDemo(f)}</div>`).join('')}</div>
+    <div class="mt-2 flex justify-center gap-1.5" aria-hidden="true">${frames.map((_, i) => `<span class="h-1.5 w-8 rounded-full bg-stone-300 dark:bg-zinc-700"><span class="block h-full rounded-full bg-blue-500 opacity-0 ${ANIM_ESCENA[i]}"></span></span>`).join('')}</div>`;
+}
+/** Bandeja falsa (igual a la real) para la demostración del menú. */
+function menuDemo(modo){
+  const cats = [['🔢','Números'],['𝑥','Variables'],['±','Signos'],['ƒ','Funciones'],['🧩','Agrupar']];
+  const barra = on => `<div class="mt-2 grid grid-cols-5 gap-1">${cats.map(([ic,n])=>`<span class="relative flex min-h-12 flex-col items-center justify-center rounded-xl border text-[10px] ${n===on?'border-blue-600 bg-blue-600 text-white':'border-stone-200 bg-white dark:border-zinc-700 dark:bg-zinc-900'}"><span class="text-base leading-none">${ic}</span>${n}${n===on&&modo==='mantener'?'<span class="absolute inset-0 animate-ping rounded-xl ring-4 ring-blue-400/60"></span>':''}${n===on?'<span class="absolute -bottom-3 right-1 text-xl">👆</span>':''}</span>`).join('')}</div>`;
+  const bandeja = (titulo, fichas, sel) => `<div class="rounded-xl bg-stone-100 p-2 dark:bg-zinc-800/60"><div class="mb-1 text-xs font-semibold text-stone-500 dark:text-zinc-400">${titulo}</div><div class="flex flex-wrap justify-center gap-1.5">${fichas.map(t=>`<span class="${t===sel?'ring-4 ring-blue-400 rounded-md':''}">${bankPiece('demo', t)}</span>`).join('')}</div></div>`;
+  const vacia = `<div class="flex min-h-[4.5rem] items-center justify-center rounded-xl bg-stone-100 px-2 text-center text-xs text-stone-500 dark:bg-zinc-800/60 dark:text-zinc-400">Bandeja cerrada</div>`;
+  const marco = (lienzo, tray, on) => `<div class="pointer-events-none">${lienzoDemo(lienzo)}<div class="mt-2">${tray}</div>${barra(on)}</div>`;
+  return modo === 'fijar'
+    ? escenas(['Toque corto en ƒ Funciones.', 'El menú queda FIJO 📌: toca fichas o arrástralas, todas las que quieras.', 'Para cerrarlo toca otra vez la categoría o ✕.'],
+        [marco([], vacia, 'Funciones'), marco([nz('pot',[],[])], bandeja('ƒ Funciones · 📌 fijado', ['pot','sqrt','sin','ln'], 'pot'), ''), marco([nz('pot',[],[])], vacia, '')])
+    : escenas(['MANTÉN presionado 🔢 Números: el menú se asoma.', 'Sin soltar, desliza el dedo a la ficha y llévala al lienzo.', 'Al soltar, la ficha queda en el lienzo y el menú se cierra solo.'],
+        [marco([], bandeja('🔢 Números · suelta para cerrar', ['2','5','7'], null), 'Números'), marco([], bandeja('🔢 Números · suelta para cerrar', ['2','5','7'], '5'), 'Números'), marco([hoja('5')], vacia, '')]);
+}
 function pageTutorial(){
-  const tutOk = TUT[0].lego.filter((_,i)=>done[`t-fichas-${i}`]).length;
+  DEMO_N = 0;
+  if (!done['t-visto']){ done['t-visto'] = true; store.set('done', done); }
+  const tarjeta = (cab, cuerpo) => `<div class="${C.card} overflow-hidden">${cab}${cuerpo}</div>`;
+  const demos = DEMOS(), indice = demos.map((d,i)=>`<a href="#/tutorial" data-ir="demo-${i}" class="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-900">${d.icon} ${d.titulo}</a>`).join(' ');
   return `<div class="text-sm text-stone-500 dark:text-zinc-400"><a href="#/" class="underline">Inicio</a> › Tutorial</div>
-  <h2 class="${C.h2}">🧩 Tutorial: cómo usar las fichas</h2>
-  <p class="${C.lead}">Mira la animación y luego practica: cada tarjeta es un mini‑ejercicio real (${tutOk}/${TUT[0].lego.length} hechos).</p>
+  <h2 class="${C.h2}">🧩 Tutorial: cómo se usa cada ficha</h2>
+  <p class="${C.lead}">Aquí no hay ejercicios: solo mira cómo funciona cada ficha. Las animaciones se repiten solas. Después practica en <a href="#/f" class="underline">Fundamentos</a>.</p>
   ${DEMO_FICHAS}
-  <ol class="text-sm">
-    <li><b>Categorías:</b> 🔢 Números, 𝑥 Variables (una letra cada una; mayúsculas y minúsculas son distintas), ± Signos, ƒ Funciones (potencia, raíz, eˣ, sin, ln, lím, d/dx, ∫…) y 🧩 Agrupar (fracción y paréntesis). <b>Toca</b> una para fijar su menú 📌 o <b>mantenla</b> para asomarlo y arrastrar.</li>
-    <li><b>Recuadros:</b> las funciones son cajas con espacios adentro. El espacio <b class="text-blue-700 dark:text-blue-300">azul</b> recibe las fichas que tocas; ⇥ salta al siguiente y ⤴ sale al de afuera.</li>
-    <li><b>Arrastrar:</b> una barra azul muestra dónde caerá la ficha. Para quitarla, tócala o suéltala fuera del lienzo.</li>
-    <li><b>Reemplazar:</b> en los límites arrastra el número <b>encima</b> de cada x.</li>
-    <li><b>Propiedades:</b> en Fundamentos, 🃏 Propiedades aplica una carta del juego a lo que armaste.</li></ol>
-  ${TUT[0].lego.map((ex,k)=>legoCard(ex, `t-fichas-${k}`, k)).join('')}
-  <div class="mt-8 flex justify-end"><a class="${C.btnP}" href="#/f">Seguir con Fundamentos ▸</a></div>`;
+  <h3 class="${C.h3}">📌 El menú de categorías: tocar o mantener</h3>
+  <div class="grid gap-3 md:grid-cols-2">
+    ${tarjeta(`<b>Tocar = fijar el menú</b><p class="${C.src}">Para poner varias fichas seguidas.</p>`, menuDemo('fijar'))}
+    ${tarjeta(`<b>Mantener presionado = asomar</b><p class="${C.src}">Para sacar una sola ficha rápido.</p>`, menuDemo('mantener'))}
+  </div>
+  <h3 class="${C.h3}">✋ Mover, quitar y el espacio azul</h3>
+  ${tarjeta('', escenas(['Arrastra una ficha: la barra azul muestra dónde caerá. Tócala para quitarla, o suéltala fuera del lienzo.', 'El espacio con borde azul es el activo: ahí entran las fichas que tocas. Toca otro espacio para elegirlo.', '⇥ Siguiente espacio salta al próximo; ⤴ Salir vuelve al de afuera del recuadro.'],
+      [lienzoDemo([hoja('2'), hoja('x'), hoja('+'), hoja('1')]), lienzoDemo([nz('frac',[hoja('x')],[])]), lienzoDemo([nz('frac',[hoja('x')],[hoja('2')]), hoja('+')])]))}
+  <h3 class="${C.h3}">🧱 Ficha por ficha</h3>
+  <div class="flex flex-wrap gap-1.5">${indice}</div>
+  <div class="mt-3 grid gap-3 md:grid-cols-2">${demos.map((d,i)=>tarjeta(`<div id="demo-${i}" class="flex items-center gap-2"><span class="flex h-10 min-w-10 items-center justify-center rounded-xl bg-violet-100 px-2 font-serif text-lg dark:bg-violet-950">${d.icon}</span><b class="text-lg">${d.titulo}</b><span class="ml-auto text-xs text-stone-500 dark:text-zinc-400">${d.cat}</span></div>
+      <p class="!my-2 text-sm">${d.txt}</p><div class="pointer-events-none mb-3 flex flex-wrap gap-1.5">${d.fichas.map(t=>bankPiece('demo', t)).join('')}</div>`, escenas(d.pasos, d.frames))).join('')}</div>
+  <h3 class="${C.h3}">✔ Verificar, pista y propiedades</h3>
+  ${tarjeta('', `<ul class="text-sm"><li><b>✔ Verificar</b> revisa el paso; si está bien pasas al siguiente.</li><li><b>💡 Pista</b> y <b>👁 Solución</b> ayudan si te atascas.</li><li><b>↶ Deshacer</b> y <b>🗑 Limpiar</b> corrigen el lienzo.</li><li><b>🃏 Propiedades</b> (en Fundamentos) aplica una carta del juego a lo que armaste.</li></ul>`)}
+  <div class="mt-8 flex justify-end"><a class="${C.btnP}" href="#/f">Practicar en Fundamentos ▸</a></div>`;
 }
 
 /* ---------- Propiedades: índice por área y práctica de una carta ---------- */
@@ -504,7 +557,6 @@ function route(){
   buildNavFromHash();
   renderMath(view);
   if (T) T.lego.forEach((_,k)=>renderLego(`${SEC}-${T.id}-${k}`));
-  if (r==='tutorial') TUT[0].lego.forEach((_,k)=>renderLego(`t-fichas-${k}`));
   if (r==='p' && sub2) montarPractica(sub, sub2);
   toggleMenu(false);
   const target = sub && !T && r!=='p' && document.getElementById('b-'+sub);
@@ -574,6 +626,8 @@ window.addEventListener('load', route);
 
 /* ---------- Practicar: juego (se crea al entrar por primera vez) ---------- */
 document.addEventListener('click', e=>{
+  const ir = e.target.closest('[data-ir]');
+  if (ir){ e.preventDefault(); document.getElementById(ir.dataset.ir)?.scrollIntoView({behavior:'smooth', block:'center'}); return; }
   const rc = e.target.closest('[data-reclamar]');
   if (rc){ const pts = rutaApp().reclamar(+rc.dataset.reclamar); return route(); }
 });

@@ -196,6 +196,7 @@ class CatalogoScene extends Scene {
         <tr><td>Vida base</td><td>${Math.round(e.vida)}</td></tr><tr><td>Velocidad</td><td>${e.vel}</td></tr>
         <tr><td>Armas</td><td>${e.armas.length ? e.armas.map(a => `${ARMA_ENEMIGA[a.tipo]}${a.dmg ? ` (${a.dmg} de daño${a.rango ? `, alcance ${a.rango}` : ''})` : a.invoca ? ` ${INFO_ENEMIGO[a.invoca].name}` : ''}`).join(' · ') : e.dps ? `Cuerpo a cuerpo (${e.dps}/s)` : '—'}</td></tr>
         ${hab.length ? `<tr><td>Habilidades</td><td>${hab.join('<br>')}</td></tr>` : ''}
+        ${DEBILIDAD[it.id] ? `<tr><td>Débil a</td><td>${EQUIPO[DEBILIDAD[it.id]].icon} ${EQUIPO[DEBILIDAD[it.id]].name} (×${MULT_DEBIL} de daño)</td></tr>` : ''}
         <tr><td>XP</td><td>${e.xp}</td></tr>`)}</div>`;
     }
     cont.classList.remove('hidden');
@@ -306,5 +307,52 @@ class MazoScene extends Scene {
       this.armando.nombre = root.querySelector('[data-nombre]').value || this.armando.nombre;
       this.armando.cartas.splice(pos, 0, d.id); this.pintar();
     };
+  }
+}
+
+/* ---------- Pelotón: estrategia con tipos de soldado y munición ----------
+   Se desbloquea en la Ruta. El jugador decide el ORDEN en que la base recluta
+   soldados (qué tipos y cuántos) y la MUNICIÓN de cada tipo; los enemigos son
+   débiles a un tipo de daño, así que conviene adaptar el pelotón. */
+const SLOTS_PELOTON = 8;
+class PelotonScene extends Scene {
+  enter(){
+    const d = this.app.progreso.data;
+    d.peloton ??= {orden:ORDEN_RECLUTA.slice(0, SLOTS_PELOTON), equipo:{}};
+    this.pintar();
+  }
+  tipos(){ const P = this.app.progreso; return Object.keys(SOLDADOS).filter(t => t === 'fusilero' || P.data.todo || P.conocido('soldados', t)); }
+  pintar(msg = ''){
+    const P = this.app.progreso, pl = P.data.peloton, tipos = this.tipos();
+    const enemigos = Object.keys(DEBILIDAD).filter(id => P.data.todo || P.conocido('enemigos', id));
+    const cuenta = Object.fromEntries(Object.keys(EQUIPO).map(k => [k, enemigos.filter(id => DEBILIDAD[id] === k).length]));
+    const usados = new Set(pl.orden);
+    this.app.html(`
+    <div class="mx-auto flex h-full max-w-xl flex-col gap-3 overflow-y-auto px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
+      <div class="flex items-center justify-between">${btnVolver}<button data-a="reset" class="${UI.btn} !min-h-10 !px-3 text-sm">↺ Por defecto</button></div>
+      <h2 class="text-2xl font-black">🪖 Estrategia del pelotón</h2>
+      <p class="text-xs text-zinc-400">Elige qué soldados recluta la base (en este orden, y se repite) y qué munición usa cada tipo. Cada enemigo es <b>débil</b> a un tipo de daño (×${MULT_DEBIL}): arma el pelotón según lo que viene. Los cambios valen desde la próxima partida.</p>
+      ${msg ? `<p class="rounded-xl bg-zinc-900 px-3 py-2 text-sm text-emerald-300">${msg}</p>` : ''}
+      <div class="${UI.card}"><b class="text-sm">Orden de reclutamiento</b> <span class="text-xs text-zinc-500">(toca un puesto para cambiar el tipo)</span>
+        <div class="mt-2 grid grid-cols-4 gap-1.5">${pl.orden.map((t, i) => `<button data-slot="${i}" class="flex min-h-16 flex-col items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 text-xs touch-manipulation active:scale-95"><span class="text-[10px] text-zinc-500">#${i + 1}</span><span class="text-2xl">${SOLDADOS[t].icon}</span>${SOLDADOS[t].name}</button>`).join('')}</div>
+        <p class="mt-2 text-[11px] text-zinc-500">Tipos disponibles: ${tipos.map(t => `${SOLDADOS[t].icon} ${SOLDADOS[t].name}`).join(' · ')}${tipos.length < 5 ? ' · los demás aparecen al descubrirlos jugando' : ''}.</p></div>
+      <div class="${UI.card}"><b class="text-sm">Munición por tipo de soldado</b>
+        ${['fusilero', 'pesado', 'granadero'].filter(t => tipos.includes(t)).map(t => { const actual = pl.equipo[t] ?? SOLDADOS[t].ataque?.dano ?? 'fisico';
+          return `<div class="mt-2 flex items-center gap-2"><span class="w-24 text-sm">${SOLDADOS[t].icon} ${SOLDADOS[t].name}${usados.has(t) ? '' : ' <span class="text-[10px] text-zinc-500">(no reclutado)</span>'}</span>
+            <div class="grid flex-1 grid-cols-3 gap-1">${Object.entries(EQUIPO).map(([k, q]) => `<button data-eq="${t}|${k}" class="min-h-10 rounded-lg border text-xs touch-manipulation ${actual === k ? 'border-amber-400 bg-amber-400/15 text-amber-200' : 'border-zinc-700 bg-zinc-950'}">${q.icon} ${q.name}</button>`).join('')}</div></div>`; }).join('')}
+        <ul class="mt-2 grid gap-0.5 text-[11px] text-zinc-400">${Object.values(EQUIPO).map(q => `<li>${q.icon} <b>${q.name}:</b> ${q.desc}</li>`).join('')}</ul></div>
+      <div class="${UI.card}"><b class="text-sm">Debilidades de los enemigos que conoces</b>
+        <div class="mt-1 flex gap-2 text-xs">${Object.entries(EQUIPO).map(([k, q]) => `<span class="rounded-full bg-zinc-800 px-2 py-0.5">${q.icon} ${cuenta[k]}</span>`).join('')}</div>
+        <div class="mt-2 grid grid-cols-2 gap-1 text-xs">${enemigos.length ? enemigos.map(id => `<span class="rounded-lg bg-zinc-950 px-2 py-1">${INFO_ENEMIGO[id].name} → ${EQUIPO[DEBILIDAD[id]].icon} ${EQUIPO[DEBILIDAD[id]].name}</span>`).join('') : '<span class="text-zinc-500">Juega para descubrir enemigos.</span>'}</div></div>
+    </div>`).onclick = e => this.click(e);
+  }
+  click(e){
+    const P = this.app.progreso, pl = P.data.peloton, tipos = this.tipos();
+    if (e.target.closest('[data-a="volver"]')) return this.app.go(new MenuScene(this.app));
+    if (e.target.closest('[data-a="reset"]')){ P.data.peloton = {orden:ORDEN_RECLUTA.slice(0, SLOTS_PELOTON), equipo:{}}; P.guardar(); return this.pintar('Pelotón restablecido.'); }
+    const sl = e.target.closest('[data-slot]');
+    if (sl){ const i = +sl.dataset.slot; pl.orden[i] = tipos[(tipos.indexOf(pl.orden[i]) + 1) % tipos.length]; P.guardar(); return this.pintar(); }
+    const eq = e.target.closest('[data-eq]');
+    if (eq){ const [t, k] = eq.dataset.eq.split('|'); pl.equipo[t] = k; P.guardar(); return this.pintar(); }
   }
 }

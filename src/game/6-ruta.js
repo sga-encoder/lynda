@@ -59,8 +59,8 @@ function construirRuta(){
   const props = (dom, ids, titulo, n) => ({titulo, icon:'🃏', href:`#/p/${dom}`, req:[{txt:'ejercicios de esas cartas', prefs:ids.map(id => `p-${dom}-${id}-`), n}], puntos:10});
   const juego = (titulo, campo, n, extra = {}) => ({titulo, icon:'🎮', href:'#/jugar', req:[{txt:{partidas:'partidas jugadas', misiones:'misiones cumplidas', victorias:'victorias'}[campo], juego:campo, n}], ...extra});
   if (G){
-    hitos.push({titulo:'Tutorial: primeras fichas', icon:'🧩', href:'#/tutorial', req:[{txt:'tutoriales 1 a 3', prefs:['t-fichas-0', 't-fichas-1', 't-fichas-2'], n:3}], puntos:5});
-    hitos.push({titulo:'Tutorial completo', icon:'🧩', href:'#/tutorial', req:[{txt:'tutoriales', pref:'t-fichas-', n:TUT[0].lego.length}], puntos:10});
+    hitos.push({titulo:'Ver el tutorial de fichas', icon:'🧩', href:'#/tutorial', req:[{txt:'tutorial visto', pref:'t-visto', n:1}], puntos:5});
+    hitos.push({titulo:'Primer ejercicio con fichas', icon:'🧱', href:'#/f', req:[{txt:'ejercicio de Fundamentos', pref:'f-', n:1}], puntos:10});
     hitos.push(juego('Primera partida', 'partidas', 1));
     for (const T of FUND){
       hitos.push(tema('f', T));
@@ -75,7 +75,7 @@ function construirRuta(){
       hitos.push(tema('d', T));
       if (T.id === 'cadena') hitos.push(props('dif', ['d-suma', 'd-kf', 'd-cte', 'd-pot', 'd-tabla', 'd-prod', 'd-cad'], 'Cartas: reglas de derivación', 7));
     }
-    hitos.push(juego('Tres misiones cumplidas', 'misiones', 3, {puntos:25}));
+    hitos.push(juego('Tres misiones cumplidas', 'misiones', 3, {puntos:25, peloton:true}));
     for (const L of LESSONS){
       hitos.push({titulo:`Integral: ${L.short}`, icon:'∫', href:`#/${L.id}`, req:[{txt:'ejercicios de la lección', pref:`${L.id}-`, n:L.exercises.length}], ...(PREMIOS_TEMA[L.id] ?? {})});
       if (L.id === 'l1') hitos.push(props('int', ['i-suma', 'i-kf', 'i-cte', 'i-pot', 'i-ln', 'i-tabla', 'i-sust', 'i-c'], 'Cartas: reglas de integración', 8));
@@ -131,6 +131,7 @@ class Ruta {
             ...cartas.map(id => ({tipo:'carta', icon:cartaInfo[id]?.icon ?? '🃏', nombre:cartaInfo[id]?.name ?? id})),
             ...(h.difs ?? []).map(id => ({tipo:'dificultad', icon:dificultad(id).icon, nombre:`Dificultad ${dificultad(id).nombre}`})),
             ...(h.bonus ?? []).map(id => ({tipo:'bonus', icon:BONUS_DEFS[id].icon, nombre:BONUS_DEFS[id].name})),
+            ...(h.peloton ? [{tipo:'bonus', icon:'🪖', nombre:'Estrategia de pelotón (tipos de soldado y munición)'}] : []),
             ...(h.puntos ? [{tipo:'puntos', icon:'🔬', nombre:`+${h.puntos} puntos de investigación`, reclamable:h.ok && !rec.includes(h.i), reclamado:rec.includes(h.i)}] : []),
           ]};
       })};

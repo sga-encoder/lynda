@@ -113,8 +113,12 @@ function textoMono(partes){
 function hacerMono(n, partes){ Object.assign(n, {t:textoMono(partes), mono:true, partes}); delete n.z; return n; }
 function fusionarNumeros(zone){
   // 1) cifras seguidas → un número
-  for (let i = zone.length - 1; i > 0; i--)
-    if (esCifras(zone[i]) && esCifras(zone[i-1])){ zone[i-1].t += zone[i].t; zone.splice(i, 1); }
+  for (let i = zone.length - 1; i > 0; i--){
+    if (esCifras(zone[i]) && esCifras(zone[i-1])){ zone[i-1].t += zone[i].t; zone.splice(i, 1); continue; }
+    const prev = zone[i-1];                                            // −1 y luego 2 → −12 (el monomio aún sin letra sigue creciendo)
+    if (esCifras(zone[i]) && prev.mono && /^\d+$/.test(prev.partes.at(-1))){ prev.partes[prev.partes.length - 1] += zone[i].t; prev.t = textoMono(prev.partes); zone.splice(i, 1); }
+    else if (esLetra(zone[i]) && prev.mono && /^(\d+|[-+])$/.test(prev.partes.at(-1))){ prev.partes.push(zone[i].t); prev.t = textoMono(prev.partes); zone.splice(i, 1); }   // −3 y luego x → −3x
+  }
   // 2) [signo] [número] [letra] → monomio
   for (let i = 0; i < zone.length; i++){
     const n = zone[i]; if (n.z || n.sub) continue;
@@ -633,7 +637,8 @@ function xAt(x, y, key){
   const [, zid, i] = n.dataset.n.split('|'), zone = ZREG[key][+zid];
   const esVarLim = z => z.some(m => (m.t==='lim' && m.z[0]===zone) || (m.z||[]).some(esVarLim));
   if (esVarLim(legoState(key).root)) return null;          // la x de «lím x→a» no se sustituye
-  return zone && zone[+i] && zone[+i].t === 'x' ? {el:n, zone, i:+i} : null;
+  const nd = zone && zone[+i];
+  return nd && (nd.t === 'x' || nd.mono && nd.partes.includes('x')) ? {el:n, zone, i:+i} : null;   // también la x dentro de un monomio (−5x)
 }
 const puedeSustituir = key => { const s = LEGO_HOOKS[key] ? null : legoEx(key).steps[legoState(key).step]; return !!(s && s.reemplazar); };
 /** Zona que contiene a la pieza dueña de `zone` (para «salir del recuadro»). */
@@ -734,7 +739,9 @@ document.addEventListener('pointerup', e=>{
   }
   const Y = e.clientY - d.lift;
   const tx = d.src==='bank' && /^\d/.test(d.t) && puedeSustituir(d.key) ? xAt(e.clientX, Y, d.key) : null;
-  if (tx){ snapshot(st); tx.zone.splice(tx.i, 1, {t:d.t, sub:true}); st.msg = null; buzz(12); renderLego(d.key); return; }
+  if (tx){ snapshot(st); const nd = tx.zone[tx.i];
+    if (nd.mono){ const hojas = nd.partes.map(q => q === 'x' ? {t:d.t, sub:true} : {t:q}); tx.zone.splice(tx.i, 1, ...hojas); }   // −5x → −5(3)
+    else tx.zone.splice(tx.i, 1, {t:d.t, sub:true}); st.msg = null; buzz(12); renderLego(d.key); return; }
   const zEl = zoneAt(e.clientX, Y, d.key);
   if (d.src==='bank'){
     if (zEl){ const {zone} = findZone(zEl.dataset.z); insertNode(d.key, zone, dropIndex(zEl,e.clientX,Y), newNode(d.t)); }

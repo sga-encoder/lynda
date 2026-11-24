@@ -252,6 +252,86 @@ function nodoDeTermino({c, l}){
   if (c === 0) return {t:'0'};
   return hacerMono({}, [c < 0 ? '-' : '+', String(abs), l]);
 }
+/** Bloques de un monomio con letra: [signo+número] [letra]. */
+function bloquesDe(n){
+  const T = n && n.mono ? terminoDe(n) : null;
+  if (!T || !T.l) return null;
+  return [{tipo:'num', txt:String(T.c), c:T.c}, {tipo:'letra', txt:T.l}];
+}
+/** Panel bajo el lienzo con los bloques de la ficha tocada. */
+function bloquesHTML(key, st){
+  const n = st.borrar; if (!n || !allZones(st.root).some(z => z.includes(n))) return '';
+  const b = 'inline-flex min-h-12 min-w-12 items-center justify-center rounded-lg border-2 border-b-4 px-3 font-serif text-xl touch-manipulation active:scale-95';
+  if (potDenominador(st.root, n)) return `<div data-panel class="mt-2 rounded-xl border-2 border-violet-400 bg-violet-50/70 p-2 text-center text-xs dark:bg-violet-950/30">Esta potencia está <b>abajo de una fracción</b>. Arrástrala fuera (por su borde) o tócala aquí: sube con <b>exponente negativo</b>.<div class="mt-1.5"><button data-lg="subirpot" class="${b} !min-h-10 !text-sm border-violet-500 bg-white font-sans font-semibold text-violet-800 dark:bg-zinc-900 dark:text-violet-200">⬆ Subir con exponente negativo</button></div></div>`;
+  const bl = bloquesDe(n); if (!bl) return '';
+  const eq = st.root.includes(n) && st.root.some(x => x.t === '=');
+  return `<div data-panel class="mt-2 rounded-xl border-2 border-amber-400 bg-amber-50/70 p-2 dark:bg-amber-950/30">
+    <div class="text-xs font-semibold">🧩 Bloques de <b>${n.t.replace('-', '−')}</b></div>
+    <div class="mt-1.5 flex justify-center gap-2">${bl.map((q, i) => `<span data-blq="${key}|${i}" style="touch-action:none" class="${b} ${q.tipo === 'num' ? 'border-blue-500 bg-blue-50 text-blue-950 dark:bg-blue-950/60 dark:text-blue-100' : 'border-emerald-500 bg-emerald-50 text-emerald-950 dark:bg-emerald-950/60 dark:text-emerald-100'}">${q.txt.replace('-', '−')}</span>`).join('')}</div>
+    <p class="mt-1 text-center text-[11px] text-stone-600 dark:text-zinc-400">Arrástralo al lienzo para separarlo${eq ? ', o <b>al otro lado del =</b> para que pase a <b>dividir</b>' : ''}.</p></div>`;
+}
+/** ¿El nodo está en el denominador de alguna fracción? Devuelve {frac, zona padre}. */
+function enDenominador(root, n){
+  for (const m of root){ if (m.t === 'frac' && m.z[1].includes(n)) return {frac:m, padre:root};
+    for (const z of (m.z || [])){ const r = enDenominador(z, n); if (r) return r; } }
+  return null;
+}
+/** Nodo de la raíz que contiene a una zona (o la zona misma si es la raíz). */
+function ladoDe(root, zone, idx){
+  const eq = root.findIndex(x => x.t === '='); if (eq < 0) return null;
+  if (zone === root) return idx <= eq ? 'izq' : 'der';
+  const i = root.findIndex(m => containsZone(m, zone)); return i < 0 ? null : i < eq ? 'izq' : 'der';
+}
+/** a^n → a^(−n), con paréntesis en la base si tiene varias fichas. */
+function negarPotencia(pot){
+  const [base, ex] = pot.z;
+  if (base.length > 1 && !(base[0].t === '(' && base.at(-1).t === ')')) pot.z[0] = [{t:'('}, ...base, {t:')'}];
+  if (ex.length === 1 && esCifras(ex[0])) pot.z[1] = [hacerMono({}, ['-', ex[0].t])];
+  else if (ex.length === 1 && ex[0].mono && ex[0].partes[0] === '-'){ const p = ex[0].partes.slice(1); pot.z[1] = [p.length === 1 ? {t:p[0]} : hacerMono({}, p)]; }
+  else pot.z[1] = [{t:'-'}, {t:'('}, ...ex, {t:')'}];
+  return pot;
+}
+/** Saca una potencia del denominador: a / x² → (a)·x⁻². */
+function sacarPotencia(st, node, zone, idx){
+  const den = enDenominador(st.root, node); if (!den) return;
+  snapshot(st); st.borrar = null; const {frac, padre} = den;
+  frac.z[1].splice(frac.z[1].indexOf(node), 1); negarPotencia(node);
+  if (!frac.z[1].length){
+    const num = frac.z[0], envuelto = num.length > 1 ? [{t:'('}, ...num, {t:')'}] : num;
+    padre.splice(padre.indexOf(frac), 1, ...envuelto, node);
+  } else (zone || frac.z[0]).splice(Math.min(idx ?? Infinity, (zone || frac.z[0]).length), 0, node);
+  st.msg = {ok:true, t:'La potencia salió del denominador: ahora su exponente es negativo.'}; buzz(20);
+}
+/** Potencia del denominador que contiene a n (n puede ser la potencia o una ficha dentro de ella). */
+function potDenominador(root, n){
+  if (n.t === 'pot' && enDenominador(root, n)) return n;
+  const buscar = zona => { for (const m of zona){ if (m.t === 'pot' && containsNodo(m, n) && enDenominador(root, m)) return m; for (const z of (m.z || [])){ const r = buscar(z); if (r) return r; } } return null; };
+  return buscar(root);
+}
+const containsNodo = (m, n) => (m.z || []).some(z => z.includes(n) || z.some(k => containsNodo(k, n)));
+/** Soltar un bloque del panel. */
+function soltarBloque(st, d, zEl, x, y){
+  const M = st.borrar, bl = bloquesDe(M); if (!bl || !zEl) return;
+  const {zone} = findZone(zEl.dataset.z), idx = dropIndex(zEl, x, y), q = bl[d.i], otro = bl[1 - d.i];
+  const root = st.root, iM = root.indexOf(M), lado = iM >= 0 ? ladoDe(root, root, iM) : null, destino = ladoDe(root, zone, idx);
+  const resto = q.tipo === 'num' ? {t:otro.txt} : nodoDeTermino({c:bl[0].c, l:''});
+  const comoNodo = q.tipo === 'num' ? nodoDeTermino({c:q.c, l:''}) : {t:q.txt};
+  snapshot(st); st.borrar = null;
+  if (lado && destino && lado !== destino){                         // al otro lado del «=»: pasa a dividir
+    const eq = root.findIndex(x => x.t === '=');
+    const suyo = lado === 'izq' ? root.slice(0, eq) : root.slice(eq + 1);
+    if (suyo.length !== 1){ st.msg = {ok:false, t:`Para pasar ${q.txt} a dividir, ${M.t} debe estar solo de su lado del =. Primero pasa los otros términos.`}; st.vibrar = M; return; }
+    const otros = lado === 'izq' ? root.splice(eq + 1) : root.splice(0, eq);
+    const frac = {t:'frac', z:[otros.length ? otros : [{t:'0'}], [comoNodo]]};
+    root.splice(root.indexOf(M), 1, resto);
+    if (lado === 'izq') root.push(frac); else root.unshift(frac);
+    st.msg = {ok:true, t:`${q.txt.replace('-', '−')} estaba multiplicando: pasó al otro lado a dividir todo.`}; buzz(20); return;
+  }
+  const z = allZones(root).find(z => z.includes(M)), iz = z.indexOf(M);   // mismo lado: se separa el bloque
+  z.splice(iz, 1, resto);
+  zone.splice(Math.min(zone === z && idx > iz ? idx : idx, zone.length), 0, comoNodo);
+  st.msg = null;
+}
 /** Elemento DOM de un nodo tras el último render. */
 function elDeNodo(key, node){
   const zs = ZREG[key] || [];
@@ -260,7 +340,7 @@ function elDeNodo(key, node){
 }
 function conBorrar(st, n, html){
   if (st.borrar !== n) return html;
-  const badge = '<button data-lg="borrar" aria-label="Eliminar ficha" class="absolute -right-1.5 -top-1.5 z-20 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-rose-600 text-xs text-white shadow-lg ring-2 ring-rose-300 [animation:flotar_1.4s_ease-in-out_infinite] dark:border-zinc-900">🗑</button>';
+  const badge = '<button data-lg="borrar" aria-label="Eliminar ficha" class="absolute -right-2 -top-6 z-20 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-rose-600 text-xs text-white shadow-lg ring-2 ring-rose-300 [animation:flotar_1.4s_ease-in-out_infinite] dark:border-zinc-900">🗑</button>';
   return html.replace('class="', 'class="relative ring-2 ring-rose-400 ').replace('>', '>' + badge);
 }
 function nodeHTML(key, n, zid, i, depth, sm){
@@ -401,6 +481,7 @@ function renderLego(key){
       ${guiaHTML(st)}
       ${editorNumeroHTML(st)}
       <div data-ajuste style="zoom:${z}">${zoneHTML(key, st.root, 0)}</div>
+      ${bloquesHTML(key, st)}
       <div data-desliza class="hidden mt-1.5">
         <div data-barra class="relative h-3 touch-none rounded-full bg-stone-200 dark:bg-zinc-800"><div data-pulgar class="absolute inset-y-0 left-0 rounded-full bg-blue-500 shadow"></div></div>
         <p class="mt-0.5 text-center text-[11px] font-semibold text-blue-700 dark:text-blue-300">↔ Desliza el lienzo o la barra para ver toda la fórmula</p></div>
@@ -510,6 +591,7 @@ function legoAction(key, act){
     if (act==='nextzone'){ const zs = allZones(st.root); st.active = zs[(zs.indexOf(st.active||st.root)+1) % zs.length]; }
     if (act==='outzone'){ st.active = (st.active && parentZone(st.root, st.active)) || null; }
   if (act==='borrar') borrarSeleccion(st);
+    if (act==='subirpot'){ const pt = st.borrar && potDenominador(st.root, st.borrar); if (pt) sacarPotencia(st, pt); }
     return renderLego(key);
   }
   const st = legoState(key), ex = legoEx(key), s = ex.steps[st.step];
@@ -535,6 +617,7 @@ function legoAction(key, act){
   if (act==='outzone'){ st.active = (st.active && parentZone(st.root, st.active)) || null; }
   if (act==='props'){ st.verProps = !st.verProps; }
   if (act==='borrar') borrarSeleccion(st);
+  if (act==='subirpot'){ const pt = st.borrar && potDenominador(st.root, st.borrar); if (pt) sacarPotencia(st, pt); }
   if (act.startsWith('guia:')){ st.guia = {carta:act.slice(5), nodo:null}; st.verProps = false; st.msg = null; }
   if (act === 'guia-no' || act.startsWith('lado:') || act === 'dividir') aplicarGuia(st, act);
   if (act==='usarprev' && st.prev){ snapshot(st); st.root = clonar(st.prev); st.active = null; st.msg = {ok:true, t:'📋 Copié tu paso anterior al lienzo: modifícalo para escribir el siguiente.'}; }
@@ -708,10 +791,13 @@ document.addEventListener('pointerdown', e=>{
     DRAG = {key:kEd, src:'cifra', i:+dg.dataset.dig, t:dg.textContent.trim(), el:dg, x0:e.clientX, y0:e.clientY, moved:false, lift:e.pointerType==='mouse'?0:48};
     return;
   }
+  const bq = e.target.closest('[data-blq]');
+  if (bq){ const [kq, iq] = bq.dataset.blq.split('|'); e.preventDefault();
+    DRAG = {key:kq, src:'bloque', i:+iq, el:bq, x0:e.clientX, y0:e.clientY, moved:false, lift:e.pointerType==='mouse'?0:48}; return; }
   const tokEl = e.target.closest('[data-tok]');
   if (e.target.closest('[data-lg="borrar"]')) return;             // el clic del 🗑 lo maneja legoAction
   { const kB = e.target.closest('[data-lego]')?.dataset.lego, stB = kB && LEGO[kB];
-    if (stB?.borrar && !e.target.closest('[data-n]')){ stB.borrar = null; addEventListener('pointerup', () => renderLego(kB), {once:true}); } }
+    if (stB?.borrar && !e.target.closest('[data-n]') && !e.target.closest('[data-panel]')){ stB.borrar = null; addEventListener('pointerup', () => renderLego(kB), {once:true}); } }
   const nEl = e.target.closest('[data-n]');
   const zEl = e.target.closest('[data-z]');
   // Un toque sobre el fondo de un espacio (más interno que cualquier pieza) lo vuelve "activo"
@@ -790,6 +876,12 @@ document.addEventListener('pointerup', e=>{
     }
     return renderLego(d.key);
   }
+  if (d.src==='bloque'){
+    if (d.moved) soltarBloque(st, d, zoneAt(e.clientX, e.clientY - d.lift, d.key), e.clientX, e.clientY - d.lift);
+    renderLego(d.key);
+    if (st.vibrar){ const v = elDeNodo(d.key, st.vibrar); st.vibrar = null; if (v){ v.classList.add('lego-vibrar'); setTimeout(() => v.classList.remove('lego-vibrar'), 700); } buzz([30, 40, 30]); }
+    return;
+  }
   if (!d.moved){                                   // toque
     if (d.src==='node' && st.guia && !st.guia.nodo){                // modo guiado: el toque elige el término
       const n = d.zone[d.i];
@@ -831,7 +923,11 @@ document.addEventListener('pointerup', e=>{
     if (!zEl){ snapshot(st); d.zone.splice(d.i,1); st.active=null; }   // soltar fuera = quitar
     else {
       const {zone} = findZone(zEl.dataset.z);
-      if (!containsZone(node, zone)){
+      const den = node.t === 'pot' ? enDenominador(st.root, node) : null;
+      if (den && zone !== den.frac.z[1] && !containsZone(node, zone)){   // potencia que sale del denominador: exponente negativo
+        sacarPotencia(st, node, zone, dropIndex(zEl, e.clientX, Y));
+      }
+      else if (!containsZone(node, zone)){
         let idx = dropIndex(zEl, e.clientX, Y);
         snapshot(st); d.zone.splice(d.i,1);
         if (zone===d.zone && idx>d.i) idx--;

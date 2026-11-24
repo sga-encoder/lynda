@@ -633,7 +633,7 @@ class TableroPiezas {
       <div class="flex items-center gap-2"><b class="flex-1 text-sm">✍️ Paso libre <span class="font-normal text-zinc-400">· ${this.ayuda}</span></b>
         <button data-pl="recargar" class="${C.btn} !min-h-9 !px-2 !text-xs" title="Volver a cargar la expresión">↺</button>
         <button data-pl="cancelar" class="${C.btn} !min-h-9 !px-2.5 !text-xs" aria-label="Cerrar">✕</button></div>
-      <div class="mt-1.5">${zoneHTML(key, st.root, 0)}</div>
+      <div class="mt-1.5">${zoneHTML(key, st.root, 0)}</div>${bloquesHTML(key, st)}
       <div class="mt-1 flex min-h-8 items-center gap-2 overflow-x-auto rounded-xl bg-zinc-900 px-2 text-sm"><span class="shrink-0 text-[10px] uppercase text-zinc-500">Se lee</span>${prev}</div>
       ${allZones(st.root).length > 1 ? `<div class="mt-1 text-right">${st.active && st.active !== st.root ? `<button class="${C.btn} !min-h-8 !py-0.5 !text-xs" data-lg="outzone">⤴ Salir</button> ` : ""}<button class="${C.btn} !min-h-8 !py-0.5 !text-xs" data-lg="nextzone">⇥ Siguiente espacio</button></div>` : ''}
       ${paletteHTML(key, {k:this.piezas, orden:true}, st)}

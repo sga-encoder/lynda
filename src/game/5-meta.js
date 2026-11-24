@@ -322,43 +322,43 @@ class MazoScene extends Scene {
    débiles a un tipo de daño, así que conviene adaptar el pelotón. */
 const SLOTS_PELOTON = 8;
 class PelotonScene extends Scene {
-  enter(){
-    const d = this.app.progreso.data;
-    d.peloton ??= {orden:ORDEN_RECLUTA.slice(0, SLOTS_PELOTON), equipo:{}};
-    this.pintar();
-  }
-  tipos(){ return Object.keys(SOLDADOS).filter(t => t === 'fusilero' || this.app.soldadoDesbloqueado(t)); }
+  enter(){ this.tab ??= 'fusilero'; this.pintar(); }
+  tipos(){ return TIPOS_TROPA.filter(t => t === 'fusilero' || this.app.soldadoDesbloqueado(t)); }
   pintar(msg = ''){
-    const P = this.app.progreso, pl = P.data.peloton, tipos = this.tipos();
-    const enemigos = Object.keys(DEBILIDAD).filter(id => P.data.todo || P.conocido('enemigos', id));
-    const cuenta = Object.fromEntries(Object.keys(EQUIPO).map(k => [k, enemigos.filter(id => DEBILIDAD[id] === k).length]));
-    const usados = new Set(pl.orden);
+    const P = this.app.progreso, d = P.data, tipos = this.tipos(); if (!tipos.includes(this.tab)) this.tab = 'fusilero';
+    const I = itemsTropa(this.app, this.tab), chat = d.chatarra ?? 0, estrategia = this.app.pelotonDisponible();
+    const fila = (it, accion) => { const max = it.nivel >= MAX_NIVEL_TROPA, costo = costoTropa(it.nivel);
+      return `<div class="${UI.card} !p-2.5 ${it.libre ? '' : 'opacity-50'} ${it.equipado ? 'ring-2 ring-emerald-400' : ''}">
+        <div class="flex items-center gap-2"><span class="text-2xl">${it.libre ? it.icon : '🔒'}</span><span class="min-w-0 flex-1"><b class="text-sm">${it.libre ? it.name : 'Bloqueado'}</b> ${it.libre ? pips(it.nivel, MAX_NIVEL_TROPA) : ''}
+          <span class="block text-[11px] text-zinc-400">${it.libre ? it.desc : 'Se desbloquea más adelante en la 🗺️ Ruta.'}</span></span></div>
+        ${it.libre ? `<div class="mt-2 flex gap-1.5">${accion ?? ''}<button data-subir="${it.id}" class="${UI.btn} !min-h-9 flex-1 !px-2 text-xs" ${max || chat < costo ? 'disabled' : ''}>${max ? 'Nivel máximo' : `⬆ Nivel ${it.nivel + 1} · ⚙️ ${costo}`}</button></div>` : ''}</div>`; };
+    const uids = tipos.flatMap(t => SOLDADOS_UNICOS[t].filter((x, k) => tropaDesbloqueada(this.app, t, 'soldado', k)).map(x => x[0]));
+    const pl = d.peloton ??= {orden:ORDEN_RECLUTA.slice(0, SLOTS_PELOTON), equipo:{}};
+    const nombreUid = u => SOLDADOS[u] ? `${SOLDADOS[u].icon} ${SOLDADOS[u].name}` : (() => { const pf = perfilSoldado(P, u); return `${pf.icon} ${pf.name.split(' ')[0]}`; })();
     this.app.html(`
-    <div class="mx-auto flex h-full max-w-xl flex-col gap-3 overflow-y-auto px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
-      <div class="flex items-center justify-between">${btnVolver}<button data-a="reset" class="${UI.btn} !min-h-10 !px-3 text-sm">↺ Por defecto</button></div>
-      <h2 class="text-2xl font-black">🪖 Estrategia del pelotón</h2>
-      <p class="text-xs text-zinc-400">Elige qué soldados recluta la base (en este orden, y se repite) y qué munición usa cada tipo. Cada enemigo es <b>débil</b> a un tipo de daño (×${MULT_DEBIL}): arma el pelotón según lo que viene. Los cambios valen desde la próxima partida.</p>
+    <div class="mx-auto flex h-full max-w-xl flex-col gap-3 overflow-y-auto px-4 pb-6 pt-4 [&>*]:shrink-0">
+      <div class="flex items-center justify-between"><h2 class="text-2xl font-black">🪖 Pelotón</h2><span class="rounded-full bg-zinc-900 px-3 py-1 text-sm font-bold text-sky-300">⚙️ ${chat} chatarra</span></div>
+      <p class="text-xs text-zinc-400">La ⚙️ chatarra se gana en cada partida (aunque pierdas) y al descubrir o usar algo por primera vez. Úsala para subir de nivel soldados, armas y blindajes.</p>
       ${msg ? `<p class="rounded-xl bg-zinc-900 px-3 py-2 text-sm text-emerald-300">${msg}</p>` : ''}
-      <div class="${UI.card}"><b class="text-sm">Orden de reclutamiento</b> <span class="text-xs text-zinc-500">(toca un puesto para cambiar el tipo)</span>
-        <div class="mt-2 grid grid-cols-4 gap-1.5">${pl.orden.map((t, i) => `<button data-slot="${i}" class="flex min-h-16 flex-col items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 text-xs touch-manipulation active:scale-95"><span class="text-[10px] text-zinc-500">#${i + 1}</span><span class="text-2xl">${SOLDADOS[t].icon}</span>${SOLDADOS[t].name}</button>`).join('')}</div>
-        <p class="mt-2 text-[11px] text-zinc-500">Tipos disponibles: ${tipos.map(t => `${SOLDADOS[t].icon} ${SOLDADOS[t].name}`).join(' · ')}${tipos.length < 5 ? ' · los demás aparecen al descubrirlos jugando' : ''}.</p></div>
-      <div class="${UI.card}"><b class="text-sm">Munición por tipo de soldado</b>
-        ${['fusilero', 'pesado', 'granadero'].filter(t => tipos.includes(t)).map(t => { const actual = pl.equipo[t] ?? SOLDADOS[t].ataque?.dano ?? 'fisico';
-          return `<div class="mt-2 flex items-center gap-2"><span class="w-24 text-sm">${SOLDADOS[t].icon} ${SOLDADOS[t].name}${usados.has(t) ? '' : ' <span class="text-[10px] text-zinc-500">(no reclutado)</span>'}</span>
-            <div class="grid flex-1 grid-cols-3 gap-1">${Object.entries(EQUIPO).map(([k, q]) => `<button data-eq="${t}|${k}" class="min-h-10 rounded-lg border text-xs touch-manipulation ${actual === k ? 'border-amber-400 bg-amber-400/15 text-amber-200' : 'border-zinc-700 bg-zinc-950'}">${q.icon} ${q.name}</button>`).join('')}</div></div>`; }).join('')}
-        <ul class="mt-2 grid gap-0.5 text-[11px] text-zinc-400">${Object.values(EQUIPO).map(q => `<li>${q.icon} <b>${q.name}:</b> ${q.desc}</li>`).join('')}</ul></div>
-      <div class="${UI.card}"><b class="text-sm">Debilidades de los enemigos que conoces</b>
-        <div class="mt-1 flex gap-2 text-xs">${Object.entries(EQUIPO).map(([k, q]) => `<span class="rounded-full bg-zinc-800 px-2 py-0.5">${q.icon} ${cuenta[k]}</span>`).join('')}</div>
-        <div class="mt-2 grid grid-cols-2 gap-1 text-xs">${enemigos.length ? enemigos.map(id => `<span class="rounded-lg bg-zinc-950 px-2 py-1">${INFO_ENEMIGO[id].name} → ${EQUIPO[DEBILIDAD[id]].icon} ${EQUIPO[DEBILIDAD[id]].name}</span>`).join('') : '<span class="text-zinc-500">Juega para descubrir enemigos.</span>'}</div></div>
-    </div>`).onclick = e => this.click(e);
+      <div class="shrink-0">${tabs(TIPOS_TROPA.map(t => [t, tipos.includes(t) ? SOLDADOS[t].icon : '🔒', SOLDADOS[t].name]), this.tab)}</div>
+      <b class="text-sm">Soldados</b><div class="grid gap-2 sm:grid-cols-2">${I.soldados.map(it => fila(it)).join('')}</div>
+      <b class="text-sm">${SOLDADOS[this.tab].apoyo ? 'Herramienta' : 'Arma'} del tipo</b><div class="grid gap-2 sm:grid-cols-3">${I.armas.map(it => fila(it, it.equipado ? '<span class="flex items-center px-2 text-xs text-emerald-300">✓ Equipada</span>' : `<button data-equipar="arma|${it.id}" class="${UI.btnP} !min-h-9 !px-2 text-xs">Equipar</button>`)).join('')}</div>
+      <b class="text-sm">Blindaje del tipo</b><div class="grid gap-2 sm:grid-cols-3">${I.blindajes.map(it => fila(it, it.equipado ? `<button data-equipar="blindaje|" class="${UI.btn} !min-h-9 !px-2 text-xs">Quitar</button>` : `<button data-equipar="blindaje|${it.id}" class="${UI.btnP} !min-h-9 !px-2 text-xs">Equipar</button>`)).join('')}</div>
+      <div class="${UI.card}"><b class="text-sm">🧠 Estrategia: orden de reclutamiento</b>
+        ${estrategia ? `<p class="text-xs text-zinc-400">Toca un puesto para elegir qué soldado recluta la base (se repite). Cada enemigo es débil a un tipo de daño (×${MULT_DEBIL}): combina armas de balas, plasma y explosivas.</p>
+          <div class="mt-2 grid grid-cols-4 gap-1.5">${pl.orden.map((u, i) => `<button data-slot="${i}" class="flex min-h-14 flex-col items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 px-1 text-[11px] touch-manipulation active:scale-95"><span class="text-[10px] text-zinc-500">#${i + 1}</span>${nombreUid(u)}</button>`).join('')}</div>`
+          : '<p class="text-xs text-zinc-400">🔒 Se desbloquea en la Ruta al cumplir 3 misiones. Mientras tanto la base recluta en el orden normal con tus mejores soldados.</p>'}</div>
+    </div>`).onclick = e => this.click(e, uids);
   }
-  click(e){
-    const P = this.app.progreso, pl = P.data.peloton, tipos = this.tipos();
-    if (e.target.closest('[data-a="volver"]')) return this.app.go(new MenuScene(this.app));
-    if (e.target.closest('[data-a="reset"]')){ P.data.peloton = {orden:ORDEN_RECLUTA.slice(0, SLOTS_PELOTON), equipo:{}}; P.guardar(); return this.pintar('Pelotón restablecido.'); }
+  click(e, uids){
+    const P = this.app.progreso, d = P.data, T = tropaDe(P);
+    const tab = e.target.closest('[data-tab]')?.dataset.tab; if (tab && this.tipos().includes(tab)){ this.tab = tab; return this.pintar(); }
+    const sub = e.target.closest('[data-subir]')?.dataset.subir;
+    if (sub){ const n = nivelTropa(P, sub), c = costoTropa(n); if ((d.chatarra ?? 0) < c || n >= MAX_NIVEL_TROPA) return;
+      d.chatarra -= c; T.niveles[sub] = n + 1; P.guardar(); return this.pintar(`⬆ Subió al nivel ${n + 1}.`); }
+    const eq = e.target.closest('[data-equipar]')?.dataset.equipar;
+    if (eq){ const [clase, id] = eq.split('|'); T.equipo[this.tab][clase] = id || null; P.guardar(); return this.pintar(); }
     const sl = e.target.closest('[data-slot]');
-    if (sl){ const i = +sl.dataset.slot; pl.orden[i] = tipos[(tipos.indexOf(pl.orden[i]) + 1) % tipos.length]; P.guardar(); return this.pintar(); }
-    const eq = e.target.closest('[data-eq]');
-    if (eq){ const [t, k] = eq.dataset.eq.split('|'); pl.equipo[t] = k; P.guardar(); return this.pintar(); }
+    if (sl){ const pl = d.peloton, i = +sl.dataset.slot, k = uids.indexOf(pl.orden[i]); pl.orden[i] = uids[(k + 1) % uids.length]; P.guardar(); return this.pintar(); }
   }
 }

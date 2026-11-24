@@ -262,7 +262,8 @@ class Progreso {
     this.data.mazo = {fund:[], alg:[], dif:[], int:[], ...(this.data.mazo ?? {})};
   }
   /** Registra algo encontrado por primera vez (para el catálogo). Devuelve true si es nuevo. */
-  descubrir(cat, id){ const l = this.data.desc[cat]; if (l.includes(id)) return false; l.push(id); this.guardar(); return true; }
+  /** Registra algo nuevo para el catálogo. Descubrir o usar algo por primera vez da ⚙️ chatarra de premio. */
+  descubrir(cat, id){ const l = this.data.desc[cat]; if (l.includes(id)) return false; l.push(id); this.data.chatarra = (this.data.chatarra ?? 0) + 3; this.guardar(); return true; }
   conocido(cat, id){ return this.data.desc[cat].includes(id); }
   disponible(id){ const r = MEJORAS[id].requiere; return !r || this.conocido(...r); }
   ganarPuntos(n){ this.data.puntos += n; this.guardar(); }

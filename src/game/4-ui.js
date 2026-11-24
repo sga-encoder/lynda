@@ -172,7 +172,7 @@ class BattleScene extends Scene {
     Object.assign(this.cfg, {velocidad:this.cfg.velocidad * df.vel, vida:this.cfg.vida * df.vida, minimo:Math.round(this.cfg.minimo * df.cantidad), intervalo:this.cfg.intervalo / df.cantidad});
     this.director = new WaveDirector(this.cfg, this.app.rng);
     const P = this.app.progreso;
-    this.mundo ??= new World({bus:this.bus, loadout:r.loadout, energia:r.energia, base:r.base, extraSoldados:r.extraSoldados, mej:id => P.nivel(id), torreta:P.total('torreta'), soldadosOk:id => this.app.soldadoDesbloqueado(id), peloton:this.app.pelotonActivo() ? P.data.peloton : null});
+    this.mundo ??= new World({bus:this.bus, loadout:r.loadout, energia:r.energia, base:r.base, extraSoldados:r.extraSoldados, mej:id => P.nivel(id), torreta:P.total('torreta'), soldadosOk:id => this.app.soldadoDesbloqueado(id), perfil:uid => perfilSoldado(P, uid), titular:tipo => titularDe(this.app, tipo), peloton:this.app.pelotonActivo() ? P.data.peloton : null});
     const clima = r.mision === 1 && r.oleada === 1 ? 'despejado' : this.app.rng.pick(CLIMAS_ROTACION);
     this.mundo.ponerClima(clima);
     r.combos.forEach(c => c.usado = false);                          // los combos se recargan cada ronda
@@ -536,6 +536,9 @@ class BattleScene extends Scene {
     if (this.terminado) return; this.terminado = true;
     this.sincronizarCatalogo();
     if (victoria) this.app.ruta.contar('victorias');
+    // ⚙️ Chatarra: se gana en TODAS las partidas (también al perder) para mejorar soldados, armas y blindajes
+    const rr = this.run, chat = 4 + Math.floor(rr.problemas * 1.5) + Math.floor(rr.bajas / 4) + (victoria ? 10 : 0);
+    this.app.progreso.data.chatarra = (this.app.progreso.data.chatarra ?? 0) + chat; this.chatarraGanada = chat;
     const r = this.run, pts = this.app.progreso.registrarPartida(r.xpTotal);
     this.abrirCapa(`<div class="m-auto flex w-full max-w-sm flex-col gap-3 text-center">
       <div class="text-6xl">${victoria ? '🏆' : '💥'}</div><h2 class="text-2xl font-black">${victoria ? (this.victoriaTexto ?? '¡La Tierra está a salvo!') : abandono ? 'Partida abandonada' : 'La base cayó'}</h2>
@@ -548,7 +551,8 @@ class BattleScene extends Scene {
         <span>Jefes derrotados</span><b class="text-right">${r.jefes}${r.infinito ? '' : '/' + MISIONES}</b>
         <span>XP total</span><b class="text-right">${Math.round(r.xpTotal)}</b>
         <span>🔬 por misiones</span><b class="text-right text-amber-300">+${r.puntosMisiones}</b>
-        <span>🔬 por XP</span><b class="text-right text-amber-300">+${pts}</b></div>
+        <span>🔬 por XP</span><b class="text-right text-amber-300">+${pts}</b>
+        <span>⚙️ Chatarra</span><b class="text-right text-sky-300">+${this.chatarraGanada ?? 0}</b></div>
       <button data-a="otra" class="${UI.btnP}">↻ Jugar otra vez</button><button data-a="mejoras" class="${UI.btn}">🛠 Mejoras</button><button data-a="menu" class="${UI.btn}">Menú</button></div>`,
     e => {
       const a = e.target.closest('[data-a]')?.dataset.a;

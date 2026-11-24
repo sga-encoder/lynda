@@ -204,7 +204,7 @@ class MasScene extends Scene {
     this.app.html(`
     <div class="mx-auto flex h-full max-w-xl flex-col gap-2 overflow-y-auto px-4 pb-6 pt-4">
       <h2 class="text-2xl font-black">☰ Más</h2>
-      ${tarjetaBtn('data-ir="peloton"', '🪖', 'Pelotón', disp ? 'Tipos de soldado y munición contra las debilidades enemigas.' : '🔒 Se desbloquea en la Ruta (3 misiones).', false, !disp)}
+      ${tarjetaBtn('data-ir="peloton"', '🪖', 'Pelotón', 'Soldados, armas, blindajes y estrategia de reclutamiento.')}
       ${tarjetaBtn('data-ir="mejoras"', '🛠', 'Mejoras', `Mejoras permanentes · tienes ${d.puntos} 🔬`)}
       ${tarjetaBtn('data-ir="ayuda"', '❓', 'Cómo jugar', 'Tutorial del juego paso a paso.')}
       ${tarjetaBtn('data-ir="config"', '⚙️', 'Configuración', 'Modo asistido, archivos y modo desarrollador.')}

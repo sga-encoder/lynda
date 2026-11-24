@@ -215,7 +215,7 @@ function fotoPartida(escena, nombre){
   return {
     app:'defensa-algebraica', version:VERSION_PARTIDA, id:r.idPartida ??= 'p' + Date.now().toString(36),
     nombre: nombre || `Misión ${r.mision} · oleada ${r.oleada}`, fecha:new Date().toISOString(), modo:d.modo, dificultad:d.dificultad ?? 'soldado',
-    run:{infinito:!!r.infinito, tipos:r.tipos ? [...r.tipos] : null, mision:r.mision, oleada:r.oleada, nivel:r.nivel, xp:r.xp, xpTotal:r.xpTotal, problemas:r.problemas, eficientes:r.eficientes, bajas:r.bajas, jefes:r.jefes,
+    run:{mundo:r.mundo ?? null, mm:r.mm ?? 0, infinito:!!r.infinito, tipos:r.tipos ? [...r.tipos] : null, mision:r.mision, oleada:r.oleada, nivel:r.nivel, xp:r.xp, xpTotal:r.xpTotal, problemas:r.problemas, eficientes:r.eficientes, bajas:r.bajas, jefes:r.jefes,
       combosUsados:r.combosUsados, puntosMisiones:r.puntosMisiones, vida:r.base.vida, vidaMax:r.base.vidaMax, energia:r.energia.valor,
       armas:l.armas.map(b => [b.id, b.nivel]), tacticos:l.tacticos.map(b => [b.id, b.nivel]),
       combos:r.combos.filter(c => !c.hecho && !c.mazo).map(c => ({nombre:c.nombre, dominio:c.dominio, cartas:c.cartas}))},
@@ -227,6 +227,7 @@ function fotoPartida(escena, nombre){
 function runDesdeFoto(app, p){
   const r = new Run(app), s = p.run;
   if (s.infinito){ r.infinito = true; r.tipos = new Set(s.tipos ?? []); }
+  if (s.mundo){ r.mundo = s.mundo; r.mm = s.mm ?? 0; }
   Object.assign(r, {mision:s.mision, oleada:s.oleada, nivel:s.nivel, xp:s.xp, xpTotal:s.xpTotal, problemas:s.problemas, eficientes:s.eficientes, bajas:s.bajas, jefes:s.jefes,
     combosUsados:s.combosUsados, puntosMisiones:s.puntosMisiones, proceso:[...p.proceso], idPartida:p.id});
   r.loadout.armas = s.armas.filter(([id]) => BONUS_DEFS[id]).map(([id, n]) => new Bonus(id, n));

@@ -31,10 +31,16 @@ class MenuScene extends PartidasScene {
         <p class="mt-1 text-sm text-zinc-400">Resuelve con cartas de propiedades para dar energía a tus soldados.</p></div>
       <button data-j="jugar" class="${UI.btnP} !min-h-16 text-xl">▶ Jugar</button>`;
     else if (paso === 'modo') cuerpo = `
-      <div class="flex items-center gap-2"><button data-j="atras" class="${UI.btn} !min-h-10 !px-3">◂</button><b class="text-lg">1 · Elige la modalidad</b></div>
-      <div class="grid gap-2">${MODOS.map(([id, ic, n]) => { const disp = id === 'todo' ? ok.length : ok.filter(t => t.dominio.id === id).length;
-        return tarjetaBtn(`data-modo="${id}"`, ic, n, disp ? `${disp} tipo(s) de problema · 4 misiones` : '🔒 Se desbloquea en la Ruta', false, !disp); }).join('')}
+      <div class="flex items-center gap-2"><button data-j="atras" class="${UI.btn} !min-h-10 !px-3">◂</button><b class="text-lg">1 · Elige un mundo</b></div>
+      <div class="grid gap-2">${MUNDOS_JUEGO.map(M => { const libre = ok.some(t => t.dominio.id === M.dominio), pm = d.mundos?.[M.id] ?? {vencidos:0, soberano:false};
+        return tarjetaBtn(`data-mundo="${M.id}"`, libre ? M.icon : '🔒', M.nombre, libre ? `${M.eje} · ${pm.soberano ? '👑 liberado' : `${pm.vencidos}/4 Comandantes`}` : `🔒 ${M.eje}: se desbloquea en la Ruta`, false, !libre); }).join('')}
         ${tarjetaBtn('data-modo="infinito"', '♾️', 'Modo infinito', 'Misiones sin fin; tú eliges qué operaciones salen.')}</div>`;
+    else if (paso === 'mision'){ const M = mundoDe(this.sel.mundo), pm = d.mundos?.[M.id] ?? {vencidos:0, soberano:false};
+      cuerpo = `
+      <div class="flex items-center gap-2"><button data-j="atras" class="${UI.btn} !min-h-10 !px-3">◂</button><b class="text-lg">2 · ${M.icon} ${M.nombre}</b></div>
+      <p class="text-xs text-zinc-400">Derrota a los 4 Comandantes (una misión de 5 oleadas cada uno) para enfrentar al Soberano.</p>
+      <div class="grid gap-2">${M.comandantes.map((C, i) => tarjetaBtn(`data-mm="${i}"`, i < pm.vencidos ? '✅' : i === pm.vencidos ? '🎖️' : '🔒', C.name, i <= pm.vencidos ? `${C.ataque.nombre}: ${C.ataque.desc}` : 'Vence al Comandante anterior', false, i > pm.vencidos)).join('')}
+        ${tarjetaBtn('data-mm="4"', pm.vencidos >= 4 ? '👑' : '🔒', M.soberano.name, pm.vencidos >= 4 ? M.soberano.desc : 'Derrota a los 4 Comandantes para enfrentarlo', false, pm.vencidos < 4)}</div>`; }
     else if (paso === 'ops') { const mazo = new Set(d.mazoInfinito ?? []);
       cuerpo = `
       <div class="flex items-center gap-2"><button data-j="atras" class="${UI.btn} !min-h-10 !px-3">◂</button><b class="text-lg">2 · ¿Qué operaciones salen?</b></div>
@@ -77,7 +83,11 @@ class MenuScene extends PartidasScene {
     const d = this.app.progreso.data, P = this.app.progreso;
     const j = e.target.closest('[data-j]')?.dataset.j;
     if (j === 'jugar'){ this.paso = 'modo'; this.sel = {}; return this.pintar(); }
-    if (j === 'atras'){ this.paso = this.paso === 'dif' ? (this.sel.infinito ? 'ops' : 'modo') : this.paso === 'ops' ? 'modo' : null; return this.pintar(); }
+    if (j === 'atras'){ this.paso = this.paso === 'dif' ? (this.sel.infinito ? 'ops' : this.sel.mundo ? 'mision' : 'modo') : (this.paso === 'ops' || this.paso === 'mision') ? 'modo' : null; return this.pintar(); }
+    const mundo = e.target.closest('[data-mundo]')?.dataset.mundo;
+    if (mundo){ this.sel = {mundo}; this.paso = 'mision'; return this.pintar(); }
+    const mm = e.target.closest('[data-mm]')?.dataset.mm;
+    if (mm != null){ this.sel.mm = +mm; this.sel.modo = mundoDe(this.sel.mundo).dominio; this.paso = 'dif'; return this.pintar(); }
     const modo = e.target.closest('[data-modo]')?.dataset.modo;
     if (modo){ if (modo === 'infinito'){ this.sel = {infinito:true}; this.paso = 'ops'; } else { this.sel = {modo}; this.paso = 'dif'; } return this.pintar(); }
     const tipo = e.target.closest('[data-tipo]')?.dataset.tipo;
@@ -94,6 +104,7 @@ class MenuScene extends PartidasScene {
       d.dificultad = df; if (this.sel.modo) d.modo = this.sel.modo; P.guardar();
       const run = new Run(this.app);
       if (this.sel.infinito){ run.infinito = true; run.tipos = new Set(this.sel.tipos); }
+      if (this.sel.mundo){ run.mundo = this.sel.mundo; run.mm = this.sel.mm; run.mision = this.sel.mm + 1; }
       return this.app.go(new BattleScene(this.app, run));
     }
     if (e.target.closest('[data-p]') || e.target.closest('[data-a="cerrar"]')) return this.click(e);   // partidas guardadas (heredado)

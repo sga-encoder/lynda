@@ -24,7 +24,8 @@ const INFO_ENEMIGO = {
   acorazado: {name:'Acorazado orbital', desc:'Jefe de la misión 3: láser a la base y lanza cazas.'},
   mente:     {name:'Mente maestra', desc:'Jefe final: solo es vulnerable unos segundos después de resolver un problema.'},
 };
-const ARMA_ENEMIGA = {acido:'🟢 Ácido', laser:'🔴 Láser', rayo:'🟣 Rayo mental', roca:'🪨 Roca', bomba:'💣 Bombas', invocar:'👾 Invoca'};
+Object.assign(INFO_ENEMIGO, INFO_EXTRA);   // Comandantes, Soberanos y alienígenas de cada mundo
+const ARMA_ENEMIGA = {acido:'🟢 Ácido', laser:'🔴 Láser', rayo:'🟣 Rayo mental', roca:'🪨 Roca', bomba:'💣 Bombas', invocar:'👾 Invoca', lluvia:'☄️ Lluvia de rocas', pulso:'💢 Onda', drenar:'🔋 Roba energía', blindar:'🛡 Se blinda', curar:'💚 Cura aliados'};
 const ETIQUETA_STAT = {dmg:'Daño', cd:'Recarga (s)', costo:'Costo ⚡', area:'Radio', saltos:'Saltos', vel:'Velocidad', energia:'Energía ×', vida:'Vida base +', regen:'Regenera /s',
   lentitud:'Velocidad enemiga ×', soldados:'Soldados +', reclutar:'Reclutar ×', perforacion:'Perforación', ventana:'Segundos de rapidez +', vidaSoldado:'Vida de soldado +', curar:'Curación /s'};
 const EJEMPLO_CARTA = {
@@ -102,8 +103,11 @@ class CatalogoScene extends Scene {
     if (this.tab === 'tacticos') return Object.entries(BONUS_DEFS).filter(([, d]) => d.tipo === 'tactico' && !d.fusion).map(([id, d]) => ({kind:'tactico', id, d, ok:this.conocido('tacticos', id), name:d.name}));
     // Fusiones: se sabe que existen, pero no cómo se consiguen (se descubren jugando)
     if (this.tab === 'fusiones') return FUSIONES.map(f => ({kind:'fusion', id:f.resultado, d:BONUS_DEFS[f.resultado], ok:this.conocido('fusiones', f.resultado), name:BONUS_DEFS[f.resultado].name}));
-    return [...Object.keys(SOLDADOS).map(id => ({kind:'soldado', id, ok:this.conocido('soldados', id), name:SOLDADOS[id].name})),
-            ...Object.keys(ENEMIGOS).map(id => ({kind:'enemigo', id, ok:this.conocido('enemigos', id), name:INFO_ENEMIGO[id].name}))];
+    // Entidades en dos grupos: 🪖 Soldados y 👽 Alienígenas (comunes, Comandantes y Soberanos)
+    const g = id => INFO_ENEMIGO[id].grupo ?? (ENEMIGOS[id](0, {vida:1, velocidad:1}).jefe ? 'soberano' : 'comun');
+    const orden = {comun:0, comandante:1, soberano:2};
+    return [...Object.keys(SOLDADOS).map(id => ({kind:'soldado', grupo:'soldados', id, ok:this.conocido('soldados', id), name:SOLDADOS[id].name})),
+            ...Object.keys(ENEMIGOS).map(id => ({kind:'enemigo', grupo:g(id), id, ok:this.conocido('enemigos', id), name:INFO_ENEMIGO[id].name})).sort((a, b) => orden[a.grupo] - orden[b.grupo])];
   }
   tile(it, i){
     const desconocido = !it.ok, nombre = desconocido ? (it.kind === 'carta' ? '🔒 ' + it.name : 'Desconocido') : it.name;
@@ -125,7 +129,7 @@ class CatalogoScene extends Scene {
       <p class="mt-1 text-xs text-zinc-400">${this.tab === 'cartas' ? `${ok}/${items.length} cartas disponibles · las demás se desbloquean en la 🗺️ Ruta o avanzando en Aprender`
         : this.tab === 'fusiones' ? `${ok}/${items.length} fusiones descubiertas · existen fusiones entre armas, entre tácticos y entre armas y tácticos. ¿Cuáles? Descúbrelo jugando.`
         : `${ok}/${items.length} descubiertos · se descubren al obtenerlos o verlos en una partida`}</p>
-      <div class="mt-2 grid flex-1 grid-cols-2 content-start gap-2 overflow-y-auto pb-4 sm:grid-cols-3">${items.map((it, i) => this.tile(it, i)).join('')}</div>
+      <div class="mt-2 grid flex-1 grid-cols-2 content-start gap-2 overflow-y-auto pb-4 sm:grid-cols-3">${items.map((it, i) => (it.grupo && it.grupo !== items[i - 1]?.grupo ? `<div class="col-span-full mt-2 text-sm font-black text-zinc-300">${{soldados:'🪖 Soldados', comun:'👽 Alienígenas · comunes y de cada mundo', comandante:'🎖️ Alienígenas · Comandantes (subjefes)', soberano:'👑 Alienígenas · Soberanos (jefes)'}[it.grupo]}</div>` : '') + this.tile(it, i)).join('')}</div>
       <div data-h="detalle" class="absolute inset-0 z-20 hidden"></div>
     </div>`).onclick = e => this.click(e);
     this.animar();
@@ -194,7 +198,7 @@ class CatalogoScene extends Scene {
       cuerpo = `<p class="text-sm text-zinc-300">${e.jefe ? '👹 <b>Jefe.</b> ' : ''}${info.desc}</p><div class="mt-2">${tablaStats(`
         <tr><td>Terreno</td><td>${e.vuela ? '✈️ Aire' : '🟫 Tierra'}</td></tr>
         <tr><td>Vida base</td><td>${Math.round(e.vida)}</td></tr><tr><td>Velocidad</td><td>${e.vel}</td></tr>
-        <tr><td>Armas</td><td>${e.armas.length ? e.armas.map(a => `${ARMA_ENEMIGA[a.tipo]}${a.dmg ? ` (${a.dmg} de daño${a.rango ? `, alcance ${a.rango}` : ''})` : a.invoca ? ` ${INFO_ENEMIGO[a.invoca].name}` : ''}`).join(' · ') : e.dps ? `Cuerpo a cuerpo (${e.dps}/s)` : '—'}</td></tr>
+        <tr><td>Armas</td><td>${e.armas.length ? e.armas.map(a => `${ARMA_ENEMIGA[a.tipo]}${a.dmg ? ` (${+a.dmg.toFixed(1)} de daño${a.rango ? `, alcance ${a.rango}` : ''})` : a.invoca ? ` ${INFO_ENEMIGO[a.invoca].name}` : ''}`).join(' · ') : e.dps ? `Cuerpo a cuerpo (${e.dps}/s)` : '—'}</td></tr>
         ${hab.length ? `<tr><td>Habilidades</td><td>${hab.join('<br>')}</td></tr>` : ''}
         ${DEBILIDAD[it.id] ? `<tr><td>Débil a</td><td>${EQUIPO[DEBILIDAD[it.id]].icon} ${EQUIPO[DEBILIDAD[it.id]].name} (×${MULT_DEBIL} de daño)</td></tr>` : ''}
         <tr><td>XP</td><td>${e.xp}</td></tr>`)}</div>`;

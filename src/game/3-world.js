@@ -143,13 +143,14 @@ class WaveDirector {
     }
     if (!(this.problemasResueltos < this.cfg.problemas || this.generados < this.cfg.minimo) || (this.t -= dt) > 0) return;
     this.t = this.cfg.intervalo * (0.7 + this.rng.next() * 0.6);
-    if (m.enemigos.length >= 14) return;                              // límite en pantalla
+    if (m.enemigos.length >= 24) return;                              // límite en pantalla (batallas más llenas)
     this.generados++;
     const t = this.cfg.t, voladores = m.enemigos.filter(e => e.vuela).length;
-    const opciones = TABLA_APARICION.filter(([id, desde]) => t >= desde && (voladores < 4 || !['nave', 'dron', 'bombardero', 'caza', 'portadrones'].includes(id)));
+    const AIRE = ['nave', 'dron', 'bombardero', 'caza', 'portadrones'], esAire = id => AIRE.includes(FORMA_DE[id] ?? id);
+    const opciones = [...TABLA_APARICION, ...(this.cfg.extra ?? [])].filter(([id, desde]) => t >= desde && (voladores < 7 || !esAire(id)));
     let r = this.rng.next() * opciones.reduce((s, o) => s + o[2], 0), id = opciones[0][0];
     for (const [k, , w] of opciones){ if ((r -= w) <= 0){ id = k; break; } }
-    const aire = ['nave', 'dron', 'bombardero', 'caza', 'portadrones'].includes(id);
+    const aire = esAire(id);
     m.enemigos.push(ENEMIGOS[id](aire ? 24 + this.rng.int(0, 50) : this.rng.int(200, MUNDO.W - 12), this.cfg));
   }
   terminada(m){ return !this.generando && !m.enemigos.length; }
@@ -259,7 +260,7 @@ class World {
     const frente = this.soldados.reduce((mx, s) => Math.max(mx, s.x), -Infinity), C = this.clima;
     for (const e of [...this.enemigos]){
       e.fase += dt * 8; if (e.escudoT > 0) e.escudoT -= dt;
-      const vel = e.vel * lento * (e.congelado > 0 ? 0.45 : 1) * (e.vuela ? (C.voladores ?? 1) : 1); e.congelado = Math.max(0, e.congelado - dt);
+      const vel = e.vel * lento * (e.congelado > 0 ? 0.45 : 1) * (e.vuela ? (C.voladores ?? 1) : 1); e.congelado = Math.max(0, e.congelado - dt); if (e.blindadoT > 0) e.blindadoT -= dt;
       this.armasEnemigas(e, dt, frente);
       if (e.vuela){
         if (e.kamikaze){                                                 // dron: se lanza contra la base
@@ -269,7 +270,7 @@ class World {
         } else if (e.flota){ if (e.x > e.flota) e.x -= vel * dt; else e.y += Math.sin(e.fase / 4) * 0.15; }   // se queda flotando a distancia
         else {
           e.x -= vel * dt;
-          if (e.tipo === 'nave' && e.x > 150 && e.x < MUNDO.W - 10 && (e.soltar -= dt) <= 0){
+          if ((e.forma ?? e.tipo) === 'nave' && e.x > 150 && e.x < MUNDO.W - 10 && (e.soltar -= dt) <= 0){
             e.soltar = 4; const al = ENEMIGOS.explorador(e.x, {vida:e.vidaMax / 7, velocidad:e.vel / 16}); al.y = e.y + 6; this.enemigos.push(al);
           }
           if (e.x < -30) e.x = MUNDO.W + 30;
@@ -303,6 +304,16 @@ class World {
       const obj = a.objetivo === 'soldados' && this.soldados.length ? this.soldados.find(s => s.x === frente) : this.base;
       const ox = obj === this.base ? this.base.cx : obj.x, oy = obj === this.base ? this.base.cy : obj.cy;
       if (a.tipo === 'invocar'){ a.t = a.cd; if (this.enemigos.length < 16){ const n = ENEMIGOS[a.invoca](e.vuela ? e.y + 10 : e.x, {vida:1, velocidad:1}); n.x = e.x - 10; if (!n.vuela){ n.y = MUNDO.suelo; n.estado = 'camina'; } this.enemigos.push(n); } continue; }
+      if (a.tipo === 'blindar'){ a.t = a.cd; e.blindadoT = a.dur; this.texto(e.x, e.cy - 20 * e.escala, '🛡 se blinda', '#93c5fd', 0.8); continue; }
+      if (a.tipo === 'curar'){ a.t = a.cd; for (const o of this.enemigos) if (o !== e && Math.abs(o.x - e.x) < a.rango){ o.vida = Math.min(o.vidaMax, o.vida + a.dmg); this.texto(o.x, o.cy - 12, '+' + a.dmg, '#86efac', 0.5); } continue; }
+      if (a.tipo === 'drenar'){ if (e.x - this.base.cx > a.rango){ a.t = 0.3; continue; } a.t = a.cd; this.energia.valor = Math.max(0, this.energia.valor - a.dmg);
+        this.rayos.push({puntos:[{x:e.x, y:e.cy}, {x:this.base.cx, y:this.base.cy}], t:0.3, color:'#fde047'}); this.texto(this.base.cx, this.base.cy - 30, `-${a.dmg}⚡`, '#fde047'); continue; }
+      if (a.tipo === 'pulso'){ const cerca = this.soldados.filter(s => Math.abs(s.x - e.x) < a.rango); if (!cerca.length){ a.t = 0.3; continue; }
+        a.t = a.cd; cerca.forEach(s => this.dañarSoldado(s, a.dmg)); this.explosion(e.x, e.cy, COLOR_ENEMIGO[e.tipo] ?? '#fda4af', a.rango / 3); continue; }
+      if (a.tipo === 'lluvia'){ const objs = this.soldados.length ? this.soldados : [this.base]; if (Math.abs(e.x - (objs[0].x ?? this.base.cx)) > a.rango){ a.t = 0.3; continue; }
+        a.t = a.cd; for (let k = 0; k < (a.n ?? 3); k++){ const o = objs[Math.floor(Math.random() * objs.length)], tx = (o === this.base ? this.base.cx : o.x) + (Math.random() - 0.5) * 16;
+          this.balasEnemigas.push({x:e.x - 5, y:e.cy, tx, ty:MUNDO.suelo - 4, vel:100 + k * 8, dmg:a.dmg, area:12, color:'#a8a29e', r:3, parabola:true, x0:e.x - 5, y0:e.cy, u:0, dist:Math.max(40, Math.abs(e.x - tx))}); }
+        continue; }
       if (a.tipo === 'bomba'){
         if (!(e.x < frente + 30 && e.x > this.base.x)) { a.t = 0.3; continue; }
         a.t = a.cd; this.balasEnemigas.push({x:e.x, y:e.y + 4, tx:e.x, ty:MUNDO.suelo - 2, vel:90, dmg:a.dmg, area:a.area, color:'#f97316', r:2});
@@ -375,7 +386,8 @@ class World {
     let d = dmg;
     if (e.armadura && dano === 'fisico'){ const perf = Math.min(1, this.loadout.efecto('perforacion', 0) + (efecto === 'perforar' ? 0.5 : 0)); d *= 1 - e.armadura * (1 - perf); }
     if (e.escudo && dano === 'energia') d *= 1 - e.escudo;
-    if (DEBILIDAD[e.tipo] === dano) d *= MULT_DEBIL;               // debilidad: la estrategia del pelotón importa
+    if ((DEBILIDAD[e.tipo] ?? DEBILIDAD[e.forma]) === dano) d *= MULT_DEBIL;
+    if (e.blindadoT > 0) d *= 0.4;                                  // armadura temporal de un Comandante               // debilidad: la estrategia del pelotón importa
     if (efecto === 'congelar' && !e.jefe) e.congelado = 2.5;
     e.vida -= d; this.texto(e.x, e.cy - 10 * e.escala, `-${Math.round(d * 10) / 10}${d > dmg ? '!' : ''}`, d < dmg ? '#cbd5e1' : d > dmg ? '#fde047' : '#fecaca', 0.5);
   }
@@ -484,36 +496,36 @@ class Renderer {
     if (e.vida < e.vidaMax && !e.jefe) this.barra(c, e.x - 7, e.cy - 16 * e.escala, 14, e.vida / e.vidaMax, '#f87171');
   }
   terrestre(c, a, t){
-    const y = a.y, color = a.congelado > 0 ? '#7dd3fc' : COLOR_ENEMIGO[a.tipo];
+    const y = a.y, color = a.congelado > 0 ? '#7dd3fc' : a.color ?? COLOR_ENEMIGO[a.tipo];
     if (a.bajoTierra){ c.fillStyle = '#78350f'; c.beginPath(); c.ellipse(a.x, y - 1, 7, 3, 0, Math.PI, 0); c.fill(); c.fillStyle = '#a16207'; c.fillRect(a.x - 1 + Math.sin(t * 20) * 2, y - 5, 2, 2); return; }
     if (a.estado === 'cae'){ c.strokeStyle = '#e5e7eb88'; c.lineWidth = 1; c.beginPath(); c.moveTo(a.x - 6, a.y - 22); c.lineTo(a.x, a.y - 10); c.lineTo(a.x + 6, a.y - 22); c.stroke(); c.fillStyle = '#f8fafc55'; c.beginPath(); c.arc(a.x, a.y - 22, 8, Math.PI, 0); c.fill(); }
     const paso = Math.sin(a.fase) * 1.5;
     c.fillStyle = color; c.beginPath(); c.ellipse(a.x, y - 8, 6, 7, 0, 0, 6.28); c.fill();
-    c.fillStyle = a.tipo === 'reina' ? '#365314' : '#052e16'; c.beginPath(); c.arc(a.x - 2.3, y - 10, 1.6, 0, 6.28); c.arc(a.x + 2.3, y - 10, 1.6, 0, 6.28); c.fill();
+    c.fillStyle = (a.forma ?? a.tipo) === 'reina' ? '#365314' : '#052e16'; c.beginPath(); c.arc(a.x - 2.3, y - 10, 1.6, 0, 6.28); c.arc(a.x + 2.3, y - 10, 1.6, 0, 6.28); c.fill();
     c.strokeStyle = color; c.lineWidth = 1.2; c.beginPath(); c.moveTo(a.x - 3, y - 2); c.lineTo(a.x - 3 + paso, y); c.moveTo(a.x + 3, y - 2); c.lineTo(a.x + 3 - paso, y);
     c.moveTo(a.x - 2, y - 15); c.lineTo(a.x - 4, y - 19); c.moveTo(a.x + 2, y - 15); c.lineTo(a.x + 4, y - 19); c.stroke();
     if (a.armadura){ c.fillStyle = '#94a3b8'; c.fillRect(a.x - 6, y - 9, 12, 4); c.fillRect(a.x - 5, y - 15, 10, 2.5); }
     if (a.escudo){ c.strokeStyle = '#60a5fa'; c.lineWidth = 1; c.beginPath(); c.arc(a.x, y - 8, 9, -1.2, 1.2); c.stroke(); }
-    if (a.tipo === 'acido'){ c.fillStyle = '#65a30d'; c.beginPath(); c.arc(a.x + 4, y - 5, 2.5, 0, 6.28); c.fill(); }
-    if (a.tipo === 'saltador'){ c.strokeStyle = color; c.beginPath(); c.moveTo(a.x - 5, y - 4); c.lineTo(a.x - 8, y); c.moveTo(a.x + 5, y - 4); c.lineTo(a.x + 8, y); c.stroke(); }
-    if (a.tipo === 'coloso'){ c.fillStyle = '#57534e'; c.fillRect(a.x - 7, y - 14, 14, 3); }
-    if (a.tipo === 'reina'){ c.fillStyle = '#facc15'; c.beginPath(); c.moveTo(a.x - 4, y - 15); c.lineTo(a.x - 2, y - 18); c.lineTo(a.x, y - 15.5); c.lineTo(a.x + 2, y - 18); c.lineTo(a.x + 4, y - 15); c.fill(); }
+    if ((a.forma ?? a.tipo) === 'acido'){ c.fillStyle = '#65a30d'; c.beginPath(); c.arc(a.x + 4, y - 5, 2.5, 0, 6.28); c.fill(); }
+    if ((a.forma ?? a.tipo) === 'saltador'){ c.strokeStyle = color; c.beginPath(); c.moveTo(a.x - 5, y - 4); c.lineTo(a.x - 8, y); c.moveTo(a.x + 5, y - 4); c.lineTo(a.x + 8, y); c.stroke(); }
+    if ((a.forma ?? a.tipo) === 'coloso'){ c.fillStyle = '#57534e'; c.fillRect(a.x - 7, y - 14, 14, 3); }
+    if ((a.forma ?? a.tipo) === 'reina'){ c.fillStyle = '#facc15'; c.beginPath(); c.moveTo(a.x - 4, y - 15); c.lineTo(a.x - 2, y - 18); c.lineTo(a.x, y - 15.5); c.lineTo(a.x + 2, y - 18); c.lineTo(a.x + 4, y - 15); c.fill(); }
   }
   volador(c, n, t){
-    const col = n.congelado > 0 ? '#7dd3fc' : COLOR_ENEMIGO[n.tipo];
-    if (n.tipo === 'dron'){
+    const col = n.congelado > 0 ? '#7dd3fc' : n.color ?? COLOR_ENEMIGO[n.tipo];
+    if ((n.forma ?? n.tipo) === 'dron'){
       c.fillStyle = col; c.fillRect(n.x - 4, n.y - 2, 8, 4);
       c.strokeStyle = '#fbcfe8'; c.lineWidth = 1; c.beginPath(); const giro = Math.sin(t * 40) * 1.5;
       for (const dx of [-7, 7]){ c.moveTo(n.x + dx - 3 + giro, n.y - 4); c.lineTo(n.x + dx + 3 - giro, n.y - 4); }
       c.stroke(); c.fillStyle = '#fde047'; c.fillRect(n.x - 1, n.y - 1, 2, 2); return;
     }
-    if (n.tipo === 'caza'){ c.fillStyle = col; c.beginPath(); c.moveTo(n.x - 9, n.y); c.lineTo(n.x + 7, n.y - 4); c.lineTo(n.x + 4, n.y); c.lineTo(n.x + 7, n.y + 4); c.fill(); c.fillStyle = '#fef08a'; c.fillRect(n.x + 7, n.y - 1, 2 + Math.random() * 2, 2); return; }
-    if (n.tipo === 'bombardero'){ c.fillStyle = col; c.fillRect(n.x - 12, n.y - 3, 24, 6); c.fillStyle = '#52525b'; c.fillRect(n.x - 6, n.y + 3, 12, 2); c.fillStyle = '#fde047'; c.fillRect(n.x - 10, n.y - 1, 2, 2); return; }
-    if (n.tipo === 'portadrones' || n.tipo === 'acorazado'){
+    if ((n.forma ?? n.tipo) === 'caza'){ c.fillStyle = col; c.beginPath(); c.moveTo(n.x - 9, n.y); c.lineTo(n.x + 7, n.y - 4); c.lineTo(n.x + 4, n.y); c.lineTo(n.x + 7, n.y + 4); c.fill(); c.fillStyle = '#fef08a'; c.fillRect(n.x + 7, n.y - 1, 2 + Math.random() * 2, 2); return; }
+    if ((n.forma ?? n.tipo) === 'bombardero'){ c.fillStyle = col; c.fillRect(n.x - 12, n.y - 3, 24, 6); c.fillStyle = '#52525b'; c.fillRect(n.x - 6, n.y + 3, 12, 2); c.fillStyle = '#fde047'; c.fillRect(n.x - 10, n.y - 1, 2, 2); return; }
+    if ((n.forma ?? n.tipo) === 'portadrones' || (n.forma ?? n.tipo) === 'acorazado'){
       c.fillStyle = col; c.fillRect(n.x - 16, n.y - 5, 32, 10); c.fillStyle = '#4c1d95'; c.fillRect(n.x - 12, n.y - 9, 10, 4);
       for (let i = -2; i <= 2; i++){ c.fillStyle = Math.sin(t * 8 + i) > 0 ? '#fde047' : '#713f12'; c.fillRect(n.x + i * 6 - 1, n.y + 1, 2, 2); } return;
     }
-    if (n.tipo === 'mente'){
+    if ((n.forma ?? n.tipo) === 'mente'){
       c.fillStyle = col; c.beginPath(); c.ellipse(n.x, n.y, 12, 9, 0, 0, 6.28); c.fill();
       c.strokeStyle = '#a21caf'; c.lineWidth = 1; c.beginPath(); for (let i = -2; i <= 2; i++){ c.moveTo(n.x + i * 4, n.y - 8); c.quadraticCurveTo(n.x + i * 5, n.y, n.x + i * 4, n.y + 7); } c.stroke();
       c.fillStyle = '#fdf4ff'; c.beginPath(); c.arc(n.x - 4, n.y, 2, 0, 6.28); c.arc(n.x + 4, n.y, 2, 0, 6.28); c.fill(); return;

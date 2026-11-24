@@ -277,10 +277,10 @@ class Progreso {
 }
 
 /* ---------- Oleadas y misiones (dificultad por velocidad y cantidad) ---------- */
-const MISIONES = 4, OLEADAS = 3;
+const MISIONES = 4, OLEADAS = 5;   // cada misión tiene 5 oleadas; la última trae al Comandante o al Soberano
 const CLIMAS_ROTACION = ['despejado', 'lluvia', 'niebla', 'nieve', 'tormenta', 'viento'];
 function configOleada(mision, oleada){
-  const t = (mision - 1) * OLEADAS + (oleada - 1);     // 0..11
+  const t = Math.round(((mision - 1) * OLEADAS + (oleada - 1)) * 0.6);     // 0..11 (escala igual que con 3 oleadas)
   return {
     t,
     problemas: 1 + Math.floor(t / 4) + (oleada === OLEADAS ? 1 : 0),

@@ -163,6 +163,12 @@ class BattleScene extends Scene {
     const r = this.run;
     const df = dificultad(this.app.progreso.data.dificultad);
     this.cfg = configOleada(r.mision, r.oleada);
+    if (r.mundo){                                                      // misión de un mundo: sus alienígenas y su Comandante/Soberano
+      const M = mundoDe(r.mundo), idx = MUNDOS_JUEGO.indexOf(M);
+      this.cfg.extra = aparicionMundo(M, r.mm);
+      this.cfg.jefe = r.oleada === OLEADAS ? (r.mm < 4 ? M.comandantes[r.mm].id : M.soberano.id) : null;
+      this.cfg.vida *= 1 + idx * 0.25; this.cfg.velocidad *= 1 + idx * 0.05;
+    }
     Object.assign(this.cfg, {velocidad:this.cfg.velocidad * df.vel, vida:this.cfg.vida * df.vida, minimo:Math.round(this.cfg.minimo * df.cantidad), intervalo:this.cfg.intervalo / df.cantidad});
     this.director = new WaveDirector(this.cfg, this.app.rng);
     const P = this.app.progreso;
@@ -212,7 +218,8 @@ class BattleScene extends Scene {
   }
   hud(){
     const r = this.run, b = r.base, j = this.mundo.jefe;
-    this.$('oleada').textContent = `${r.infinito ? '♾️ ' : ''}Misión ${r.mision}${r.infinito ? '' : '/' + MISIONES} · Oleada ${r.oleada}/${OLEADAS}`;
+    this.$('oleada').textContent = r.mundo ? `${mundoDe(r.mundo).icon} ${r.mm < 4 ? mundoDe(r.mundo).comandantes[r.mm].name.replace('Comandante ', '') : '👑 ' + mundoDe(r.mundo).soberano.name} · Oleada ${r.oleada}/${OLEADAS}`
+      : `${r.infinito ? '♾️ ' : ''}Misión ${r.mision}${r.infinito ? '' : '/' + MISIONES} · Oleada ${r.oleada}/${OLEADAS}`;
     this.$('probs').textContent = `🧮 ${Math.min(this.director.problemasResueltos, this.cfg.problemas)}/${this.cfg.problemas}`;
     this.$('nivel').textContent = r.nivel;
     this.$('clima').textContent = `${this.mundo.clima.icon} ${this.mundo.clima.name}`;
@@ -498,7 +505,17 @@ class BattleScene extends Scene {
     if (r.oleada === OLEADAS){ const pts = puntosMision(r.mision); this.app.progreso.ganarPuntos(pts); r.puntosMisiones += pts; const m = r.mision; setTimeout(() => this.aviso(`🏅 ¡Misión ${m} cumplida! +${pts} 🔬`), 2700); }
     if (nuevos.length) setTimeout(() => this.aviso(`📚 Nuevo en el catálogo (${nuevos.length})`), 5300);
     if (r.oleada < OLEADAS){ r.oleada++; return this.iniciarOleada(); }
+    if (r.mundo) return this.misionMundoCumplida();
     if (r.mision < MISIONES || r.infinito){ r.mision++; r.oleada = 1; r.base.vida = Math.min(r.base.vidaMax, r.base.vida + 25); return this.pausaMision(r.mision - 1); }
+    return this.fin(true);
+  }
+  /** Misión de un mundo ganada: se marca el Comandante (o el Soberano) como derrotado. */
+  misionMundoCumplida(){
+    const r = this.run, P = this.app.progreso, M = mundoDe(r.mundo), pm = (P.data.mundos ??= {})[M.id] ??= {vencidos:0, soberano:false};
+    if (r.mm < 4) pm.vencidos = Math.max(pm.vencidos, r.mm + 1); else pm.soberano = true;
+    P.guardar();
+    const quien = r.mm < 4 ? M.comandantes[r.mm].name : M.soberano.name;
+    this.victoriaTexto = `${r.mm < 4 ? '🎖️' : '👑'} ¡${quien} derrotado!${r.mm < 3 ? ` Siguiente: ${M.comandantes[r.mm + 1].name}.` : r.mm === 3 ? ` ¡El ${M.soberano.name} te espera!` : ` ¡${M.nombre} liberado!`}`;
     return this.fin(true);
   }
   /** Al terminar cada misión el juego se detiene: seguir o guardar el avance para después. */
@@ -521,7 +538,7 @@ class BattleScene extends Scene {
     if (victoria) this.app.ruta.contar('victorias');
     const r = this.run, pts = this.app.progreso.registrarPartida(r.xpTotal);
     this.abrirCapa(`<div class="m-auto flex w-full max-w-sm flex-col gap-3 text-center">
-      <div class="text-6xl">${victoria ? '🏆' : '💥'}</div><h2 class="text-2xl font-black">${victoria ? '¡La Tierra está a salvo!' : abandono ? 'Partida abandonada' : 'La base cayó'}</h2>
+      <div class="text-6xl">${victoria ? '🏆' : '💥'}</div><h2 class="text-2xl font-black">${victoria ? (this.victoriaTexto ?? '¡La Tierra está a salvo!') : abandono ? 'Partida abandonada' : 'La base cayó'}</h2>
       <div class="${UI.card} grid grid-cols-2 gap-2 text-left text-sm">
         <span>Misión alcanzada</span><b class="text-right">${r.mision} · oleada ${r.oleada}</b>
         <span>Problemas resueltos</span><b class="text-right">${r.problemas}</b>

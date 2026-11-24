@@ -354,6 +354,7 @@ function renderLego(key){
         <div class="text-[11px] font-bold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">📝 Tu proceso hasta aquí</div>
         <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 overflow-x-auto text-sm">${st.log.map((l, i) => `<span class="whitespace-nowrap">${i ? '<span class="text-emerald-600">⟶</span> ' : ''}${kx(ansTex(l.built ?? steps[i].a[0]))}</span>`).join('')}</div>
         ${!s.copia && st.prev ? `<button class="${C.btn} mt-1.5 !min-h-9 !py-1 !text-xs" data-lg="usarprev">📋 Empezar desde mi paso anterior</button>` : ''}</div>` : ''}
+      ${guiaHTML(st)}
       ${editorNumeroHTML(st)}
       <div data-ajuste style="zoom:${z}">${zoneHTML(key, st.root, 0)}</div>
       <div data-desliza class="hidden mt-1.5">
@@ -385,6 +386,53 @@ function renderLego(key){
   card.querySelector('[data-badge]').textContent = done[key] ? '✅ Resuelto' : `${Math.min(st.step,steps.length)}/${steps.length} pasos`;
 }
 /** Botón 🃏 Propiedades: aplica una carta del juego a lo armado (Fundamentos y tutorial). */
+/** Aplicación GUIADA de una propiedad en el lienzo: el estudiante elige qué término pasa y a qué lado,
+    o qué número pasa a dividir. */
+function guiaHTML(st){
+  const g = st.guia; if (!g) return '';
+  const b = 'inline-flex min-h-10 items-center gap-1 rounded-xl border px-3 text-sm touch-manipulation active:scale-95';
+  const sel = g.nodo ? `<b>${kx(tokTex(g.nodo.t))}</b>` : '';
+  const txt = g.carta === 'mover'
+    ? (!g.nodo ? '1️⃣ Toca en el lienzo el término que vas a <b>pasar al otro lado</b>.' : `2️⃣ Elegiste ${sel}. ¿A qué lado lo pasas? Recuerda que cambia de signo.`)
+    : (!g.nodo ? '1️⃣ Toca el término cuyo <b>número</b> pasa a dividir al otro lado.' : `2️⃣ Elegiste ${sel}: su coeficiente pasa a dividir todo el otro lado.`);
+  const botones = !g.nodo ? '' : g.carta === 'mover'
+    ? `<button class="${b} border-blue-400 bg-white dark:bg-zinc-900" data-lg="lado:0">⬅ A la izquierda</button><button class="${b} border-blue-400 bg-white dark:bg-zinc-900" data-lg="lado:1">A la derecha ➡</button>`
+    : `<button class="${b} border-blue-400 bg-white dark:bg-zinc-900" data-lg="dividir">➗ Dividir ambos lados</button>`;
+  return `<div class="mb-2 rounded-xl border-2 border-violet-400 bg-violet-50 p-2.5 text-sm dark:bg-violet-950/40">
+    <div class="flex items-start justify-between gap-2"><span>🃏 <b>${g.carta === 'mover' ? 'Pasar al otro lado' : 'Dividir ambos lados'}</b> · ${txt}</span><button class="h-8 w-8 shrink-0 rounded-lg" data-lg="guia-no" aria-label="Cancelar">✕</button></div>
+    ${botones ? `<div class="mt-2 flex flex-wrap gap-1.5">${botones}</div>` : ''}</div>`;
+}
+/** Partes de un término (signo, número, letra). */
+const partesTermino = n => n.mono ? [...n.partes] : [n.t];
+function aplicarGuia(st, act){
+  const g = st.guia, raiz = st.root, ig = raiz.findIndex(n => n.t === '=');
+  if (act === 'guia-no'){ st.guia = null; return; }
+  if (!g?.nodo) return;
+  const i = raiz.indexOf(g.nodo), lado = i < ig ? 0 : 1;
+  if (act.startsWith('lado:')){
+    const destino = +act.slice(5);
+    if (destino === lado){ st.msg = {ok:false, t:'Ese término ya está de ese lado: elige el otro lado.'}; return; }
+    snapshot(st);
+    const p = partesTermino(g.nodo); if (p[0] === '-') p[0] = '+'; else if (p[0] === '+') p[0] = '-'; else p.unshift('-');   // cambia de signo
+    raiz.splice(i, 1);
+    const ig2 = raiz.findIndex(n => n.t === '=');
+    if (lado === 0 && ig2 === 0) raiz.unshift({t:'0'});
+    if (lado === 1 && ig2 === raiz.length - 1) raiz.push({t:'0'});
+    const nuevo = p.length > 1 ? hacerMono({}, p) : {t:p[0]};
+    if (destino === 1) raiz.push(nuevo); else raiz.splice(raiz.findIndex(n => n.t === '='), 0, nuevo);
+    st.guia = null; st.msg = {ok:true, t:'🃏 Pasaste el término al otro lado con el signo contrario. Revisa y pulsa Verificar.'};
+  }
+  if (act === 'dividir'){
+    const p = partesTermino(g.nodo), signo = p[0] === '-' ? '-' : '', num = p.find(x => /^\d+$/.test(x)), letra = p.find(x => /^[a-zA-Zπ]$/.test(x));
+    if (!num || !letra){ st.msg = {ok:false, t:'Elige un término con número y letra (por ejemplo 3x): ese número es el que pasa a dividir.'}; return; }
+    snapshot(st);
+    raiz.splice(i, 1, {t:letra});
+    const ig2 = raiz.findIndex(n => n.t === '='), otro = lado === 0 ? raiz.splice(ig2 + 1) : raiz.splice(0, ig2);
+    const den = signo ? [{t:'-'}, {t:num}] : [{t:num}], frac = {t:'frac', z:[otro, den]};
+    if (lado === 0) raiz.push(frac); else raiz.unshift(frac);
+    st.guia = null; st.msg = {ok:true, t:`🃏 Dividiste ambos lados entre ${signo}${num}. Revisa y pulsa Verificar.`};
+  }
+}
 function propsHTML(key, st){
   const chip = 'inline-flex min-h-10 items-center gap-1.5 rounded-xl border px-3 text-sm touch-manipulation active:scale-95';
   if (!st.verProps) return `<button class="${chip} mt-2 border-violet-300 bg-violet-50 text-violet-900 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-100" data-lg="props">🃏 Propiedades</button>`;
@@ -394,7 +442,7 @@ function propsHTML(key, st){
   st.propsLista = L;
   return `<div class="mt-2 rounded-xl border border-violet-300 bg-violet-50 p-2 dark:border-violet-700 dark:bg-violet-950/40">
     <div class="flex items-center justify-between text-xs font-semibold text-violet-900 dark:text-violet-100"><span>🃏 Propiedades que se pueden aplicar a lo que armaste</span><button data-lg="props" class="h-8 w-8 rounded-lg" aria-label="Cerrar">✕</button></div>
-    <div class="mt-1.5 flex flex-wrap gap-1.5">${L.length ? L.map(c => `<button class="${chip} border-violet-400 bg-white dark:bg-zinc-900" data-lg="prop:${c.id}">${c.icon} ${c.name}</button>`).join('')
+    <div class="mt-1.5 flex flex-wrap gap-1.5">${L.length ? L.map(c => `<button class="${chip} border-violet-400 bg-white dark:bg-zinc-900" data-lg="${c.id === 'mover' || c.id === 'div' ? 'guia:' : 'prop:'}${c.id}">${c.icon} ${c.name}</button>`).join('')
       : `<span class="text-sm text-stone-600 dark:text-zinc-300">${st.root.length ? 'Ninguna de tus cartas desbloqueadas aplica aquí (las demás se ganan en la 🗺️ Ruta).' : 'Primero arma algo en el lienzo.'}</span>`}</div></div>`;
 }
 const SECCION_LEGO = {f:() => FUND, d:() => DIF, z:() => [{id:'demo', lego:ejerciciosProbar()}]};   // z: pruebas del tutorial      // prefijo de la clave → temas
@@ -441,6 +489,8 @@ function legoAction(key, act){
   if (act==='nextzone'){ const zs = allZones(st.root); st.active = zs[(zs.indexOf(st.active||st.root)+1) % zs.length]; }
   if (act==='outzone'){ st.active = (st.active && parentZone(st.root, st.active)) || null; }
   if (act==='props'){ st.verProps = !st.verProps; }
+  if (act.startsWith('guia:')){ st.guia = {carta:act.slice(5), nodo:null}; st.verProps = false; st.msg = null; }
+  if (act === 'guia-no' || act.startsWith('lado:') || act === 'dividir') aplicarGuia(st, act);
   if (act==='usarprev' && st.prev){ snapshot(st); st.root = clonar(st.prev); st.active = null; st.msg = {ok:true, t:'📋 Copié tu paso anterior al lienzo: modifícalo para escribir el siguiente.'}; }
   if (act.startsWith('dig')) accionCifras(st, act);
   if (act==='zoom+') st.zoom = Math.min(1.6, +((st.zoom ?? 1) + 0.1).toFixed(1));
@@ -672,6 +722,12 @@ document.addEventListener('pointerup', e=>{
     return renderLego(d.key);
   }
   if (!d.moved){                                   // toque
+    if (d.src==='node' && st.guia && !st.guia.nodo){                // modo guiado: el toque elige el término
+      const n = d.zone[d.i];
+      if (d.zone === st.root && n.t !== '=' && !n.z && !esSigno(n)){ st.guia.nodo = n; st.msg = null; }
+      else st.msg = {ok:false, t:'Toca un término completo del lienzo (no un signo ni un recuadro).'};
+      renderLego(d.key); return;
+    }
     if (d.src==='bank') insertNode(d.key, st.active || st.root, null, newNode(d.t));
     else { snapshot(st); d.zone.splice(d.i,1); st.active=null; st.msg=null; }
     renderLego(d.key); return;

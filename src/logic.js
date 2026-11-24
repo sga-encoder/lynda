@@ -226,10 +226,11 @@ function propsBloque(domId, titulo){
 function pageLanding(){
   return `<div class="flex min-h-[calc(100dvh-9rem)] flex-col items-center justify-center gap-6 text-center">
     <div class="flex h-28 w-28 items-center justify-center rounded-[2rem] bg-gradient-to-br from-blue-600 via-violet-600 to-fuchsia-500 text-6xl font-black text-white shadow-2xl [animation:flotar_3s_ease-in-out_infinite]">∫</div>
-    <div><h2 class="text-3xl font-black tracking-tight">Cálculo paso a paso</h2><p class="mt-1 text-stone-600 dark:text-zinc-400">Aprende con fichas y ponlo a prueba defendiendo la Tierra.</p></div>
+    <div><h2 class="text-4xl font-black tracking-tight">Integrando</h2><p class="font-semibold text-violet-700 dark:text-violet-300">Cálculo paso a paso</p><p class="mt-1 text-stone-600 dark:text-zinc-400">Aprende con fichas y ponlo a prueba defendiendo la Tierra.</p></div>
     <div class="grid w-full max-w-sm gap-3">
       <a href="#/jugar" class="flex min-h-16 items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-indigo-900 to-violet-700 text-xl font-black text-white shadow-lg active:scale-[0.98] transition-transform">🎮 Jugar</a>
       <a href="#/aprender" class="flex min-h-16 items-center justify-center gap-3 rounded-2xl border-2 border-blue-600 bg-white text-xl font-black text-blue-700 shadow active:scale-[0.98] transition-transform dark:bg-zinc-900 dark:text-blue-300">📚 Aprender</a>
+      <button data-ajustes class="mt-1 text-sm font-semibold text-stone-600 underline dark:text-zinc-400">⚙️ Configuración</button>
     </div></div>`;
 }
 function pageHome(){
@@ -416,7 +417,7 @@ function pageRuta(){
   const hechos = R.nivelReal + 1;
   return `<h2 class="${C.h2}">🗺️ Ruta de progreso</h2>
   <p class="${C.lead}">Un nivel por cada paso de tu aprendizaje: el tutorial, cada tema de Fundamentos, Diferencial e Integral, las cartas de propiedades y logros del juego. Cada nivel cumplido desbloquea contenido del juego. Puedes avanzar en el orden que quieras.</p>
-  ${R.dev ? `<div class="${C.card} border-amber-400 bg-amber-50 dark:bg-amber-950/30">🧪 <b>Modo desarrollo activo</b>: en el juego todo está desbloqueado (también el catálogo). Se cambia en 🎮 Jugar › ☰ Más › ⚙️ Configuración. Abajo ves tu avance real.</div>` : ''}
+  ${R.dev ? `<div class="${C.card} border-amber-400 bg-amber-50 dark:bg-amber-950/30">🧪 <b>Modo desarrollo activo</b>: en el juego todo está desbloqueado (también el catálogo). Se cambia en ⚙️ Configuración. Abajo ves tu avance real.</div>` : ''}
   <div class="${C.card} flex items-center gap-4">
     <div class="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-orange-500 font-black text-white shadow"><span class="text-[10px] uppercase">Nivel</span><span class="text-2xl leading-none">${hechos}</span></div>
     <div class="min-w-0 flex-1"><b>${hechos} de ${R.total} niveles</b> <span class="text-sm text-stone-500 dark:text-zinc-400">· ${R.xp} XP</span>
@@ -581,7 +582,7 @@ function route(){
   if (T){ html = pageSecTopic(SEC, T); title = T.short; }
   else if (SECCIONES_AP[SEC]){ html = pageSecIndex(SEC); title = SECCIONES_AP[SEC].nombre; }
   else if (r==='jugar'){ html = ''; title = 'Juego'; }
-  else if (!r){ html = pageLanding(); title = 'Cálculo'; }
+  else if (!r){ html = pageLanding(); title = 'Inicio'; }
   else if (r==='ruta'){ html = pageRuta(); title = 'Ruta'; }
   else if (r==='tutorial'){ html = pageTutorial(); title = 'Tutorial'; }
   else if (r==='p' && DOM_NOMBRE[sub]){ html = sub2 ? pageProp(sub, sub2) : pagePropsIndex(sub); title = 'Propiedades'; }
@@ -593,6 +594,7 @@ function route(){
   else { html = pageHome(); title = 'Inicio'; }
   view.innerHTML = html;
   if (r==='jugar') abrirJuego(sub || 'inicio'); else cerrarJuego();
+  if (r==='jugar' && sub==='config') abrirAjustes();
   ponerModo(!r ? 'landing' : r==='jugar' ? 'juego' : 'aprender', r==='jugar' ? 'j-' + (sub || 'inicio') : null);
   buildNavFromHash();
   renderMath(view);
@@ -602,7 +604,7 @@ function route(){
   const target = sub && !T && r!=='p' && document.getElementById('b-'+sub);
   if (target) setTimeout(()=>target.scrollIntoView({behavior:'smooth',block:'start'}),30);
   else window.scrollTo(0,0);
-  document.title = title + ' · Guía de Cálculo';
+  document.title = title + ' · Integrando';
 }
 const RIGHT = ['border-emerald-600','bg-emerald-50','text-emerald-700','dark:bg-emerald-950/50','dark:text-emerald-300'];
 const WRONG = ['border-rose-600','bg-rose-50','text-rose-700','dark:bg-rose-950/50','dark:text-rose-300'];
@@ -657,10 +659,59 @@ document.getElementById('menuBtn').onclick = ()=>{
   if (matchMedia('(min-width: 768px)').matches) side.classList.toggle('md:hidden');      // escritorio: muestra u oculta la barra lateral
   else toggleMenu(side.classList.contains('-translate-x-full'));
 };
-document.getElementById('themeBtn').onclick = ()=>{
-  const dark = document.documentElement.classList.toggle('dark');
-  store.set('theme', dark ? 'dark' : 'light');
-};
+/* ---------- Configuración: una sola, la misma en la portada, en Aprender y en Jugar ---------- */
+const AJ = {msg:''};
+function progresoJuego(){ return new DefensaAlgebraica.Progreso(new DefensaAlgebraica.SaveRepository()); }
+function abrirAjustes(){ AJ.msg = ''; pintarAjustes(); const m = document.getElementById('ajustes'); m.classList.remove('hidden'); m.classList.add('flex'); }
+function cerrarAjustes(){ const m = document.getElementById('ajustes'); m.classList.add('hidden'); m.classList.remove('flex'); if (JUEGO){ JUEGO.progreso.data = progresoJuego().data; if (JUEGO.scene && !(JUEGO.scene.run)) JUEGO.scene.enter(); } }
+function pintarAjustes(){
+  const P = progresoJuego(), d = P.data, dark = document.documentElement.classList.contains('dark');
+  const opt = (attr, on, txt) => `<button ${attr} class="flex min-h-12 flex-1 flex-col items-center justify-center rounded-xl border-2 px-1 text-xs font-semibold touch-manipulation ${on ? 'border-blue-600 bg-blue-50 text-blue-800 dark:border-blue-400 dark:bg-blue-950/50 dark:text-blue-200' : 'border-stone-200 dark:border-zinc-700'}">${txt}</button>`;
+  const AY = [['🚫','Sin ayuda'],['🌱','Leve'],['🧭','Media'],['🦮','Alta']];
+  document.getElementById('ajustesCuerpo').innerHTML = `
+    <div class="flex items-center justify-between"><b class="text-xl">⚙️ Configuración</b><button data-aj="cerrar" class="flex h-10 w-10 items-center justify-center rounded-xl border border-stone-200 dark:border-zinc-700" aria-label="Cerrar">✕</button></div>
+    ${AJ.msg ? `<p class="mt-2 rounded-xl bg-stone-100 px-3 py-2 text-sm dark:bg-zinc-800">${AJ.msg}</p>` : ''}
+    <div class="mt-4"><b class="text-sm">Tema</b><div class="mt-1.5 flex gap-2">${opt('data-aj="claro"', !dark, '☀️ Claro')}${opt('data-aj="oscuro"', dark, '🌙 Oscuro')}</div></div>
+    <div class="mt-4"><b class="text-sm">Modo asistido (juego)</b><div class="mt-1.5 flex gap-1.5">${AY.map(([ic,n],i)=>opt(`data-aj-ayuda="${i}"`, (d.asistido ?? 0) === i, `<span class="text-lg">${ic}</span>${n}`)).join('')}</div>
+      <p class="mt-1 text-xs text-stone-500 dark:text-zinc-400">Más nivel = más pistas y sugerencias, pero menos XP.</p></div>
+    <div class="mt-4"><b class="text-sm">Archivos</b><p class="text-xs text-stone-500 dark:text-zinc-400">Todo tu avance (guía, juego, Ruta y partidas) en un archivo JSON.</p>
+      <div class="mt-1.5 flex gap-2"><button data-aj="exportar" class="${C.btn} flex-1">⬇ Exportar</button><label class="${C.btn} flex-1">⬆ Importar<input type="file" accept="application/json,.json" data-aj-importar class="hidden"></label></div></div>
+    <div class="mt-4 rounded-2xl border border-amber-300 p-3 dark:border-amber-700"><b class="text-sm">🧪 Modo desarrollador</b>
+      ${d.devDesbloqueado ? `<label class="mt-2 flex items-center gap-3 text-sm"><input type="checkbox" data-aj="dev" class="h-6 w-6 accent-amber-500" ${d.todo ? 'checked' : ''}>${d.todo ? 'Activado: todo desbloqueado (juego, Ruta y catálogo).' : 'Desactivado: se sigue la Ruta.'}</label>`
+        : `<div class="mt-2 flex gap-2"><input data-aj-clave type="password" placeholder="Contraseña" class="min-h-11 min-w-0 flex-1 rounded-xl border border-stone-300 bg-white px-3 text-sm dark:border-zinc-600 dark:bg-zinc-950"><button data-aj="clave" class="${C.btn}">Activar</button></div>`}</div>`;
+  const imp = document.querySelector('[data-aj-importar]'); imp.onchange = () => importarAvance(imp.files[0]);
+  const cl = document.querySelector('[data-aj-clave]'); if (cl) cl.onkeydown = e => { if (e.key === 'Enter') claveDev(cl.value); };
+}
+function claveDev(v){
+  const P = progresoJuego();
+  if (v.trim() !== 'prueba'){ AJ.msg = '❌ Contraseña incorrecta.'; return pintarAjustes(); }
+  P.data.devDesbloqueado = true; P.data.todo = true; P.guardar(); AJ.msg = '✅ Modo desarrollador activado y guardado.'; pintarAjustes();
+}
+async function importarAvance(file){
+  if (!file) return;
+  try {
+    const j = JSON.parse(await file.text());
+    if (j.tipo !== 'avance' || !j.datos) throw new Error('Ese archivo no es un avance exportado desde Configuración.');
+    for (const [k, v] of Object.entries(j.datos)) if (k.startsWith('calcint:')) localStorage.setItem(k, v);
+    AJ.msg = '✅ Avance importado. Recargando…'; pintarAjustes(); setTimeout(() => location.reload(), 700);
+  } catch (err){ AJ.msg = `❌ ${err.message}`; pintarAjustes(); }
+}
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-ajustes]')) return abrirAjustes();
+  if (e.target.id === 'ajustes') return cerrarAjustes();
+  const ay = e.target.closest('[data-aj-ayuda]');
+  if (ay){ const P = progresoJuego(); P.data.asistido = +ay.dataset.ajAyuda; P.guardar(); return pintarAjustes(); }
+  const a = e.target.closest('[data-aj]')?.dataset.aj; if (!a) return;
+  if (a === 'cerrar') return cerrarAjustes();
+  if (a === 'claro' || a === 'oscuro'){ document.documentElement.classList.toggle('dark', a === 'oscuro'); store.set('theme', a === 'oscuro' ? 'dark' : 'light'); return pintarAjustes(); }
+  if (a === 'clave') return claveDev(document.querySelector('[data-aj-clave]').value);
+  if (a === 'dev'){ const P = progresoJuego(); P.data.todo = e.target.checked; P.guardar(); return pintarAjustes(); }
+  if (a === 'exportar'){
+    const datos = {}; for (let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if (k.startsWith('calcint:')) datos[k] = localStorage.getItem(k); }
+    const blob = new Blob([JSON.stringify({app:'integrando', tipo:'avance', version:1, fecha:new Date().toISOString(), datos}, null, 2)], {type:'application/json'});
+    const l = document.createElement('a'); l.href = URL.createObjectURL(blob); l.download = 'integrando-avance.json'; document.body.appendChild(l); l.click(); l.remove();
+  }
+});
 window.addEventListener('hashchange', route);
 window.addEventListener('load', route);
 

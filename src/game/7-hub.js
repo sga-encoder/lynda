@@ -197,6 +197,6 @@ class MasScene extends Scene {
       ${tarjetaBtn('data-ir="mejoras"', '🛠', 'Mejoras', `Mejoras permanentes · tienes ${d.puntos} 🔬`)}
       ${tarjetaBtn('data-ir="ayuda"', '❓', 'Cómo jugar', 'Tutorial del juego paso a paso.')}
       ${tarjetaBtn('data-ir="config"', '⚙️', 'Configuración', 'Modo asistido, archivos y modo desarrollador.')}
-    </div>`).onclick = e => { const s = e.target.closest('[data-ir]')?.dataset.ir; if (s) location.hash = '#/jugar/' + s; };
+    </div>`).onclick = e => { const s = e.target.closest('[data-ir]')?.dataset.ir; if (!s) return; if (s === 'config') return abrirAjustes(); location.hash = '#/jugar/' + s; };   // la configuración es la misma de toda la app
   }
 }

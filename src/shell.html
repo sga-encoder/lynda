@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#18181b" media="(prefers-color-scheme: dark)">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Guía de Cálculo</title>
+<title>Integrando</title>
 <meta name="description" content="Guía interactiva paso a paso: fundamentos, cálculo diferencial y cálculo integral, con ejercicios para armar con piezas y diccionario de propiedades.">
 <!-- Todo va incluido en este archivo (funciona sin internet):
      · Estilos: Tailwind CSS v4.1.4, compilado a partir de las clases usadas en este HTML.
@@ -45,12 +45,12 @@
 <body class="bg-stone-50 text-stone-900 antialiased [-webkit-tap-highlight-color:transparent] dark:bg-zinc-950 dark:text-zinc-100 font-sans leading-relaxed">
 <header id="cabecera" class="sticky top-0 z-30 flex items-center gap-2 border-b border-stone-200 bg-white/95 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-4 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
   <button id="menuBtn" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 text-lg touch-manipulation dark:border-zinc-700" aria-label="Temas de la sección">☰</button>
-  <a href="#/" class="flex shrink-0 items-center gap-1.5 font-black" aria-label="Inicio"><span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 text-lg text-white shadow">∫</span><span class="hidden sm:inline">Cálculo</span></a>
+  <a href="#/" class="flex shrink-0 items-center gap-1.5 font-black" aria-label="Inicio"><span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 text-lg text-white shadow">∫</span><span class="hidden sm:inline">Integrando</span></a>
   <div id="selectorModo" class="ml-auto flex rounded-full border border-stone-200 bg-stone-100 p-1 text-sm font-semibold dark:border-zinc-700 dark:bg-zinc-800" role="tablist" aria-label="Modo">
     <a href="#/jugar" data-modo-app="juego" class="rounded-full px-3.5 py-1.5 touch-manipulation">🎮 Jugar</a>
     <a href="#/aprender" data-modo-app="aprender" class="rounded-full px-3.5 py-1.5 touch-manipulation">📚 Aprender</a>
   </div>
-  <button id="themeBtn" class="ml-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 text-sm touch-manipulation hover:border-blue-500 dark:border-zinc-700" aria-label="Cambiar tema">🌓</button>
+  <button data-ajustes class="ml-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 text-lg touch-manipulation hover:border-blue-500 dark:border-zinc-700" aria-label="Configuración" title="Configuración">⚙️</button>
 </header>
 <div class="mx-auto flex max-w-6xl">
   <nav id="side" class="fixed left-0 top-0 z-40 h-dvh w-[82vw] max-w-72 pt-[max(1rem,env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))] md:top-[57px] md:z-20 md:h-[calc(100dvh-57px)] md:w-64 md:pt-4 shrink-0 -translate-x-full overflow-y-auto border-r border-stone-200 bg-white px-3 py-4 shadow-2xl transition-transform md:sticky md:translate-x-0 md:bg-transparent md:shadow-none dark:border-zinc-800 dark:bg-zinc-900 md:dark:bg-transparent"></nav>
@@ -76,6 +76,7 @@
     <a href="#/aprender" data-bn="home" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🏠</span>Inicio</a>
     <a href="#/ruta" data-bn="ruta" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🗺️</span>Ruta</a>
     <button data-dict-open data-bn="dict" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">📖</span>Diccionario</button>
+    <button data-ajustes data-bn="ajustes" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">⚙️</span>Ajustes</button>
   </div>
   <div data-navset="juego" class="mx-auto flex hidden max-w-xl">
     <a href="#/jugar" data-bn="j-inicio" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🎮</span>Partidas</a>
@@ -87,6 +88,10 @@
 </nav>
 
 <!-- Modal: Diccionario de propiedades -->
+<!-- Modal: Configuración (igual en la portada, en Aprender y en Jugar) -->
+<div id="ajustes" class="fixed inset-0 z-[70] hidden items-end justify-center bg-black/50 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Configuración">
+  <div id="ajustesCuerpo" class="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl dark:bg-zinc-900"></div>
+</div>
 <div id="dict" class="fixed inset-0 z-50 hidden items-stretch justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="dictTitle">
   <div class="flex h-dvh w-full max-w-4xl flex-col overflow-hidden bg-white shadow-2xl sm:h-[85vh] sm:rounded-2xl dark:bg-zinc-900">
     <div class="border-b border-stone-200 px-3.5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:p-4 dark:border-zinc-800">

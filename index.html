@@ -1997,7 +1997,7 @@ const DEMOS = () => [
   {icon:'ln', titulo:'Logaritmos', cat:'ƒ Funciones', fichas:['ln','log'], txt:'ln(□) y log(□) también contienen a su argumento.',
     pasos:['Pon ln(□).', 'Adentro pon la potencia x².', 'Queda ln(x²).'], frames:[[nz('ln',[])], [nz('ln',[nz('pot',[hoja('x')],[])])], T_('ln(x^{2})')]},
   {icon:'lím', titulo:'Límite', cat:'ƒ Funciones', fichas:['lim'], txt:'Tres espacios: la variable, hacia dónde tiende y la expresión entre paréntesis. En el paso «reemplazar» recibes una copia y arrastras el número ENCIMA de cada x.',
-    pasos:['Pon lím: llena x y 2.', 'Escribe la expresión: x² + 3x.', 'Reemplazar: suelta el 2 sobre cada x.'],
+    probar:1, pasos:['Pon lím: llena x y 2.', 'Escribe la expresión: x² + 3x.', 'Reemplazar: suelta el 2 sobre cada x.'],
     frames:[[nz('lim',[hoja('x')],[hoja('2')],[])], T_('lim_{x→2}(x^{2}+3x)'), [nz('lim',[hoja('x')],[hoja('2')],[nz('pot',[{t:'2',sub:true}],[hoja('2')]), hoja('+'), hoja('3'), {t:'2',sub:true}])]]},
   {icon:'d/dx', titulo:'Derivada', cat:'ƒ Funciones', fichas:['der'], txt:'El espacio pequeño es la variable (x) y entre corchetes va lo que se deriva.',
     pasos:['Pon d/d□[□].', 'En el espacio pequeño pon x.', 'Entre corchetes pon x³.'], frames:[[nz('der',[],[])], [nz('der',[hoja('x')],[])], T_('deriv{x}{x^{3}}')]},
@@ -2011,13 +2011,39 @@ function lienzoDemo(tree){
   return `<div class="pointer-events-none">${zoneHTML(key, tree, 0)}</div>`;
 }
 /** Tres momentos que se repiten (animación con keyframes). */
-const ANIM_ESCENA = ['[animation:escena-0_9s_ease-in-out_infinite]', '[animation:escena-1_9s_ease-in-out_infinite]', '[animation:escena-2_9s_ease-in-out_infinite]'];   // clases completas para que Tailwind las genere
-function escenas(pasos, frames){
-  return `<div class="grid [&>*]:col-start-1 [&>*]:row-start-1">${frames.map((f, i) => `
-    <div class="opacity-0 ${ANIM_ESCENA[i]}">
+/** Escenas de una demostración: avanzan solas, pero se pueden pasar a mano (◀ ▶, deslizando) o pausar.
+    `probar`: id de un mini‑ejercicio interactivo que se despliega debajo. */
+function escenas(pasos, frames, probar = null){
+  return `<div data-esc data-i="0" data-auto="1" class="touch-pan-y select-none">
+    ${frames.map((f, i) => `<div data-f="${i}" class="${i ? 'hidden' : ''}">
       <div class="mb-2 flex items-start gap-2 text-sm"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">${i+1}</span><span>${pasos[i]}</span></div>
-      ${typeof f === 'string' ? f : lienzoDemo(f)}</div>`).join('')}</div>
-    <div class="mt-2 flex justify-center gap-1.5" aria-hidden="true">${frames.map((_, i) => `<span class="h-1.5 w-8 rounded-full bg-stone-300 dark:bg-zinc-700"><span class="block h-full rounded-full bg-blue-500 opacity-0 ${ANIM_ESCENA[i]}"></span></span>`).join('')}</div>`;
+      ${typeof f === 'string' ? f : lienzoDemo(f)}</div>`).join('')}
+    <div class="mt-2 flex items-center justify-center gap-1.5">
+      <button data-esc-nav="-1" class="flex h-9 w-9 items-center justify-center rounded-full border border-stone-300 bg-white touch-manipulation dark:border-zinc-600 dark:bg-zinc-900" aria-label="Anterior">◀</button>
+      ${frames.map((_, i) => `<span data-dot="${i}" class="h-1.5 w-7 rounded-full ${i ? 'bg-stone-300 dark:bg-zinc-700' : 'bg-blue-500'}"></span>`).join('')}
+      <button data-esc-nav="1" class="flex h-9 w-9 items-center justify-center rounded-full border border-stone-300 bg-white touch-manipulation dark:border-zinc-600 dark:bg-zinc-900" aria-label="Siguiente">▶</button>
+      <button data-esc-nav="pausa" class="flex h-9 w-9 items-center justify-center rounded-full border border-stone-300 bg-white touch-manipulation dark:border-zinc-600 dark:bg-zinc-900" aria-label="Pausar o reanudar">⏸</button>
+    </div>
+    ${probar != null ? `<button data-probar="${probar}" class="${C.btnP} mt-3 w-full">🧪 Probar yo</button>` : ''}
+  </div>${probar != null ? `<div data-probar-zona="${probar}"></div>` : ''}`;
+}
+function irEscena(esc, i){
+  const n = esc.querySelectorAll(':scope > [data-f]').length; i = (i + n) % n; esc.dataset.i = i;
+  esc.querySelectorAll(':scope > [data-f]').forEach(f => f.classList.toggle('hidden', +f.dataset.f !== i));
+  esc.querySelectorAll('[data-dot]').forEach(d => { const on = +d.dataset.dot === i; d.classList.toggle('bg-blue-500', on); d.classList.toggle('bg-stone-300', !on); d.classList.toggle('dark:bg-zinc-700', !on); });
+}
+setInterval(() => document.querySelectorAll('[data-esc][data-auto="1"]').forEach(e => irEscena(e, +e.dataset.i + 1)), 3200);
+let ESC_X = null;
+document.addEventListener('pointerdown', e => { const esc = e.target.closest('[data-esc]'); ESC_X = esc && !e.target.closest('button') ? {esc, x:e.clientX} : null; });
+document.addEventListener('pointerup', e => { if (!ESC_X) return; const dx = e.clientX - ESC_X.x, esc = ESC_X.esc; ESC_X = null;
+  if (Math.abs(dx) > 40){ esc.dataset.auto = '0'; esc.querySelector('[data-esc-nav="pausa"]').textContent = '▶︎'; irEscena(esc, +esc.dataset.i + (dx < 0 ? 1 : -1)); } });
+/** Mini‑ejercicios «Probar»: armar lo que muestra la animación, con las fichas reales. */
+function ejerciciosProbar(){
+  const piezas = z => z.flatMap(n => n.z ? [n.t, ...n.z.flatMap(piezas)] : [n.t]);
+  const tutorial = DEMOS().map(d => { const meta = d.frames[d.probar ?? d.frames.length - 1];
+    return {src:'Prueba libre', p:ansTex(ser(meta)), steps:[{q:`Arma con las fichas lo que mostró la animación: ${d.pasos.at(-1)}`, k:[...new Set(piezas(meta))], a:[ser(meta)], w:'¡Así se usa esta ficha!', h:d.pasos.join(' ')}]}; });
+  tutorial.push({src:'Prueba libre', p:'x^{2}+5', steps:[{q:'Toca ƒ Funciones (queda fija 📌) y pon □^□ con x y 2; luego MANTÉN presionado 🔢 Números para sacar el 5 (pon antes el + de ± Signos).', k:['pot','x','2','+','5'], a:['x^{2}+5'], w:'Tocar fija el menú; mantener lo asoma.', h:'□^□: base x, exponente 2. Después +, y el 5.'}]});
+  return tutorial;
 }
 /** Bandeja falsa (igual a la real) para la demostración del menú. */
 function menuDemo(modo){
@@ -2028,7 +2054,7 @@ function menuDemo(modo){
   const marco = (lienzo, tray, on) => `<div class="pointer-events-none">${lienzoDemo(lienzo)}<div class="mt-2">${tray}</div>${barra(on)}</div>`;
   return modo === 'fijar'
     ? escenas(['Toque corto en ƒ Funciones.', 'El menú queda FIJO 📌: toca fichas o arrástralas, todas las que quieras.', 'Para cerrarlo toca otra vez la categoría o ✕.'],
-        [marco([], vacia, 'Funciones'), marco([nz('pot',[],[])], bandeja('ƒ Funciones · 📌 fijado', ['pot','sqrt','sin','ln'], 'pot'), ''), marco([nz('pot',[],[])], vacia, '')])
+        [marco([], vacia, 'Funciones'), marco([nz('pot',[],[])], bandeja('ƒ Funciones · 📌 fijado', ['pot','sqrt','sin','ln'], 'pot'), ''), marco([nz('pot',[],[])], vacia, '')], DEMOS().length)
     : escenas(['MANTÉN presionado 🔢 Números: el menú se asoma.', 'Sin soltar, desliza el dedo a la ficha y llévala al lienzo.', 'Al soltar, la ficha queda en el lienzo y el menú se cierra solo.'],
         [marco([], bandeja('🔢 Números · suelta para cerrar', ['2','5','7'], null), 'Números'), marco([], bandeja('🔢 Números · suelta para cerrar', ['2','5','7'], '5'), 'Números'), marco([hoja('5')], vacia, '')]);
 }
@@ -2052,7 +2078,7 @@ function pageTutorial(){
   <h3 class="${C.h3}">🧱 Ficha por ficha</h3>
   <div class="flex flex-wrap gap-1.5">${indice}</div>
   <div class="mt-3 grid gap-3 md:grid-cols-2">${demos.map((d,i)=>tarjeta(`<div id="demo-${i}" class="flex items-center gap-2"><span class="flex h-10 min-w-10 items-center justify-center rounded-xl bg-violet-100 px-2 font-serif text-lg dark:bg-violet-950">${d.icon}</span><b class="text-lg">${d.titulo}</b><span class="ml-auto text-xs text-stone-500 dark:text-zinc-400">${d.cat}</span></div>
-      <p class="!my-2 text-sm">${d.txt}</p><div class="pointer-events-none mb-3 flex flex-wrap gap-1.5">${d.fichas.map(t=>bankPiece('demo', t)).join('')}</div>`, escenas(d.pasos, d.frames))).join('')}</div>
+      <p class="!my-2 text-sm">${d.txt}</p><div class="pointer-events-none mb-3 flex flex-wrap gap-1.5">${d.fichas.map(t=>bankPiece('demo', t)).join('')}</div>`, escenas(d.pasos, d.frames, i))).join('')}</div>
   <h3 class="${C.h3}">✔ Verificar, pista y propiedades</h3>
   ${tarjeta('', `<ul class="text-sm"><li><b>✔ Verificar</b> revisa el paso; si está bien pasas al siguiente.</li><li><b>💡 Pista</b> y <b>👁 Solución</b> ayudan si te atascas.</li><li><b>↶ Deshacer</b> y <b>🗑 Limpiar</b> corrigen el lienzo.</li><li><b>🃏 Propiedades</b> (en Fundamentos) aplica una carta del juego a lo que armaste.</li></ul>`)}
   <div class="mt-8 flex justify-end"><a class="${C.btnP}" href="#/f">Practicar en Fundamentos ▸</a></div>`;
@@ -2349,6 +2375,16 @@ window.addEventListener('load', route);
 
 /* ---------- Practicar: juego (se crea al entrar por primera vez) ---------- */
 document.addEventListener('click', e=>{
+  const nav = e.target.closest('[data-esc-nav]');
+  if (nav){ const esc = nav.closest('[data-esc]');
+    if (nav.dataset.escNav === 'pausa'){ const on = esc.dataset.auto !== '1'; esc.dataset.auto = on ? '1' : '0'; nav.textContent = on ? '⏸' : '▶︎'; }
+    else { esc.dataset.auto = '0'; esc.querySelector('[data-esc-nav="pausa"]').textContent = '▶︎'; irEscena(esc, +esc.dataset.i + +nav.dataset.escNav); }
+    return; }
+  const pr = e.target.closest('[data-probar]');
+  if (pr){ const i = +pr.dataset.probar, key = `z-demo-${i}`, zona = document.querySelector(`[data-probar-zona="${i}"]`);
+    if (zona.innerHTML){ zona.innerHTML = ''; pr.textContent = '🧪 Probar yo'; return; }
+    delete LEGO[key]; zona.innerHTML = legoCard(legoEx(key), key, 0); renderMath(zona); renderLego(key); pr.textContent = '✕ Cerrar prueba';
+    zona.scrollIntoView({behavior:'smooth', block:'start'}); return; }
   const ir = e.target.closest('[data-ir]');
   if (ir){ e.preventDefault(); document.getElementById(ir.dataset.ir)?.scrollIntoView({behavior:'smooth', block:'center'}); return; }
   const rc = e.target.closest('[data-reclamar]');
@@ -2729,9 +2765,9 @@ function propsHTML(key, st){
     <div class="mt-1.5 flex flex-wrap gap-1.5">${L.length ? L.map(c => `<button class="${chip} border-violet-400 bg-white dark:bg-zinc-900" data-lg="prop:${c.id}">${c.icon} ${c.name}</button>`).join('')
       : `<span class="text-sm text-stone-600 dark:text-zinc-300">${st.root.length ? 'Ninguna carta aplica aquí (o falta completar lo armado).' : 'Primero arma algo en el lienzo.'}</span>`}</div></div>`;
 }
-const SECCION_LEGO = {f:() => FUND, d:() => DIF};      // prefijo de la clave → temas
+const SECCION_LEGO = {f:() => FUND, d:() => DIF, z:() => [{id:'demo', lego:ejerciciosProbar()}]};   // z: pruebas del tutorial      // prefijo de la clave → temas
 function legoEx(key){                 // key = <f|d>-<tema>-<i>
-  const [, sec, tema, i] = key.match(/^([fdt])-(.+)-(\d+)$/);
+  const [, sec, tema, i] = key.match(/^([fdz])-(.+)-(\d+)$/);
   const ex = SECCION_LEGO[sec]().find(t=>t.id===tema).lego[+i];
   return sec === 'd' ? {num:true, ...ex} : ex;
 }

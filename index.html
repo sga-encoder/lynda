@@ -2612,6 +2612,9 @@ function textoMono(partes){
   for (let i = 0; i < p.length - 1; i++) if (p[i] === '1' && /^[a-zA-Zπ]$/.test(p[i + 1])) p.splice(i, 1);   // 1x → x
   return p.join('');
 }
+/** En el editor cada cifra es un bloque aparte: [−, 12, x] ↔ [−, 1, 2, x]. */
+const expandir = partes => partes.flatMap(q => /^\d{2,}$/.test(q) ? q.split('') : [q]);
+const compactar = l => l.reduce((a, q) => (/^\d$/.test(q) && /^\d+$/.test(a.at(-1) ?? '') ? a[a.length - 1] += q : a.push(q), a), []);
 function hacerMono(n, partes){ Object.assign(n, {t:textoMono(partes), mono:true, partes}); delete n.z; return n; }
 function fusionarNumeros(zone){
   // 1) cifras seguidas → un número
@@ -3011,7 +3014,7 @@ function legoAction(key, act){
 /** Panel para editar un número agrupado: sus cifras se despliegan arriba; se pueden reordenar o borrar. */
 function editorNumeroHTML(st){
   const ed = st.editNum; if (!ed) return '';
-  const cifras = ed.node.mono ? ed.node.partes : ed.node.t.split(''), b = 'inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border px-2 text-sm touch-manipulation active:scale-95';
+  const cifras = ed.node.mono ? expandir(ed.node.partes) : ed.node.t.split(''), b = 'inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border px-2 text-sm touch-manipulation active:scale-95';
   return `<div data-editor class="mb-2 rounded-xl border-2 border-blue-400 bg-white p-2.5 shadow-lg dark:bg-zinc-900">
     <div class="flex items-center justify-between text-sm"><span>✏️ Fichas de <b>${ed.node.t}</b></span><button data-lg="dig-ok" class="${b} border-blue-600 bg-blue-600 font-semibold text-white">✓ Listo</button></div>
     <div class="mt-2 flex flex-wrap justify-center gap-1.5">${cifras.map((c, i) => `<button data-lg="dig:${i}" data-dig="${i}" style="touch-action:none" class="${b} min-h-12 min-w-12 border-b-4 border-blue-500 bg-blue-50 font-serif text-xl text-blue-950 dark:bg-blue-950/60 dark:text-blue-100 ${ed.sel === i ? 'ring-4 ring-amber-400' : ''}">${c}</button>`).join('')}</div>
@@ -3022,7 +3025,7 @@ function editorNumeroHTML(st){
 /** Acciones del editor de cifras. */
 function accionCifras(st, act){
   const ed = st.editNum; if (!ed) return;
-  const d = ed.node.mono ? [...ed.node.partes] : ed.node.t.split('');
+  const d = ed.node.mono ? expandir(ed.node.partes) : ed.node.t.split('');
   if (act === 'dig-ok'){ st.editNum = null; return; }
   if (act.startsWith('dig:')){ const i = +act.slice(4); ed.sel = ed.sel === i ? null : i; return; }
   if (ed.sel == null) return;
@@ -3030,7 +3033,7 @@ function accionCifras(st, act){
   if (act === 'dig-izq' && ed.sel > 0){ [d[ed.sel-1], d[ed.sel]] = [d[ed.sel], d[ed.sel-1]]; ed.sel--; }
   if (act === 'dig-der' && ed.sel < d.length-1){ [d[ed.sel+1], d[ed.sel]] = [d[ed.sel], d[ed.sel+1]]; ed.sel++; }
   if (act === 'dig-del'){ d.splice(ed.sel, 1); ed.sel = null; }
-  if (d.length){ if (ed.node.mono) hacerMono(ed.node, d); else ed.node.t = d.join(''); if (d.length === 1) st.editNum = null; }
+  if (d.length){ if (ed.node.mono) hacerMono(ed.node, compactar(d)); else ed.node.t = d.join(''); if (d.length === 1) st.editNum = null; }
   else { const z = allZones(st.root).find(z => z.includes(ed.node)); if (z) z.splice(z.indexOf(ed.node), 1); st.editNum = null; }
   st.msg = null;
 }
@@ -3220,8 +3223,8 @@ document.addEventListener('pointerup', e=>{
     if (!d.moved) return;                                            // un toque lo maneja el clic (seleccionar)
     const zEl = zoneAt(e.clientX, e.clientY - d.lift, d.key), ed = st.editNum;
     if (zEl && ed){ const {zone} = findZone(zEl.dataset.z), idx = dropIndex(zEl, e.clientX, e.clientY - d.lift);
-      snapshot(st); const cif = ed.node.mono ? [...ed.node.partes] : ed.node.t.split(''); const [c] = cif.splice(d.i, 1);
-      if (cif.length){ if (ed.node.mono) hacerMono(ed.node, cif); else ed.node.t = cif.join(''); } else { const z = allZones(st.root).find(z => z.includes(ed.node)); z?.splice(z.indexOf(ed.node), 1); }
+      snapshot(st); const cif = ed.node.mono ? expandir(ed.node.partes) : ed.node.t.split(''); const [c] = cif.splice(d.i, 1);
+      if (cif.length){ if (ed.node.mono) hacerMono(ed.node, compactar(cif)); else ed.node.t = cif.join(''); } else { const z = allZones(st.root).find(z => z.includes(ed.node)); z?.splice(z.indexOf(ed.node), 1); }
       st.editNum = null;                                             // al sacar una cifra el editor se cierra
       zone.splice(Math.min(idx, zone.length), 0, {t:c});
       st.msg = {ok:true, t:`Sacaste el ${c} del número. Recuerda: si queda pegado a otras cifras, se vuelven a juntar.`};

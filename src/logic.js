@@ -536,6 +536,7 @@ scrim.onclick = ()=>toggleMenu(false);
 function route(){
   const [r, sub, sub2] = location.hash.replace(/^#\/?/,'').split('/');
   const view = document.getElementById('view');
+  for (const k in LEGO) if (LEGO[k].full){ LEGO[k].full = false; document.body.classList.remove('overflow-hidden'); }   // salir de pantalla completa al navegar
   const L = LESSONS.find(x=>x.id===r);
   const SEC = r==='diferencial' ? 'd' : r;
   const T = SECCIONES_AP[SEC] && sub ? SECCIONES_AP[SEC].lista().find(x=>x.id===sub) : null;

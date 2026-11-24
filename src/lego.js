@@ -5,7 +5,10 @@
      tienen espacios internos donde se encajan otras piezas.
    - Toca una pieza del lienzo para quitarla, o arrástrala para moverla.
    ===================================================================== */
-const STRUCT = {frac:2, sqrt:1, sup:1};
+/* Piezas contenedoras: nombre → número de espacios internos.
+   Todas las funciones son RECUADROS que contienen a otras piezas (no flotan al lado). */
+const STRUCT = {frac:2, pot:2, exp:1, sqrt:1, sin:1, cos:1, tan:1, ln:1, log:1, log_3:1, lim:3};
+const FUNC1 = ['sin','cos','tan','ln','log','log_3'];
 const TOKTEX = {'·':'\\cdot','÷':'\\div','≤':'\\le','≥':'\\ge','≠':'\\ne','±':'\\pm','ln':'\\ln','log':'\\log','log_3':'\\log_3',
   'y′':"y'",'sin':'\\sin','cos':'\\cos','tan':'\\tan',',':',','(':'(',')':')','[':'[',']':']'};
 const tokTex = t => TOKTEX[t] ?? t.replace(/π/g,'\\pi ').replace(/∞/g,'\\infty ');
@@ -13,6 +16,7 @@ const kx = (tex, display=false) => window.katex ? katex.renderToString(tex,{thro
 
 /* Convierte una respuesta serializada (frac{a}{b}, sqrt{x}, ^{n}) en LaTeX */
 function ansTex(s){
+  s = s.replace(/lim_\{(.*?)→(.*?)\}/g, '\\lim\\limits_{$1\\to $2}');
   return s.replace(/frac\{/g,'\\frac{').replace(/sqrt\{/g,'\\sqrt{').replace(/log_3/g,'\\log_3 ')
     .replace(/\b(ln|log|sin|cos|tan)/g,'\\$1 ').replace(/·/g,'\\cdot ').replace(/±/g,'\\pm ').replace(/≤/g,'\\le ')
     .replace(/′/g,"'").replace(/≥/g,'\\ge ').replace(/≠/g,'\\ne ').replace(/π/g,'\\pi ').replace(/∞/g,'\\infty ').replace(/,/g,',\\ ');
@@ -27,10 +31,22 @@ function legoState(key){
   return LEGO[key];
 }
 const newNode = t => STRUCT[t] ? {t, z:Array.from({length:STRUCT[t]},()=>[])} : {t};
+/** Base de una potencia: una sola pieza (x, 3, 20x) va tal cual; si tiene varias se encierra en paréntesis. */
+function serBase(z){
+  const b = ser(z);
+  if (z.length === 1 && !z[0].z && !/^\d+[a-zπ]$/i.test(z[0].t)) return b;   // 3x como base sería (3x)
+  if (z.length === 1 && z[0].t === 'sqrt') return b;
+  return /^\(.*\)$/.test(b) && z[0].t === '(' && z.at(-1).t === ')' ? b : `(${b})`;
+}
 function ser(zone){
   return zone.map(n=> n.t==='frac' ? `frac{${ser(n.z[0])}}{${ser(n.z[1])}}`
                     : n.t==='sqrt' ? `sqrt{${ser(n.z[0])}}`
-                    : n.t==='sup'  ? `^{${ser(n.z[0])}}` : n.t).join('');
+                    : n.t==='pot'  ? `${serBase(n.z[0])}^{${ser(n.z[1])}}`
+                    : n.t==='exp'  ? `e^{${ser(n.z[0])}}`
+                    : n.t==='lim'  ? `lim_{${ser(n.z[0])}→${ser(n.z[1])}}(${ser(n.z[2])})`
+                    : FUNC1.includes(n.t) ? `${n.t}(${ser(n.z[0])})`
+                    : n.sub ? `(${n.t})`                 // número que sustituyó a una x
+                    : n.t).join('');
 }
 const norm = s => s.replace(/\s+/g,'').replace(/−/g,'-');
 function splitTop(s){                      // separa por comas fuera de {} y ()
@@ -40,8 +56,13 @@ function splitTop(s){                      // separa por comas fuera de {} y ()
 }
 /** Las piezas con signo se separan: el número va en 🔢 y el signo en ± (−8 → «−» + «8»). */
 const piezasDe = k => [...new Set(k.flatMap(t => /^[-+]./.test(t) ? [t[0], t.slice(1)] : [t]))];
+const LIM_RE = /^lim_\{(.+?)→(.+?)\}\((.*)\)$/;
 function checkAnswer(step, built, numerico = false){
   const b = norm(built);
+  const L = LIM_RE.exec(b);
+  if (L && !step.exact) return step.a.some(a => { const A = LIM_RE.exec(norm(a));      // lím: cabeza exacta, cuerpo equivalente
+    if (!A) return false; if (A[1]!==L[1] || A[2]!==L[2]) return false;
+    if (norm(A[3])===L[3]) return true; try { return Calc.equivalentes(Calc.parse(A[3]), Calc.parse(L[3])); } catch { return false; } });
   if (numerico && !step.set && !step.exact) return step.a.some(a => norm(a)===b || Calc.mismaRespuesta(a, b));
   if (step.set){
     const key = s => splitTop(norm(s)).map(x=>x.replace(/^x=/,'')).sort().join('|');
@@ -49,6 +70,49 @@ function checkAnswer(step, built, numerico = false){
   }
   return step.a.some(a => norm(a)===b);
 }
+/** Paso de sustitución: el cuerpo (sin el lím) ya no tiene x, los valores puestos son los correctos y vale lo esperado. */
+function checkReemplazo(step, root){
+  const body = root.length===1 && root[0].t==='lim' ? root[0].z[2] : root;
+  const todos = z => z.flatMap(n => [n, ...(n.z||[]).flatMap(todos)]);
+  const ns = todos(body);
+  if (ns.some(n => n.t==='x')) return {ok:false, t:'Todavía queda alguna x: arrastra el número encima de cada x.'};
+  const subs = ns.filter(n => n.sub);
+  if (!subs.length) return {ok:false, t:'Arrastra el valor hacia el que tiende x y suéltalo sobre cada x.'};
+  if (subs.some(n => n.t !== step.reemplazar)) return {ok:false, t:`Se sustituye por el valor al que tiende x (${step.reemplazar}).`};
+  try { const v = Calc.evaluar(Calc.parse(ser(body)), {x:0, y:0});
+    if (Math.abs(v - step.valor) > 1e-9 * Math.max(1, Math.abs(v))) return {ok:false, t:'La expresión cambió: solo hay que cambiar las x por el número.'};
+  } catch { return {ok:false, t:'No se puede leer la expresión: revisa que no falte nada.'}; }
+  return {ok:true};
+}
+/** Convierte una respuesta serializada en piezas (para copiar la fórmula de un paso al siguiente). */
+function treeOf(src){
+  const s = norm(src); let i = 0;
+  const eat = t => s.startsWith(t, i) ? (i += t.length, true) : false;
+  function seq(stop){
+    const out = [];
+    while (i < s.length && !stop.includes(s[i])){
+      if (eat('frac{')){ const a = seq('}'); eat('}'); eat('{'); const b = seq('}'); eat('}'); out.push({t:'frac', z:[a, b]}); continue; }
+      if (eat('sqrt{')){ const a = seq('}'); eat('}'); out.push({t:'sqrt', z:[a]}); continue; }
+      if (eat('e^{')){ const a = seq('}'); eat('}'); out.push({t:'exp', z:[a]}); continue; }
+      if (eat('lim_{')){ const v = seq('→'); eat('→'); const a = seq('}'); eat('}'); eat('('); const e = seq(')'); eat(')'); out.push({t:'lim', z:[v, a, e]}); continue; }
+      const f = FUNC1.find(f => s.startsWith(f+'(', i));
+      if (f){ i += f.length + 1; const a = seq(')'); eat(')'); out.push({t:f, z:[a]}); continue; }
+      if (eat('^{')){
+        const e = seq('}'); eat('}'); let base;
+        if (out.at(-1)?.t === ')'){ let d = 0, j = out.length - 1; for (; j >= 0; j--){ if (out[j].t===')') d++; if (out[j].t==='(' && !--d) break; } base = out.splice(j).slice(1, -1); }
+        else base = out.length ? [out.pop()] : [];
+        out.push({t:'pot', z:[base, e]}); continue;
+      }
+      const m = /^\d+(\.\d+)?/.exec(s.slice(i));
+      if (m){ i += m[0].length; out.push({t:m[0]}); continue; }
+      if (s[i+1] === '′'){ out.push({t:s.slice(i, i+2)}); i += 2; continue; }
+      out.push({t:s[i++]});
+    }
+    return out;
+  }
+  return seq('');
+}
+const clonar = z => JSON.parse(JSON.stringify(z));
 function containsZone(node, zone){
   return (node.z||[]).some(z => z===zone || z.some(n=>containsZone(n, zone)));
 }
@@ -62,10 +126,10 @@ function zoneHTML(key, zone, depth, sm=false){
   const base = isRoot
     ? 'min-h-28 w-full p-2.5 gap-1.5 rounded-xl border-2 border-dashed border-stone-300 bg-white bg-[radial-gradient(circle,#e7e5e4_1px,transparent_1px)] [background-size:18px_18px] dark:border-zinc-700 dark:bg-zinc-950 dark:bg-[radial-gradient(circle,#27272a_1px,transparent_1px)]'
     : sm ? 'min-h-7 min-w-7 p-0.5 gap-0.5 rounded-md border-[1.5px] border-dashed border-stone-300 bg-white/80 dark:border-zinc-600 dark:bg-zinc-900/80'
-         : 'min-h-11 min-w-11 p-1 gap-1 rounded-lg border-2 border-dashed border-stone-300 bg-white/80 dark:border-zinc-600 dark:bg-zinc-900/80';
+         : 'min-h-10 min-w-10 p-1 gap-1 rounded-lg border-2 border-dashed border-stone-300 bg-white/80 dark:border-zinc-600 dark:bg-zinc-900/80';
   const ring = active ? ' ring-2 ring-blue-400 dark:ring-blue-500' : '';
   const empty = zone.length ? '' : (isRoot ? `<span class="pointer-events-none select-none text-sm text-stone-400 dark:text-zinc-500">Lienzo vacío: abre una categoría y arrastra o toca piezas…</span>` : '');
-  return `<div data-z="${key}|${id}" class="flex flex-wrap items-center ${base}${ring}">${zone.map((n,i)=>nodeHTML(key,n,id,i,depth,sm)).join('')}${empty}</div>`;
+  return `<div data-z="${key}|${id}" class="flex min-w-0 max-w-full flex-wrap items-center ${base}${ring}">${zone.map((n,i)=>nodeHTML(key,n,id,i,depth,sm)).join('')}${empty}</div>`;
 }
 const RADICAL = '<svg viewBox="0 0 12 30" preserveAspectRatio="none" aria-hidden="true" class="w-3 shrink-0 self-stretch text-emerald-700 dark:text-emerald-300"><path d="M0 17 L3 16 L6.5 28 L11 1 L12 1" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>';
 function nodeHTML(key, n, zid, i, depth, sm){
@@ -73,24 +137,40 @@ function nodeHTML(key, n, zid, i, depth, sm){
   const grab = 'touch-none select-none cursor-grab';
   const brick = `${grab} rounded-md border ${sm?'border-b-2':'border-b-4'} shadow-sm`;
   const green = 'border-emerald-500 bg-emerald-50 dark:border-emerald-600 dark:bg-emerald-950/60';
-  if (n.t==='frac') return `<span ${attr} class="${brick} ${green} inline-flex flex-col items-center ${sm?'gap-0.5 p-0.5':'gap-1 px-1.5 py-1'}">${zoneHTML(key,n.z[0],depth+1,sm)}<span class="h-0.5 w-full rounded bg-emerald-700 dark:bg-emerald-300"></span>${zoneHTML(key,n.z[1],depth+1,sm)}</span>`;
-  if (n.t==='sqrt') return `<span ${attr} class="${brick} ${green} inline-flex items-stretch ${sm?'p-0.5':'px-1.5 py-1'}">${RADICAL}<span class="border-t-2 border-emerald-700 pt-0.5 dark:border-emerald-300">${zoneHTML(key,n.z[0],depth+1,sm)}</span></span>`;
-  // Exponente: pequeño, pegado arriba a la derecha de la pieza anterior; lo de adentro se dibuja a escala reducida
-  if (n.t==='sup')  return `<span ${attr} title="Exponente" class="${grab} -ml-1.5 ${sm?'-translate-y-3':'-translate-y-5'} inline-flex self-center rounded-md border border-emerald-500 bg-emerald-50/90 p-0.5 shadow-sm dark:border-emerald-600 dark:bg-emerald-950/70">${zoneHTML(key,n.z[0],depth+1,true)}</span>`;
-  const size = sm ? 'min-h-7 min-w-7 px-1 text-sm' : 'min-h-11 min-w-11 px-2.5 text-lg';
+  const violet = 'border-violet-500 bg-violet-50 text-violet-950 dark:border-violet-500 dark:bg-violet-950/60 dark:text-violet-100';
+  const pad = sm ? 'gap-0.5 p-0.5' : 'gap-1 px-1.5 py-1';
+  const lbl = t => `<span class="pointer-events-none font-serif ${sm?'text-sm':'text-lg'} italic leading-none">${t}</span>`;
+  const sub = (zi, small=sm) => zoneHTML(key, n.z[zi], depth+1, small);
+  if (n.t==='frac') return `<span ${attr} title="Fracción" class="${brick} ${green} inline-flex flex-col items-center ${pad}">${sub(0)}<span class="h-0.5 w-full rounded bg-emerald-700 dark:bg-emerald-300"></span>${sub(1)}</span>`;
+  if (n.t==='sqrt') return `<span ${attr} title="Raíz" class="${brick} ${violet} inline-flex items-stretch ${sm?'p-0.5':'px-1.5 py-1'}">${RADICAL}<span class="border-t-2 border-violet-700 pt-0.5 dark:border-violet-300">${sub(0)}</span></span>`;
+  // Potencia: UN recuadro con dos espacios: base (normal) y exponente (pequeño, arriba a la derecha)
+  if (n.t==='pot')  return `<span ${attr} title="Potencia: base y exponente" class="${brick} ${violet} inline-flex items-start ${pad}"><span class="self-end">${sub(0)}</span><span class="-mt-0.5">${sub(1, true)}</span></span>`;
+  if (n.t==='exp')  return `<span ${attr} title="Exponencial e^▢" class="${brick} ${violet} inline-flex items-start ${pad}"><span class="self-end pb-1">${lbl('e')}</span><span class="-mt-0.5">${sub(0, true)}</span></span>`;
+  if (FUNC1.includes(n.t)) return `<span ${attr} title="Función ${n.t}" class="${brick} ${violet} inline-flex items-center ${pad}">${kx(tokTex(n.t))}<span class="text-xl leading-none opacity-70">(</span>${sub(0)}<span class="text-xl leading-none opacity-70">)</span></span>`;
+  if (n.t==='lim')  return `<span ${attr} title="Límite: variable, hacia dónde tiende y expresión" class="${brick} ${violet} inline-flex max-w-full min-w-0 items-center ${pad}">
+      <span class="inline-flex shrink-0 flex-col items-center gap-0.5">${lbl('lim')}<span class="inline-flex items-center gap-0.5">${sub(0, true)}<span class="text-xs">→</span>${sub(1, true)}</span></span>
+      <span class="text-2xl leading-none opacity-70">(</span><span class="min-w-0">${sub(2)}</span><span class="text-2xl leading-none opacity-70">)</span></span>`;
+  // Tamaños: lienzo principal grande, dentro de un recuadro mediano, exponentes pequeños
+  const size = sm ? 'min-h-7 min-w-7 px-1 text-sm' : depth>0 ? 'min-h-9 min-w-9 px-1.5 text-base' : 'min-h-11 min-w-11 px-2.5 text-lg';
+  if (n.sub) return `<span ${attr} title="Valor sustituido" class="${brick} border-blue-600 bg-blue-100 text-blue-950 ring-2 ring-blue-300 dark:bg-blue-900/70 dark:text-blue-50 inline-flex ${size} items-center justify-center">${kx('('+tokTex(n.t)+')')}</span>`;
   return `<span ${attr} class="${brick} ${pieceColor(n.t)} inline-flex ${size} items-center justify-center">${kx(tokTex(n.t))}</span>`;
 }
 function pieceColor(t){
   if (/^[-+]?\d+(\.\d+)?$/.test(t)) return 'border-blue-500 bg-blue-50 text-blue-950 dark:border-blue-500 dark:bg-blue-950/60 dark:text-blue-100';
-  if (/^(ln|log|log_3|sin|cos|tan)$/.test(t)) return 'border-violet-500 bg-violet-50 text-violet-950 dark:border-violet-500 dark:bg-violet-950/60 dark:text-violet-100';
+  if (STRUCT[t] && t!=='frac') return 'border-violet-500 bg-violet-50 text-violet-950 dark:border-violet-500 dark:bg-violet-950/60 dark:text-violet-100';
   if (/[a-zπ∞]/i.test(t)) return 'border-amber-500 bg-amber-50 text-amber-950 dark:border-amber-500 dark:bg-amber-950/60 dark:text-amber-100';
   return 'border-stone-400 bg-stone-100 text-stone-900 dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
 }
+const BANK_TEX = {frac:'\\frac{\\square}{\\square}', sqrt:'\\sqrt{\\square}', pot:'\\square^{\\square}', exp:'e^{\\square}',
+  sin:'\\sin(\\square)', cos:'\\cos(\\square)', tan:'\\tan(\\square)', ln:'\\ln(\\square)', log:'\\log(\\square)', log_3:'\\log_3(\\square)',
+  lim:'\\lim_{\\square\\to\\square}(\\square)'};
+const BANK_TITLE = {frac:'Fracción: numerador y denominador', sqrt:'Raíz: un espacio dentro', pot:'Potencia: un recuadro con base y exponente',
+  exp:'Exponencial: e elevado a lo que pongas dentro', lim:'Límite: variable, hacia dónde tiende y la expresión entre paréntesis'};
 function bankPiece(key, t){
   const brick = 'touch-none select-none cursor-grab rounded-md border border-b-4 shadow-sm inline-flex min-h-12 min-w-12 items-center justify-center px-3 text-lg touch-manipulation transition-transform active:scale-90 hover:-translate-y-0.5';
-  const label = t==='frac' ? kx('\\frac{\\square}{\\square}') : t==='sqrt' ? kx('\\sqrt{\\square}') : t==='sup' ? kx('x^{\\square}') : kx(tokTex(t));
-  const cls = STRUCT[t] ? 'border-emerald-500 bg-emerald-50 text-emerald-950 dark:border-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-100' : pieceColor(t);
-  const title = {frac:'Fracción: tiene numerador y denominador', sqrt:'Raíz: tiene un espacio dentro', sup:'Exponente: se coloca después de la base'}[t] || 'Pieza';
+  const label = kx(BANK_TEX[t] ?? tokTex(t));
+  const cls = t==='frac' ? 'border-emerald-500 bg-emerald-50 text-emerald-950 dark:border-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-100' : pieceColor(t);
+  const title = BANK_TITLE[t] || 'Pieza';
   return `<button type="button" data-tok="${key}|${encodeURIComponent(t)}" title="${title}" class="${brick} ${cls}">${label}</button>`;
 }
 /* ---------- Paleta por categorías ----------
@@ -105,9 +185,9 @@ const CATS = [
   {id:'agr', icon:'🧩', name:'Agrupar'},
 ];
 function catOf(t){
-  if (STRUCT[t] || /^[()\[\]]$/.test(t)) return 'agr';
+  if (t==='frac' || /^[()\[\]]$/.test(t)) return 'agr';
+  if (STRUCT[t]) return 'fun';                       // potencia, raíz, e^▢, sin, ln, lím… son funciones
   if (/^[-+]?\d+(\.\d+)?$/.test(t)) return 'num';
-  if (/^(ln|log|log_3|sin|cos|tan)$/.test(t)) return 'fun';
   if (/[a-zπ∞]/i.test(t)) return 'var';
   return 'sig';
 }
@@ -153,7 +233,7 @@ function renderLego(key){
     <div class="relative rounded-xl border border-emerald-600/60 bg-emerald-50/70 py-2 pl-11 pr-3 dark:border-emerald-700 dark:bg-emerald-950/30">
       <span class="absolute left-3 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white">${l.seen?'👁':'✓'}</span>
       <div class="text-sm text-stone-600 dark:text-zinc-400">${steps[i].q}</div>
-      <div class="overflow-x-auto py-1">${kx(ansTex(steps[i].a[0]))}</div>
+      <div class="overflow-x-auto py-1">${kx(ansTex(steps[i].reemplazar && l.built ? l.built : steps[i].a[0]))}</div>
       <div class="why text-sm text-stone-600 dark:text-zinc-400"><b class="text-xs uppercase tracking-wide text-amber-700 dark:text-amber-300">Por qué</b> ${steps[i].w}</div>
     </div>`).join('');
   let cur = '';
@@ -164,8 +244,10 @@ function renderLego(key){
     <div class="rounded-xl border border-blue-300 bg-blue-50/40 p-3 dark:border-blue-800 dark:bg-blue-950/20">
       <div class="mb-2 flex flex-wrap items-baseline gap-2"><span class="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white dark:bg-blue-400 dark:text-zinc-950">Paso ${st.step+1} de ${steps.length}</span><b>${s.q}</b></div>
       ${zoneHTML(key, st.root, 0)}
-      ${allZones(st.root).length>1 ? `<div class="mt-2 flex items-center justify-between gap-2 text-xs text-stone-500 dark:text-zinc-400"><span>Las piezas tocadas entran en el espacio <b class="text-blue-700 dark:text-blue-300">azul</b>.</span><button class="${C.btn} !min-h-9 shrink-0 !py-1 !text-xs" data-lg="nextzone">⇥ Siguiente espacio</button></div>` : ''}
+      ${allZones(st.root).length>1 ? `<div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-stone-500 dark:text-zinc-400"><span>Las piezas tocadas entran en el espacio <b class="text-blue-700 dark:text-blue-300">azul</b>.</span><span class="flex shrink-0 gap-1.5">${st.active && st.active!==st.root ? `<button class="${C.btn} !min-h-9 !py-1 !text-xs" data-lg="outzone" title="Volver al espacio de afuera">⤴ Salir</button>` : ''}<button class="${C.btn} !min-h-9 !py-1 !text-xs" data-lg="nextzone">⇥ Siguiente espacio</button></span></div>` : ''}
+      ${s.reemplazar ? `<div class="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-900 dark:bg-rose-950/40 dark:text-rose-100">🔁 Esta es <b>tu fórmula</b> del paso anterior. Arrastra el <b>${s.reemplazar}</b> desde 🔢 Números y suéltalo <b>encima de cada x</b> (se marca en rojo).</div>` : ''}
       ${paletteHTML(key, s, st)}
+      ${/^[ft]-/.test(key) ? propsHTML(key, st) : ''}
       ${fb}
       <button class="${C.btnP} mt-3 !min-h-12 w-full !text-base" data-lg="check">✔ Verificar</button>
       <div class="mt-2 grid grid-cols-4 gap-2">
@@ -181,9 +263,20 @@ function renderLego(key){
   renderMath(card.querySelector('[data-lego-body]'));
   card.querySelector('[data-badge]').textContent = done[key] ? '✅ Resuelto' : `${Math.min(st.step,steps.length)}/${steps.length} pasos`;
 }
-const SECCION_LEGO = {f:() => FUND, d:() => DIF};      // prefijo de la clave → temas
+/** Botón 🃏 Propiedades: aplica una carta del juego a lo armado (Fundamentos y tutorial). */
+function propsHTML(key, st){
+  const chip = 'inline-flex min-h-10 items-center gap-1.5 rounded-xl border px-3 text-sm touch-manipulation active:scale-95';
+  if (!st.verProps) return `<button class="${chip} mt-2 border-violet-300 bg-violet-50 text-violet-900 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-100" data-lg="props">🃏 Propiedades</button>`;
+  const L = st.root.length && typeof DefensaAlgebraica !== 'undefined' ? DefensaAlgebraica.propiedadesParaLienzo(ser(st.root)) : [];
+  st.propsLista = L;
+  return `<div class="mt-2 rounded-xl border border-violet-300 bg-violet-50 p-2 dark:border-violet-700 dark:bg-violet-950/40">
+    <div class="flex items-center justify-between text-xs font-semibold text-violet-900 dark:text-violet-100"><span>🃏 Propiedades que se pueden aplicar a lo que armaste</span><button data-lg="props" class="h-8 w-8 rounded-lg" aria-label="Cerrar">✕</button></div>
+    <div class="mt-1.5 flex flex-wrap gap-1.5">${L.length ? L.map(c => `<button class="${chip} border-violet-400 bg-white dark:bg-zinc-900" data-lg="prop:${c.id}">${c.icon} ${c.name}</button>`).join('')
+      : `<span class="text-sm text-stone-600 dark:text-zinc-300">${st.root.length ? 'Ninguna carta aplica aquí (o falta completar lo armado).' : 'Primero arma algo en el lienzo.'}</span>`}</div></div>`;
+}
+const SECCION_LEGO = {f:() => FUND, d:() => DIF, t:() => TUT};      // prefijo de la clave → temas
 function legoEx(key){                 // key = <f|d>-<tema>-<i>
-  const [, sec, tema, i] = key.match(/^([fd])-(.+)-(\d+)$/);
+  const [, sec, tema, i] = key.match(/^([fdt])-(.+)-(\d+)$/);
   const ex = SECCION_LEGO[sec]().find(t=>t.id===tema).lego[+i];
   return sec === 'd' ? {num:true, ...ex} : ex;
 }
@@ -199,26 +292,38 @@ function legoAction(key, act){
     if (act==='clear'){ snapshot(st); st.root=[]; st.active=null; }
     if (act==='closecat'){ st.cat=null; st.pin=false; }
     if (act==='nextzone'){ const zs = allZones(st.root); st.active = zs[(zs.indexOf(st.active||st.root)+1) % zs.length]; }
+    if (act==='outzone'){ st.active = (st.active && parentZone(st.root, st.active)) || null; }
     return renderLego(key);
   }
   const st = legoState(key), ex = legoEx(key), s = ex.steps[st.step];
   if (act==='check'){
     if (!st.root.length){ st.msg = {ok:false, t:'El lienzo está vacío. Arrastra piezas del banco.'}; }
-    else if (checkAnswer(s, ser(st.root), ex.num)){
-      st.log.push({seen:false}); st.step++; st.root=[]; st.hist=[]; st.active=null; st.tries=0;
+    else if (s.reemplazar ? (st.rep = checkReemplazo(s, st.root)).ok : checkAnswer(s, ser(st.root), ex.num)){
+      st.log.push({seen:false, built:ser(st.root)}); st.prev = clonar(st.root); st.step++; st.root=[]; st.hist=[]; st.active=null; st.tries=0;
+      prepararPaso(ex, st);
       st.msg = {ok:true, t:'¡Correcto! Sigue con el siguiente paso.'};
       if (st.step>=ex.steps.length){ done[key]=true; store.set('done', done); buildNavFromHash(); }
-    } else { st.tries++; st.msg = {ok:false, t:`Todavía no. ${st.tries>=2?'Puedes pedir la pista o ver la solución del paso.':'Revisa signos, orden y que cada espacio esté lleno.'}`}; }
+    } else if (s.reemplazar){ st.tries++; st.msg = {ok:false, t:st.rep.t}; }
+    else { st.tries++; st.msg = {ok:false, t:`Todavía no. ${st.tries>=2?'Puedes pedir la pista o ver la solución del paso.':'Revisa signos, orden y que cada espacio esté lleno.'}`}; }
   }
   if (act==='undo' && st.hist.length){ st.root = JSON.parse(st.hist.pop()); st.active=null; st.msg=null; }
-  if (act==='clear'){ snapshot(st); st.root=[]; st.active=null; st.msg=null; }
+  if (act==='clear'){ snapshot(st); st.root = s.copia && st.prev ? clonar(st.prev) : []; st.active=null; st.msg=null; }
   if (act==='hint'){ st.msg = {ok:true, t:'💡 '+s.h}; }
-  if (act==='reveal'){ st.log.push({seen:true}); st.step++; st.root=[]; st.hist=[]; st.active=null; st.tries=0; st.msg=null; }
+  if (act==='reveal'){ st.log.push({seen:true}); st.prev = treeOf(s.a[0]); st.step++; st.root=[]; st.hist=[]; st.active=null; st.tries=0; st.msg=null; prepararPaso(ex, st); }
   if (act==='restart'){ delete LEGO[key]; }
   if (act==='closecat'){ st.cat=null; st.pin=false; }
   if (act==='nextzone'){ const zs = allZones(st.root); st.active = zs[(zs.indexOf(st.active||st.root)+1) % zs.length]; }
+  if (act==='outzone'){ st.active = (st.active && parentZone(st.root, st.active)) || null; }
+  if (act==='props'){ st.verProps = !st.verProps; }
+  if (act.startsWith('prop:')){ const c = (st.propsLista||[]).find(x=>x.id===act.slice(5));
+    if (c){ snapshot(st); st.root = clonar(c.piezas); st.active = null; st.verProps = false; st.msg = {ok:true, t:`🃏 Aplicaste «${c.name}». Revisa el resultado y pulsa Verificar.`}; } }
   if (act==='check' && navigator.vibrate){ try{ navigator.vibrate(st.msg && st.msg.ok ? 30 : [60,40,60]); }catch(e){} }
   renderLego(key);
+}
+/** Pasos con `copia`: el lienzo arranca con la fórmula que el estudiante armó en el paso anterior. */
+function prepararPaso(ex, st){
+  const s = ex.steps[st.step];
+  if (s && s.copia && st.prev){ st.root = clonar(st.prev); st.copiado = true; }
 }
 function insertNode(key, zone, idx, node){
   const st = legoState(key); snapshot(st);
@@ -229,14 +334,56 @@ function insertNode(key, zone, idx, node){
 
 /* ---------- Arrastrar / tocar (pointer events: mouse y táctil) ---------- */
 let DRAG = null;
+/** Índice de inserción consciente de filas: las piezas se agrupan por renglón (según su franja vertical)
+    y dentro del renglón más cercano se decide por la mitad horizontal de cada pieza.
+    Antes se comparaba con el borde superior de cada pieza, y una fracción alta adelantaba
+    la inserción: por eso a veces las piezas quedaban en otro orden. */
 function dropIndex(zoneEl, x, y){
   const kids = [...zoneEl.children].filter(c=>c.hasAttribute('data-n'));
-  for (let i=0;i<kids.length;i++){
-    const r = kids[i].getBoundingClientRect();
-    if (y < r.top) return i;
-    if (y <= r.bottom && x < r.left + r.width/2) return i;
+  if (!kids.length) return 0;
+  const rows = [];
+  kids.forEach((k, i)=>{
+    const r = k.getBoundingClientRect(), cy = (r.top + r.bottom)/2;
+    const row = rows.find(w => cy >= w.top && cy <= w.bottom);
+    if (row){ row.items.push({i, r}); row.top = Math.min(row.top, r.top); row.bottom = Math.max(row.bottom, r.bottom); }
+    else rows.push({top:r.top, bottom:r.bottom, items:[{i, r}]});
+  });
+  let row = rows.find(w => y >= w.top && y <= w.bottom);
+  if (!row){
+    if (y < rows[0].top) row = rows[0];
+    else row = rows.reduce((best, w) => Math.abs((w.top+w.bottom)/2 - y) < Math.abs((best.top+best.bottom)/2 - y) ? w : best);
   }
-  return kids.length;
+  for (const it of row.items) if (x < it.r.left + it.r.width/2) return it.i;
+  return row.items.at(-1).i + 1;
+}
+/** Marca visual (barra azul) donde caerá la pieza. */
+let CARET = null;
+function showCaret(zoneEl, idx){
+  if (!CARET){ CARET = document.createElement('div'); CARET.className = 'pointer-events-none fixed z-[61] w-1 rounded-full bg-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,.35)] transition-[left,top] duration-75'; document.body.appendChild(CARET); }
+  const kids = [...zoneEl.children].filter(c=>c.hasAttribute('data-n'));
+  const zr = zoneEl.getBoundingClientRect();
+  let left, top, h;
+  if (!kids.length){ left = zr.left + 6; top = zr.top + 4; h = zr.height - 8; }
+  else if (idx < kids.length){ const r = kids[idx].getBoundingClientRect(); left = r.left - 4; top = r.top; h = r.height; }
+  else { const r = kids.at(-1).getBoundingClientRect(); left = r.right + 2; top = r.top; h = r.height; }
+  Object.assign(CARET.style, {left:left+'px', top:top+'px', height:Math.max(h, 18)+'px', display:'block'});
+}
+function hideCaret(){ if (CARET) CARET.style.display = 'none'; }
+/** Pieza «x» bajo el dedo (para sustituir un valor en los pasos de reemplazo). */
+function xAt(x, y, key){
+  const el = document.elementFromPoint(x, y);
+  const n = el && el.closest('[data-n]');
+  if (!n || !n.dataset.n.startsWith(key+'|')) return null;
+  const [, zid, i] = n.dataset.n.split('|'), zone = ZREG[key][+zid];
+  const esVarLim = z => z.some(m => (m.t==='lim' && m.z[0]===zone) || (m.z||[]).some(esVarLim));
+  if (esVarLim(legoState(key).root)) return null;          // la x de «lím x→a» no se sustituye
+  return zone && zone[+i] && zone[+i].t === 'x' ? {el:n, zone, i:+i} : null;
+}
+const puedeSustituir = key => { const s = LEGO_HOOKS[key] ? null : legoEx(key).steps[legoState(key).step]; return !!(s && s.reemplazar); };
+/** Zona que contiene a la pieza dueña de `zone` (para «salir del recuadro»). */
+function parentZone(root, zone){
+  for (const n of root) for (const z of (n.z||[])){ if (z===zone) return root; const p = parentZone(z, zone); if (p) return p; }
+  return null;
 }
 function zoneAt(x, y, key){
   const el = document.elementFromPoint(x, y);
@@ -274,16 +421,22 @@ document.addEventListener('pointermove', e=>{
     document.body.appendChild(g); DRAG.ghost = g;
     if (DRAG.src==='node') DRAG.el.classList.add('opacity-30');
   }
+  // Desplazamiento automático: si el dedo llega al borde de la pantalla, la página se mueve
+  if (e.clientY < 90) scrollBy(0, -14); else if (e.clientY > innerHeight - 90) scrollBy(0, 14);
   const r = DRAG.ghost.getBoundingClientRect();
   DRAG.ghost.style.left = (e.clientX - r.width/2)+'px';
   DRAG.ghost.style.top  = (e.clientY - DRAG.lift - r.height/2)+'px';
   document.querySelectorAll('[data-z].bg-blue-100').forEach(z=>z.classList.remove('bg-blue-100','dark:bg-blue-900/40'));
-  const z = zoneAt(e.clientX, e.clientY - DRAG.lift, DRAG.key);
-  if (z) z.classList.add('bg-blue-100','dark:bg-blue-900/40');
+  document.querySelectorAll('[data-n].ring-4').forEach(n=>n.classList.remove('ring-4','ring-rose-400'));
+  const Y = e.clientY - DRAG.lift;
+  const tx = DRAG.src==='bank' && /^\d/.test(DRAG.t) && puedeSustituir(DRAG.key) ? xAt(e.clientX, Y, DRAG.key) : null;
+  if (tx){ tx.el.classList.add('ring-4','ring-rose-400'); hideCaret(); return; }
+  const z = zoneAt(e.clientX, Y, DRAG.key);
+  if (z){ z.classList.add('bg-blue-100','dark:bg-blue-900/40'); showCaret(z, dropIndex(z, e.clientX, Y)); } else hideCaret();
 });
 document.addEventListener('pointerup', e=>{
   if (!DRAG) return;
-  const d = DRAG; DRAG = null;
+  const d = DRAG; DRAG = null; hideCaret();
   const st = legoState(d.key);
   if (d.ghost) d.ghost.remove();
   if (!d.moved){                                   // toque
@@ -292,6 +445,8 @@ document.addEventListener('pointerup', e=>{
     renderLego(d.key); return;
   }
   const Y = e.clientY - d.lift;
+  const tx = d.src==='bank' && /^\d/.test(d.t) && puedeSustituir(d.key) ? xAt(e.clientX, Y, d.key) : null;
+  if (tx){ snapshot(st); tx.zone.splice(tx.i, 1, {t:d.t, sub:true}); st.msg = null; buzz(12); renderLego(d.key); return; }
   const zEl = zoneAt(e.clientX, Y, d.key);
   if (d.src==='bank'){
     if (zEl){ const {zone} = findZone(zEl.dataset.z); insertNode(d.key, zone, dropIndex(zEl,e.clientX,Y), newNode(d.t)); }
@@ -311,7 +466,7 @@ document.addEventListener('pointerup', e=>{
   }
   renderLego(d.key);
 });
-document.addEventListener('pointercancel', ()=>{ if (DRAG && DRAG.ghost) DRAG.ghost.remove(); DRAG=null; });
+document.addEventListener('pointercancel', ()=>{ if (DRAG && DRAG.ghost) DRAG.ghost.remove(); DRAG=null; hideCaret(); });
 // Teclado: Enter/Espacio sobre una pieza del banco la añade
 document.addEventListener('click', e=>{
   const tokEl = e.target.closest('[data-tok]');

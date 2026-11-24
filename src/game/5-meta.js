@@ -39,6 +39,13 @@ const tabs = (lista, actual) => `<div class="mt-3 flex gap-1.5 overflow-x-auto p
   `<button data-tab="${id}" class="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-3 py-2 text-sm touch-manipulation ${actual === id ? 'border-emerald-400 bg-emerald-400/15 text-emerald-200' : 'border-zinc-700 bg-zinc-900'}">${ic} ${n}</button>`).join('')}</div>`;
 const tablaStats = filas => `<div class="overflow-x-auto"><table class="w-full text-xs [&_td]:border-b [&_td]:border-zinc-800 [&_td]:px-2 [&_td]:py-1 [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:text-zinc-400">${filas}</table></div>`;
 
+/** Animación de fusión: dos energías orbitan, chocan y aparece el resultado (o ❔ si no se ha descubierto). */
+const fusionAnim = (icon, oculto) => `<div class="relative flex h-[4.4rem] items-center justify-center overflow-hidden">
+  <span class="absolute h-2.5 w-2.5 rounded-full bg-sky-300 shadow-[0_0_10px_3px_rgba(125,211,252,.8)] [animation:orbe-a_2.6s_ease-in-out_infinite]"></span>
+  <span class="absolute h-2.5 w-2.5 rounded-full bg-amber-300 shadow-[0_0_10px_3px_rgba(252,211,77,.8)] [animation:orbe-b_2.6s_ease-in-out_infinite]"></span>
+  <span class="absolute h-12 w-12 rounded-full bg-fuchsia-400/30 [animation:destello_2.6s_ease-out_infinite]"></span>
+  <span class="relative text-4xl [animation:fusion-pop_2.6s_ease-in-out_infinite] ${oculto ? 'brightness-0 opacity-60' : ''}">${icon}</span></div>`;
+
 /* ---------- Vista previa animada (keyframes en canvas) ---------- */
 class VistaPrevia extends Renderer {
   constructor(cv, item){ super(cv); this.item = item; }
@@ -85,20 +92,23 @@ class VistaPrevia extends Renderer {
 
 /* ---------- Catálogo ---------- */
 class CatalogoScene extends Scene {
-  enter(){ this.tab ??= 'cartas'; this.todo ??= false; this.pintar(); }
+  enter(){ this.tab ??= 'cartas'; this.todo ??= !!this.app.progreso.data.todo; this.pintar(); }   // en modo desarrollo se ve todo
   exit(){ cancelAnimationFrame(this.raf); }
   conocido(cat, id){ return this.todo || this.app.progreso.conocido(cat, id); }
-  dominioDisponible(dom){ const d = this.app.progreso.data; return dom.tipos.some(t => d.todo || t.unlocked(this.app.doneKeys())); }
+  dominioDisponible(dom){ const d = this.app.progreso.data; return this.todo || dom.tipos.some(t => d.todo || this.app.tipoDesbloqueado(t)); }
   items(){
     if (this.tab === 'cartas') return Object.values(DOMINIOS).flatMap(dom => dom.cartas.all().map(c => ({kind:'carta', id:c.id, c, dom, ok:this.dominioDisponible(dom), name:c.name})));
-    if (this.tab === 'armas') return Object.entries(BONUS_DEFS).filter(([, d]) => d.tipo === 'arma').map(([id, d]) => ({kind:'arma', id, d, ok:this.conocido('armas', id), name:d.name}));
-    if (this.tab === 'tacticos') return Object.entries(BONUS_DEFS).filter(([, d]) => d.tipo === 'tactico').map(([id, d]) => ({kind:'tactico', id, d, ok:this.conocido('tacticos', id), name:d.name}));
+    if (this.tab === 'armas') return Object.entries(BONUS_DEFS).filter(([, d]) => d.tipo === 'arma' && !d.fusion).map(([id, d]) => ({kind:'arma', id, d, ok:this.conocido('armas', id), name:d.name}));
+    if (this.tab === 'tacticos') return Object.entries(BONUS_DEFS).filter(([, d]) => d.tipo === 'tactico' && !d.fusion).map(([id, d]) => ({kind:'tactico', id, d, ok:this.conocido('tacticos', id), name:d.name}));
+    // Fusiones: se sabe que existen, pero no cómo se consiguen (se descubren jugando)
+    if (this.tab === 'fusiones') return FUSIONES.map(f => ({kind:'fusion', id:f.resultado, d:BONUS_DEFS[f.resultado], ok:this.conocido('fusiones', f.resultado), name:BONUS_DEFS[f.resultado].name}));
     return [...Object.keys(SOLDADOS).map(id => ({kind:'soldado', id, ok:this.conocido('soldados', id), name:SOLDADOS[id].name})),
             ...Object.keys(ENEMIGOS).map(id => ({kind:'enemigo', id, ok:this.conocido('enemigos', id), name:INFO_ENEMIGO[id].name}))];
   }
   tile(it, i){
     const desconocido = !it.ok, nombre = desconocido ? (it.kind === 'carta' ? '🔒 ' + it.name : 'Desconocido') : it.name;
-    const vista = it.kind === 'carta' ? `<div class="flex justify-center py-1 ${desconocido ? 'grayscale opacity-40' : ''}">${cartaHTML(it.c, it.dom, {attr:'', chica:true})}</div>`
+    const vista = it.kind === 'fusion' ? fusionAnim(it.d.icon, desconocido)
+      : it.kind === 'carta' ? `<div class="flex justify-center py-1 ${desconocido ? 'grayscale opacity-40' : ''}">${cartaHTML(it.c, it.dom, {attr:'', chica:true})}</div>`
       : it.kind === 'tactico' ? `<div class="flex h-[4.4rem] items-center justify-center text-4xl ${desconocido ? 'brightness-0 opacity-50' : '[animation:flotar_2s_ease-in-out_infinite]'}">${it.d.icon}</div>`
       : `<canvas data-prev="${i}" class="block aspect-[120/70] w-full rounded-lg ${desconocido ? 'brightness-0 opacity-60' : ''}"></canvas>`;
     return `<button data-item="${i}" class="rounded-2xl border border-zinc-800 bg-zinc-900 p-1.5 text-left touch-manipulation active:scale-[0.98] transition-transform">${vista}<div class="mt-1 truncate px-1 text-xs font-semibold ${desconocido ? 'text-zinc-500' : ''}">${nombre}</div></button>`;
@@ -111,8 +121,10 @@ class CatalogoScene extends Scene {
     <div class="mx-auto flex h-full max-w-2xl flex-col px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
       <div class="flex items-center justify-between">${btnVolver}<label class="flex items-center gap-2 text-xs text-zinc-400"><input type="checkbox" data-a="vertodo" class="h-4 w-4 accent-amber-400" ${this.todo ? 'checked' : ''}>👁 Ver todo (desarrollo)</label></div>
       <h2 class="mt-3 text-2xl font-black">📚 Catálogo</h2>
-      ${tabs([['cartas', '🃏', 'Cartas'], ['armas', '🔫', 'Armas'], ['tacticos', '🧠', 'Tácticos'], ['entidades', '👽', 'Entidades']], this.tab)}
-      <p class="mt-1 text-xs text-zinc-400">${this.tab === 'cartas' ? `${ok}/${items.length} cartas disponibles · las demás se desbloquean avanzando en Aprender` : `${ok}/${items.length} descubiertos · se descubren al obtenerlos o verlos en una partida`}</p>
+      ${tabs([['cartas', '🃏', 'Cartas'], ['armas', '🔫', 'Armas'], ['tacticos', '🧠', 'Tácticos'], ['fusiones', '⚗️', 'Fusiones'], ['entidades', '👽', 'Entidades']], this.tab)}
+      <p class="mt-1 text-xs text-zinc-400">${this.tab === 'cartas' ? `${ok}/${items.length} cartas disponibles · las demás se desbloquean en la 🗺️ Ruta o avanzando en Aprender`
+        : this.tab === 'fusiones' ? `${ok}/${items.length} fusiones descubiertas · existen fusiones entre armas, entre tácticos y entre armas y tácticos. ¿Cuáles? Descúbrelo jugando.`
+        : `${ok}/${items.length} descubiertos · se descubren al obtenerlos o verlos en una partida`}</p>
       <div class="mt-2 grid flex-1 grid-cols-2 content-start gap-2 overflow-y-auto pb-4 sm:grid-cols-3">${items.map((it, i) => this.tile(it, i)).join('')}</div>
       <div data-h="detalle" class="absolute inset-0 z-20 hidden"></div>
     </div>`).onclick = e => this.click(e);
@@ -121,7 +133,7 @@ class CatalogoScene extends Scene {
   animar(){
     const vistas = [...this.app.root.querySelectorAll('canvas[data-prev], canvas[data-grande]')].map(cv => {
       const it = cv.dataset.grande != null ? this.detalle : this.lista[+cv.dataset.prev];
-      return new VistaPrevia(cv, {kind:it.kind === 'enemigo' ? 'enemigo' : it.kind, id:it.id});
+      return new VistaPrevia(cv, {kind:it.kind === 'enemigo' ? 'enemigo' : it.kind === 'fusion' ? 'arma' : it.kind, id:it.id});
     });
     const t0 = performance.now();
     const paso = now => { const t = (now - t0) / 1000; vistas.forEach(v => v.dibujar(t)); this.raf = requestAnimationFrame(paso); };
@@ -142,7 +154,10 @@ class CatalogoScene extends Scene {
     let vista = '', cuerpo = '';
     if (!it.ok){
       vista = it.kind === 'carta' ? `<div class="flex justify-center grayscale opacity-40">${cartaHTML(it.c, it.dom, {attr:''})}</div>` : `<div class="flex h-40 items-center justify-center text-7xl">❔</div>`;
-      cuerpo = `<p class="text-zinc-400">${it.kind === 'carta' ? `Se desbloquea al avanzar en <b>${it.dom.nombre}</b> en Aprender (o con 🧪 Todo desbloqueado).` : 'Aún no lo has encontrado. Juega partidas para descubrirlo.'}</p>`;
+      if (it.kind === 'fusion') vista = `<div class="pointer-events-none overflow-hidden py-6"><div class="scale-150">${fusionAnim('❔', true)}</div></div>`;
+      cuerpo = `<p class="text-zinc-400">${it.kind === 'carta' ? `Se desbloquea en la 🗺️ Ruta o al avanzar en <b>${it.dom.nombre}</b> en Aprender (o con 🧪 Todo desbloqueado).`
+        : it.kind === 'fusion' ? 'Existe una fusión secreta aquí. Lleva bonificadores al nivel máximo durante una partida y prueba combinaciones para descubrirla.'
+        : 'Aún no lo has encontrado. Juega partidas para descubrirlo.'}</p>`;
     } else if (it.kind === 'carta'){
       const [antes, despues] = EJEMPLO_CARTA[it.id] ?? ['', ''];
       vista = `<div class="flex justify-center">${cartaHTML(it.c, it.dom, {attr:''})}</div>`;
@@ -152,16 +167,17 @@ class CatalogoScene extends Scene {
           <span class="absolute text-emerald-300 [animation:cat-b_4s_ease-in-out_infinite]">${texJuego(despues, false)}</span></div>
         <p class="mt-1 text-center text-xs text-zinc-500">Ejemplo animado: antes → después</p>
         <p class="mt-2 text-xs text-zinc-400">Área: ${it.dom.icon} ${it.dom.nombre} · usada en partidas: ${P.conocido('cartas', it.id) ? 'sí' : 'todavía no'}</p>`;
-    } else if (it.kind === 'arma' || it.kind === 'tactico'){
+    } else if (it.kind === 'arma' || it.kind === 'tactico' || it.kind === 'fusion'){
       const d = it.d, niveles = d.niveles.map((n, i) => n && [i + 1, n]).filter(Boolean), claves = Object.keys(niveles[0][1]);
-      const receta = d.fusion ? FUSIONES.find(f => f.resultado === it.id) : null;
-      const mejora = P.nivel((it.kind === 'arma' ? 'arma-' : 'tac-') + (it.kind === 'arma' ? armaBase(it.id) : it.id));
-      vista = it.kind === 'arma' ? `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl"></canvas>` : `<div class="flex h-36 items-center justify-center"><span class="relative text-7xl [animation:flotar_2s_ease-in-out_infinite]">${d.icon}<span class="absolute inset-0 animate-ping rounded-full bg-emerald-400/10"></span></span></div>`;
+      const esArma = d.tipo === 'arma';
+      const mejora = P.nivel((esArma ? 'arma-' : 'tac-') + (esArma ? armaBase(it.id) : it.id));
+      vista = it.kind === 'fusion' ? `<div class="grid gap-2">${esArma ? `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl"></canvas>` : ''}<div class="pointer-events-none overflow-hidden ${esArma ? '' : 'py-6'}"><div class="${esArma ? '' : 'scale-150'}">${fusionAnim(d.icon, false)}</div></div></div>`
+        : it.kind === 'arma' ? `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl"></canvas>` : `<div class="flex h-36 items-center justify-center"><span class="relative text-7xl [animation:flotar_2s_ease-in-out_infinite]">${d.icon}<span class="absolute inset-0 animate-ping rounded-full bg-emerald-400/10"></span></span></div>`;
       cuerpo = `<p class="text-sm text-zinc-300">${d.desc}</p>
-        ${receta ? `<p class="mt-1 text-xs text-amber-300">⚗️ Fusión: ${BONUS_DEFS[receta.a].name} Nv3 + ${BONUS_DEFS[receta.b].name} Nv3 → nivel 4</p>` : ''}
+        ${d.fusion ? `<p class="mt-1 text-xs text-amber-300">⚗️ Fusión de nivel 4 · ${esArma ? 'arma' : 'táctico'}. Libera un espacio al crearse.</p>` : ''}
         <div class="mt-2 flex flex-wrap gap-1">${chipsProps(d.props)}</div>
         <div class="mt-3">${tablaStats(`<tr><th>Nv</th>${claves.map(k => `<th>${ETIQUETA_STAT[k] ?? k}</th>`).join('')}</tr>${niveles.map(([n, st]) => `<tr><td>${pips(n, n > 3 ? 4 : 3)}</td>${claves.map(k => `<td>${st[k]}</td>`).join('')}</tr>`).join('')}`)}</div>
-        <p class="mt-2 text-xs text-zinc-400">Mejora permanente: ${mejora}/3 ${it.kind === 'arma' ? '(+10 % de daño por nivel)' : '(+10 % de potencia por nivel)'}</p>`;
+        ${d.fusion && !esArma ? '' : `<p class="mt-2 text-xs text-zinc-400">Mejora permanente: ${mejora}/3 ${esArma ? '(+10 % de daño por nivel)' : '(+10 % de potencia por nivel)'}</p>`}`;
     } else if (it.kind === 'soldado'){
       const d = SOLDADOS[it.id], m = P.nivel('sold-' + it.id), k = 1 + 0.15 * m;
       vista = `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl"></canvas>`;

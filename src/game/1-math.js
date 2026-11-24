@@ -363,10 +363,11 @@ class ProblemFactory {
   /** @param {Object<string,Dominio>} dominios  @param {Rng} rng */
   constructor(dominios, rng){ this.dominios = dominios; this.rng = rng; }
   tipos(modo){ return Object.values(this.dominios).filter(d => modo === 'todo' || d.id === modo).flatMap(d => d.tipos); }
-  disponibles(modo, doneKeys, todo){ return this.tipos(modo).filter(t => todo || t.unlocked(doneKeys)); }
+  /** `ok` (opcional) decide si un tipo está desbloqueado (Ruta, Aprender o modo desarrollo). */
+  disponibles(modo, doneKeys, todo, ok = t => todo || t.unlocked(doneKeys)){ return this.tipos(modo).filter(ok); }
   /** Problema según el modo; en misiones altas pesan más los tipos difíciles. */
-  create({doneKeys, mision, modo, todo}){
-    let pool = this.disponibles(modo, doneKeys, todo);
+  create({doneKeys, mision, modo, todo, ok}){
+    let pool = this.disponibles(modo, doneKeys, todo, ok);
     if (!pool.length) pool = this.tipos(modo).filter(t => t.tier === 1);
     const maxTier = Math.max(...pool.map(t => t.tier));
     const weighted = pool.flatMap(t => Array(t.tier >= Math.min(maxTier, mision) ? 3 : 1).fill(t));

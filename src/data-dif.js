@@ -20,11 +20,17 @@ const DIF = [
   ],
   lego:[
    {src:'Ejercicio de práctica', p:R`\lim_{x\to3}\left(2x^2-5x\right)`, steps:[
-     {q:'Sustituye x = 3 y escribe la resta que queda.', k:['18','15','-','3','9','6'], a:['18-15'], w:R`\(2(9)=18\) y \(5(3)=15\).`, h:'Primero 3² = 9.'},
-     {q:'Calcula el límite.', k:['3','33','-3','15'], a:['3'], w:R`\(18-15=3\).`, h:'Resta.'}]},
-   {src:'Ejercicio de práctica', p:R`\lim_{x\to-1}\left(x^3+2x+5\right)`, steps:[
-     {q:'Sustituye x = −1 (escribe cada término con su signo).', k:['-1','-2','+','5','1','2'], a:['-1-2+5'], w:R`\((-1)^3=-1\) y \(2(-1)=-2\).`, h:'Potencia impar de un negativo: negativa.'},
-     {q:'Calcula el límite.', k:['2','8','-2','4'], a:['2'], w:R`\(-1-2+5=2\).`, h:'Suma con signos.'}]},
+     {q:'Primero escribe la fórmula: usa la pieza ƒ lím (variable, hacia dónde tiende y la expresión).', k:['lim','x','3','2','pot','-','5','+'], a:['lim_{x→3}(2x^{2}-5x)'], w:'Escribir el límite completo deja claro qué variable se mueve y hacia dónde.', h:'En el primer espacio x, en el segundo 3 y dentro del paréntesis 2x² − 5x (usa la pieza de potencia).'},
+     {q:'Reemplaza: arrastra el 3 encima de cada x de tu fórmula.', copia:true, reemplazar:'3', valor:3, k:['3','2','5'], a:['lim_{x→3}(2(3)^{2}-5(3))'], w:'Es un polinomio: es continuo, así que el límite se obtiene sustituyendo x = 3.', h:'Hay dos x: una dentro de la potencia y otra en 5x.'},
+     {q:'Calcula el valor del límite.', k:['3','33','15','18'], a:['3'], w:R`\(2(9)-15=18-15=3\).`, h:'Primero la potencia: 3² = 9.'}]},
+   {src:'Ejercicio de práctica', p:R`\lim_{x\to2}\left(x^3+2x+5\right)`, steps:[
+     {q:'Escribe la fórmula del límite.', k:['lim','x','2','3','pot','+','5'], a:['lim_{x→2}(x^{3}+2x+5)'], w:'Primero se plantea el límite completo.', h:'lím, x → 2 y adentro x³ + 2x + 5.'},
+     {q:'Reemplaza: arrastra el 2 sobre cada x.', copia:true, reemplazar:'2', valor:17, k:['2','3','5'], a:['lim_{x→2}((2)^{3}+2(2)+5)'], w:'Polinomio → sustitución directa.', h:'Dos x: en la potencia y en 2x.'},
+     {q:'Calcula el límite.', k:['17','13','9','8'], a:['17'], w:R`\(8+4+5=17\).`, h:'2³ = 8.'}]},
+   {src:'Ejercicio de práctica', p:R`\lim_{x\to1}\frac{x^2+3}{2x+1}`, steps:[
+     {q:'Escribe la fórmula del límite (la fracción va dentro del paréntesis).', k:['lim','x','1','frac','pot','2','3','+'], a:['lim_{x→1}(frac{x^{2}+3}{2x+1})'], w:'La expresión completa va dentro del límite.', h:'Pon la pieza de fracción en el espacio de la expresión.'},
+     {q:'Reemplaza: arrastra el 1 sobre cada x.', copia:true, reemplazar:'1', valor:4/3, k:['1','2','3'], a:['lim_{x→1}(frac{(1)^{2}+3}{2(1)+1})'], w:R`El denominador vale \(2(1)+1=3\ne0\), así que se puede sustituir.`, h:'Una x arriba y otra abajo.'},
+     {q:'Calcula el límite.', k:['frac','4','3','1','2'], a:['frac{4}{3}'], w:R`\(\frac{1+3}{3}=\frac43\).`, h:'Arriba 1 + 3, abajo 3.'}]},
   ]},
 
 { id:'indeterminadas', t:'Límites indeterminados 0/0', short:'Límites 0/0', dict:'Límites',
@@ -113,7 +119,7 @@ const DIF = [
   ],
   lego:[
    {src:'Ejercicio de práctica', p:R`f(x)=3x^2`, steps:[
-     {q:'Escribe f(x + h) − f(x) ya simplificado.', k:['6x','h','3','sup','2','+','x'], a:['6xh+3h^{2}','3h^{2}+6xh'], exact:true, w:R`\(3(x+h)^2-3x^2=6xh+3h^2\).`, h:'(x + h)² = x² + 2xh + h²'},
+     {q:'Escribe f(x + h) − f(x) ya simplificado.', k:['6x','h','3','pot','2','+','x','6'], a:['6xh+3h^{2}','3h^{2}+6xh'], exact:true, w:R`\(3(x+h)^2-3x^2=6xh+3h^2\).`, h:'(x + h)² = x² + 2xh + h²'},
      {q:'Divide entre h.', k:['6x','+','3','h','x'], a:['6x+3h','3h+6x'], exact:true, w:'Cada término pierde una h.', h:'6xh ÷ h = 6x'},
      {q:'Haz h → 0: f′(x) =', k:['6x','3h','3','x'], a:['6x'], w:'El término con h desaparece.', h:'h = 0'}]},
    {src:'Ejercicio de práctica', p:R`f(x)=5x-2`, steps:[
@@ -137,12 +143,12 @@ const DIF = [
   ],
   lego:[
    {src:'Ejercicio de práctica', p:R`f(x)=5x^4-3x^2+2x`, steps:[
-     {q:'Deriva 5x⁴.', k:['20x','5x','4','3','sup','x'], a:['20x^{3}'], w:R`\(5\cdot4x^{3}\).`, h:'Baja el 4 y resta 1 al exponente.'},
+     {q:'Deriva 5x⁴.', k:['20x','5x','4','3','pot','x','20','5'], a:['20x^{3}'], w:R`\(5\cdot4x^{3}\).`, h:'Baja el 4 y resta 1 al exponente.'},
      {q:'Deriva −3x².', k:['-6x','-3x','6','x','-'], a:['-6x'], w:R`\(-3\cdot2x^{1}\).`, h:'Baja el 2.'},
-     {q:'Escribe f′(x) completa.', k:['20x','sup','3','-','6x','+','2','x'], a:['20x^{3}-6x+2'], w:R`\((2x)'=2\).`, h:'Junta los tres resultados.'}]},
+     {q:'Escribe f′(x) completa.', k:['20x','pot','3','-','6x','+','2','x','20','6'], a:['20x^{3}-6x+2'], w:R`\((2x)'=2\).`, h:'Junta los tres resultados.'}]},
    {src:'Ejercicio de práctica', p:R`f(x)=x^6-4x^3+9`, steps:[
-     {q:'Deriva x⁶.', k:['6x','x','sup','5','6'], a:['6x^{5}'], w:'Baja el 6, queda exponente 5.', h:'n·xⁿ⁻¹'},
-     {q:'Escribe f′(x) completa.', k:['6x','sup','5','-','12x','2','+','9'], a:['6x^{5}-12x^{2}'], w:R`\((-4x^3)'=-12x^2\) y \((9)'=0\).`, h:'La constante se anula.'}]},
+     {q:'Deriva x⁶.', k:['6x','x','pot','5','6'], a:['6x^{5}'], w:'Baja el 6, queda exponente 5.', h:'n·xⁿ⁻¹'},
+     {q:'Escribe f′(x) completa.', k:['6x','pot','5','-','12x','2','+','9','6','12','x'], a:['6x^{5}-12x^{2}'], w:R`\((-4x^3)'=-12x^2\) y \((9)'=0\).`, h:'La constante se anula.'}]},
   ]},
 
 { id:'producto', t:'Regla del producto y del cociente', short:'Producto y cociente', dict:'Derivadas',
@@ -159,12 +165,12 @@ const DIF = [
   ],
   lego:[
    {src:'Ejercicio de práctica', p:R`\frac{d}{dx}\left[x^3e^x\right]`, steps:[
-     {q:'Escribe u′·v (con u = x³, v = eˣ).', k:['3x','x','sup','2','3','e'], a:['3x^{2}e^{x}'], w:R`\(u'=3x^2\).`, h:'Deriva solo x³.'},
-     {q:'Escribe u·v′.', k:['x','sup','3','e','2'], a:['x^{3}e^{x}'], w:R`\((e^x)'=e^x\).`, h:'eˣ es su propia derivada.'},
-     {q:'Escribe la derivada completa.', k:['3x','x','sup','2','3','e','+'], a:['3x^{2}e^{x}+x^{3}e^{x}'], w:'u′v + uv′.', h:'Suma los dos.'}]},
+     {q:'Escribe u′·v (con u = x³, v = eˣ).', k:['3x','x','pot','2','3','exp'], a:['3x^{2}e^{x}'], w:R`\(u'=3x^2\).`, h:'Deriva solo x³.'},
+     {q:'Escribe u·v′.', k:['x','pot','3','exp','2'], a:['x^{3}e^{x}'], w:R`\((e^x)'=e^x\).`, h:'eˣ es su propia derivada.'},
+     {q:'Escribe la derivada completa.', k:['3x','x','pot','2','3','exp','+'], a:['3x^{2}e^{x}+x^{3}e^{x}'], w:'u′v + uv′.', h:'Suma los dos.'}]},
    {src:'Ejercicio de práctica', p:R`\frac{d}{dx}\left[\frac{2x}{x+1}\right]`, steps:[
      {q:"Escribe el numerador u′v − uv′.", k:['2','(',')','x','+','1','-','2x'], a:['2(x+1)-2x'], w:R`\(u=2x,\ u'=2;\ v=x+1,\ v'=1\).`, h:'2·(x + 1) − 2x·1'},
-     {q:'Escribe la derivada simplificada.', k:['frac','2','(',')','x','+','1','sup'], a:['frac{2}{(x+1)^{2}}'], w:'El numerador vale 2.', h:'Abajo va v².'}]},
+     {q:'Escribe la derivada simplificada.', k:['frac','2','(',')','x','+','1','pot'], a:['frac{2}{(x+1)^{2}}'], w:'El numerador vale 2.', h:'Abajo va v².'}]},
   ]},
 
 { id:'cadena', t:'Regla de la cadena', short:'Regla de la cadena', dict:'Derivadas',
@@ -182,11 +188,11 @@ const DIF = [
   ],
   lego:[
    {src:'Ejercicio de práctica', p:R`\frac{d}{dx}(2x-5)^4`, steps:[
-     {q:'Deriva la de afuera (deja adentro igual).', k:['4','(',')','2x','-','5','sup','3'], a:['4(2x-5)^{3}'], exact:true, w:'Baja el 4, exponente 3.', h:'n·(…)ⁿ⁻¹'},
-     {q:'Multiplica por la derivada de adentro y simplifica.', k:['8','(',')','2x','-','5','sup','3','4'], a:['8(2x-5)^{3}'], w:R`\((2x-5)'=2\); \(4\cdot2=8\).`, h:'¿Cuánto vale (2x − 5)′?'}]},
+     {q:'Deriva la de afuera (deja adentro igual).', k:['4','(',')','2x','-','5','pot','3','2','x'], a:['4(2x-5)^{3}'], exact:true, w:'Baja el 4, exponente 3.', h:'n·(…)ⁿ⁻¹'},
+     {q:'Multiplica por la derivada de adentro y simplifica.', k:['8','(',')','2x','-','5','pot','3','4','2','x'], a:['8(2x-5)^{3}'], w:R`\((2x-5)'=2\); \(4\cdot2=8\).`, h:'¿Cuánto vale (2x − 5)′?'}]},
    {src:'Ejercicio de práctica', p:R`\frac{d}{dx}e^{5x}`, steps:[
      {q:'¿Cuál es la derivada de adentro?', k:['5','5x','x','1'], a:['5'], exact:true, w:R`\((5x)'=5\).`, h:'Adentro está 5x.'},
-     {q:'Escribe la derivada.', k:['5','e','sup','5x','x'], a:['5e^{5x}'], w:'eᵘ se queda igual y se multiplica por u′.', h:'5·e^{5x}'}]},
+     {q:'Escribe la derivada.', k:['5','exp','pot','5x','x'], a:['5e^{5x}'], w:'eᵘ se queda igual y se multiplica por u′.', h:'5·e^{5x}'}]},
   ]},
 
 { id:'trascendentes', t:'Derivadas de exponenciales, logaritmos y trigonométricas', short:'Exp, ln y trig', dict:'Derivadas',
@@ -205,8 +211,8 @@ const DIF = [
   ],
   lego:[
    {src:'Ejercicio de práctica', p:R`f(x)=4\sin x+3\cos x`, steps:[
-     {q:'Deriva 4 sin x.', k:['4','cos','sin','x','-'], a:['4cosx'], w:R`\((\sin x)'=\cos x\).`, h:'Tabla.'},
-     {q:'Escribe f′(x) completa.', k:['4','cos','sin','x','-','+','3'], a:['4cosx-3sinx'], w:R`\((\cos x)'=-\sin x\).`, h:'Ojo con el signo.'}]},
+     {q:'Deriva 4 sin x.', k:['4','cos','sin','x','-'], a:['4cos(x)'], w:R`\((\sin x)'=\cos x\).`, h:'Tabla.'},
+     {q:'Escribe f′(x) completa.', k:['4','cos','sin','x','-','+','3'], a:['4cos(x)-3sin(x)'], w:R`\((\cos x)'=-\sin x\).`, h:'Ojo con el signo.'}]},
    {src:'Ejercicio de práctica', p:R`f(x)=\ln(3x)`, steps:[
      {q:'Aplica la cadena: escribe (1/u)·u′ con u = 3x.', k:['frac','1','3x','·','3','x'], a:['frac{1}{3x}·3'], w:R`\(u'=3\).`, h:'(1/3x)·3'},
      {q:'Simplifica.', k:['frac','1','x','3'], a:['frac{1}{x}'], w:'El 3 se cancela.', h:'3/(3x)'}]},
@@ -277,7 +283,7 @@ const DIF = [
      {q:'Punto crítico: x = …', k:['x','=','3','6','-3'], a:['x=3'], w:R`\(2x-6=0\).`, h:'Iguala a 0.'},
      {q:'Valor mínimo f(3).', k:['-4','4','5','-','3'], a:['-4'], w:R`\(9-18+5=-4\).`, h:'Sustituye x = 3.'}]},
    {src:'Ejercicio de práctica', p:R`f(x)=x^3-12x`, steps:[
-     {q:'Calcula f′(x).', k:['3x','sup','2','-','12','x'], a:['3x^{2}-12'], w:'Reglas básicas.', h:'(x³)′ = 3x²'},
+     {q:'Calcula f′(x).', k:['3x','pot','2','-','12','x','3'], a:['3x^{2}-12'], w:'Reglas básicas.', h:'(x³)′ = 3x²'},
      {q:'Puntos críticos, separados por coma.', k:['2','-2','4','-4',','], a:['2,-2'], set:true, w:R`\(3x^2=12\Rightarrow x^2=4\).`, h:'Dos valores.'},
      {q:'El máximo local está en x = …', k:['x','=','2','-2','0'], a:['x=-2'], w:R`\(f''(x)=6x\); \(f''(-2)<0\).`, h:'Segunda derivada negativa.'}]},
   ]},
@@ -322,10 +328,10 @@ const DIF = [
   ],
   lego:[
    {src:'Ejercicio de práctica', p:R`\lim_{x\to0}\frac{e^x-1}{x}`, steps:[
-     {q:'Deriva arriba y abajo.', k:['frac','e','sup','x','1','0'], a:['frac{e^{x}}{1}'], w:R`\((e^x-1)'=e^x\), \(x'=1\).`, h:'Por separado.'},
+     {q:'Deriva arriba y abajo.', k:['frac','exp','pot','x','1','0'], a:['frac{e^{x}}{1}'], w:R`\((e^x-1)'=e^x\), \(x'=1\).`, h:'Por separado.'},
      {q:'Calcula el límite.', k:['1','0','e','2'], a:['1'], w:R`\(e^0=1\).`, h:'Sustituye x = 0.'}]},
    {src:'Ejercicio de práctica', p:R`\lim_{x\to2}\frac{x^3-8}{x-2}`, steps:[
-     {q:'Deriva arriba y abajo.', k:['frac','3x','sup','2','1','x'], a:['frac{3x^{2}}{1}'], w:R`\((x^3-8)'=3x^2\), \((x-2)'=1\).`, h:'Por separado.'},
+     {q:'Deriva arriba y abajo.', k:['frac','3x','pot','2','1','x','3'], a:['frac{3x^{2}}{1}'], w:R`\((x^3-8)'=3x^2\), \((x-2)'=1\).`, h:'Por separado.'},
      {q:'Calcula el límite.', k:['12','8','4','6'], a:['12'], w:R`\(3\cdot2^2=12\).`, h:'Sustituye x = 2.'}]},
   ]},
 ];

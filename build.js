@@ -4,7 +4,7 @@ const fs=require('fs'), {execSync}=require('child_process'), K='node_modules/kat
 const game=fs.readdirSync(S+'game').filter(f=>f.endsWith('.js')).sort().map(f=>fs.readFileSync(S+'game/'+f,'utf8')).join('\n');
 const gameModule = (exports) => `\n/* ===== Juego: módulo aislado ===== */\nconst DefensaAlgebraica = (() => {\n${game}\nreturn { ${exports} };\n})();\n`;
 const app=['expr.js','data-integral.js','data-fund.js','data-dif.js','data-dict.js','logic.js','lego.js'].map(f=>fs.readFileSync(S+f,'utf8')).join('\n')
-  + gameModule('GameApp, TableroPiezas');
+  + gameModule('GameApp, TableroPiezas, Ruta, Progreso, SaveRepository, PracticaPropiedades, cartasPracticables, DOMINIOS, propiedadesParaLienzo, RUTA');
 fs.writeFileSync('.tw-in.css',`@import "tailwindcss";\n@source "./src/shell.html";\n@source "./src/mockup/shell.html";\n@source "./src/**/*.js";\n@custom-variant dark (&:where(.dark, .dark *));\n`);
 execSync('npx @tailwindcss/cli -i .tw-in.css -o .tw-out.css --minify',{stdio:'pipe'});
 const tw=fs.readFileSync('.tw-out.css','utf8');

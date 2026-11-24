@@ -50,6 +50,13 @@ const BONUS_DEFS = {
   crio:    {tipo:'arma', fusion:true, icon:'❄️', name:'Misiles criogénicos', desc:'Misiles + Cámara lenta: área enorme que congela.',
             props:{origen:'base', objetivo:'area', alcance:'ambos', dano:'explosivo', movimiento:'guiado', prioridad:'aire', efecto:'congelar'},
             niveles:[null, null, null, {dmg:10, cd:1.8, costo:7.5, area:44, lentitud:0.8}]},
+  // Fusiones arma + arma (liberan un espacio de arma)
+  plasma:  {tipo:'arma', fusion:true, icon:'🌩️', name:'Tormenta de plasma', desc:'Rayos que saltan entre muchos enemigos y los frenan.',
+            props:{origen:'base', objetivo:'cadena', alcance:'ambos', dano:'energia', movimiento:'rayo', prioridad:'cercano', efecto:'congelar'},
+            niveles:[null, null, null, {dmg:6, cd:1.0, costo:5, saltos:6, lentitud:0.9}]},
+  riel:    {tipo:'arma', fusion:true, icon:'☄️', name:'Cañón de riel', desc:'Disparo instantáneo que atraviesa cualquier armadura.',
+            props:{origen:'base', objetivo:'unico', alcance:'ambos', dano:'fisico', movimiento:'rayo', prioridad:'fuerte', efecto:'perforar'},
+            niveles:[null, null, null, {dmg:24, cd:1.8, costo:6}]},
   // ---- Tácticos ----
   amplificador: {tipo:'tactico', icon:'🔋', name:'Amplificador', desc:'Más energía por cada paso matemático.', props:{afecta:'energia', modo:'pasivo'},
             niveles:[{energia:1.2}, {energia:1.4}, {energia:1.6}]},
@@ -65,13 +72,25 @@ const BONUS_DEFS = {
             niveles:[{ventana:2}, {ventana:4}, {ventana:6}]},
   botiquin:{tipo:'tactico', icon:'⛑️', name:'Botiquín', desc:'Soldados con más vida que se curan.', props:{afecta:'soldados', modo:'pasivo'},
             niveles:[{vidaSoldado:3, curar:0.3}, {vidaSoldado:6, curar:0.6}, {vidaSoldado:9, curar:1}]},
+  // Fusiones táctico + táctico (liberan un espacio de táctico)
+  fortaleza:{tipo:'tactico', fusion:true, icon:'🏯', name:'Fortaleza', desc:'Base y soldados mucho más resistentes y con curación.', props:{afecta:'base', modo:'aura'},
+            niveles:[null, null, null, {vida:110, regen:2.5, vidaSoldado:12, curar:1.4}]},
+  precision:{tipo:'tactico', fusion:true, icon:'🎯', name:'Mente precisa', desc:'Mucho tiempo para el bono de rapidez y armas que perforan todo.', props:{afecta:'cartas', modo:'aura'},
+            niveles:[null, null, null, {ventana:8, perforacion:1}]},
 };
-/** Recetas de fusión: ambos en nivel 3 → el arma `a` cambia sus propiedades (nivel 4) y se libera el espacio de `b`. */
+/** Recetas de fusión: ambos en nivel 3 → `a` cambia sus propiedades (nivel 4) y se libera el espacio de `b`.
+    Hay tres familias: arma + táctico, arma + arma y táctico + táctico. Las recetas NO se muestran en el
+    catálogo: el jugador las descubre jugando. */
 const FUSIONES = [
   {a:'laser', b:'amplificador', resultado:'foton'},
   {a:'rifle', b:'reclutas', resultado:'escuadron'},
   {a:'misil', b:'lenta', resultado:'crio'},
+  {a:'tesla', b:'mortero', resultado:'plasma'},
+  {a:'franco', b:'rifle', resultado:'riel'},
+  {a:'escudo', b:'botiquin', resultado:'fortaleza'},
+  {a:'concentracion', b:'municion', resultado:'precision'},
 ];
+const familiaFusion = f => `${BONUS_DEFS[f.a].tipo}+${BONUS_DEFS[f.b].tipo}`;
 const MAX_NIVEL = 3, ESPACIOS = {arma:3, tactico:3};
 
 class Bonus {
@@ -96,15 +115,15 @@ class Loadout {
     const propios = this.lista(tipo);
     const mejoras = propios.filter(b => !b.maximo && !b.def.fusion).map(b => ({accion:'mejorar', bonus:b}));
     const nuevos = propios.length < ESPACIOS[tipo]
-      ? Object.entries(BONUS_DEFS).filter(([id, d]) => d.tipo === tipo && !d.fusion && !this.tiene(id) && !this.fusionado(id)).map(([id]) => ({accion:'nuevo', id}))
+      ? Object.entries(BONUS_DEFS).filter(([id, d]) => d.tipo === tipo && !d.fusion && !this.tiene(id) && !this.fusionado(id) && (this.permitido?.(id) ?? true)).map(([id]) => ({accion:'nuevo', id}))
       : [];
-    const fusiones = tipo === 'arma' ? this.fusionesDisponibles().map(f => ({accion:'fusionar', receta:f})) : [];
+    const fusiones = this.fusionesDisponibles().filter(f => BONUS_DEFS[f.resultado].tipo === tipo).map(f => ({accion:'fusionar', receta:f}));
     const todas = [...fusiones, ...rng.shuffle([...mejoras, ...nuevos])];
     return todas.length ? todas.slice(0, n) : [{accion:'reparar'}];
   }
   /** ¿Ese bonificador ya se consumió en una fusión? */
   fusionado(id){ return FUSIONES.some(f => (f.a === id || f.b === id) && this.tiene(f.resultado)); }
-  fusionesDisponibles(){ return FUSIONES.filter(f => this.tiene(f.a)?.maximo && this.tiene(f.b)?.maximo && !this.tiene(f.resultado)); }
+  fusionesDisponibles(){ return FUSIONES.filter(f => this.tiene(f.a)?.maximo && !this.tiene(f.a).def.fusion && this.tiene(f.b)?.maximo && !this.tiene(f.b).def.fusion && !this.tiene(f.resultado)); }
   aplicar(op){
     if (op.accion === 'mejorar') op.bonus.subir();
     if (op.accion === 'nuevo'){
@@ -237,8 +256,8 @@ class SaveRepository {                               // patrón Repository: el r
 class Progreso {
   constructor(repo){
     this.repo = repo;
-    this.data = {puntos:0, mejoras:{}, record:0, partidas:0, modo:'fund', todo:true, semi:true, asistido:0, ...repo.load()};
-    this.data.desc = {armas:['rifle'], tacticos:[], enemigos:[], soldados:[], cartas:[], ...(this.data.desc ?? {})};
+    this.data = {puntos:0, mejoras:{}, record:0, partidas:0, modo:'fund', todo:true, semi:true, asistido:0, dificultad:'soldado', rutaXP:0, ...repo.load()};
+    this.data.desc = {armas:['rifle'], tacticos:[], enemigos:[], soldados:[], cartas:[], fusiones:[], ...(this.data.desc ?? {})};
     this.data.mazo = {fund:[], dif:[], int:[], ...(this.data.mazo ?? {})};
   }
   /** Registra algo encontrado por primera vez (para el catálogo). Devuelve true si es nuevo. */

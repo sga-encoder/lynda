@@ -112,8 +112,8 @@ const FUND = [
   ],
   lego:[
    {src:'Ejercicio de práctica', p:R`\frac{x^5\cdot x^3}{x^2}`, steps:[
-     {q:'Resuelve el numerador (usa la pieza de exponente).', k:['x','sup','8','15','2'], a:['x^{8}'], w:R`\(x^5x^3=x^{5+3}\).`, h:'Coloca x y después la pieza ▭ⁿ para el exponente.'},
-     {q:'Ahora divide entre x².', k:['x','sup','6','4','10'], a:['x^{6}'], w:R`\(\frac{x^8}{x^2}=x^{8-2}\).`, h:'Al dividir se restan exponentes.'}]},
+     {q:'Resuelve el numerador (usa la pieza de exponente).', k:['x','pot','8','15','2'], a:['x^{8}'], w:R`\(x^5x^3=x^{5+3}\).`, h:'Coloca x y después la pieza ▭ⁿ para el exponente.'},
+     {q:'Ahora divide entre x².', k:['x','pot','6','4','10'], a:['x^{6}'], w:R`\(\frac{x^8}{x^2}=x^{8-2}\).`, h:'Al dividir se restan exponentes.'}]},
    {src:'Ejercicio de práctica', p:R`\sqrt{12}+\sqrt{27}`, steps:[
      {q:'Simplifica √12.', k:['2','3','4','sqrt','6'], a:['2sqrt{3}'], w:R`\(\sqrt{12}=\sqrt{4\cdot3}=2\sqrt3\).`, h:'12 = 4·3 y √4 = 2.'},
      {q:'Simplifica √27.', k:['3','9','sqrt','2'], a:['3sqrt{3}'], w:R`\(\sqrt{27}=\sqrt{9\cdot3}=3\sqrt3\).`, h:'27 = 9·3.'},
@@ -141,7 +141,7 @@ const FUND = [
   ],
   lego:[
    {src:'Ejercicio de práctica', p:R`x^2-9`, steps:[
-     {q:'Escribe 9 como un cuadrado.', k:['3','sup','2','9','x'], a:['3^{2}'], w:R`\(9=3^2\), así tenemos \(x^2-3^2\).`, h:'¿Qué número al cuadrado da 9?'},
+     {q:'Escribe 9 como un cuadrado.', k:['3','pot','2','9','x'], a:['3^{2}'], w:R`\(9=3^2\), así tenemos \(x^2-3^2\).`, h:'¿Qué número al cuadrado da 9?'},
      {q:'Factoriza como diferencia de cuadrados.', k:['(',')','x','3','-','+','9'], a:['(x-3)(x+3)','(x+3)(x-3)'], w:R`\(a^2-b^2=(a-b)(a+b)\).`, h:'Un paréntesis con −, otro con +.'}]},
    {src:'Ejercicio de práctica', p:R`x^2+7x+10`, steps:[
      {q:'Escribe dos números que multiplicados den 10 y sumados den 7, separados por coma.', k:['2','5','10','1','7',','], a:['2,5'], set:true, w:R`\(2\cdot5=10\) y \(2+5=7\).`, h:'Pares que dan 10: 1·10 o 2·5.'},
@@ -221,11 +221,11 @@ const FUND = [
   ],
   lego:[
    {src:'Ejercicio de práctica', p:R`x^3+x^2-4x-4=0`, steps:[
-     {q:'Agrupa de a dos y saca factor común en cada par.', k:['x','sup','2','(',')','+','1','-','4','=','0'], a:['x^{2}(x+1)-4(x+1)=0'], w:R`\(x^3+x^2=x^2(x+1)\) y \(-4x-4=-4(x+1)\).`, h:'En el primer par sale x², en el segundo −4.'},
-     {q:'Saca el factor común (x + 1).', k:['x','sup','2','(',')','+','1','-','4','=','0'], a:['(x+1)(x^{2}-4)=0','(x^{2}-4)(x+1)=0'], w:'Ahora (x + 1) se repite en ambos términos.', h:'(x + 1)(… − …)'},
+     {q:'Agrupa de a dos y saca factor común en cada par.', k:['x','pot','2','(',')','+','1','-','4','=','0'], a:['x^{2}(x+1)-4(x+1)=0'], w:R`\(x^3+x^2=x^2(x+1)\) y \(-4x-4=-4(x+1)\).`, h:'En el primer par sale x², en el segundo −4.'},
+     {q:'Saca el factor común (x + 1).', k:['x','pot','2','(',')','+','1','-','4','=','0'], a:['(x+1)(x^{2}-4)=0','(x^{2}-4)(x+1)=0'], w:'Ahora (x + 1) se repite en ambos términos.', h:'(x + 1)(… − …)'},
      {q:'Escribe todas las soluciones separadas por coma.', k:['-1','1','2','-2','4',','], a:['-1,2,-2'], set:true, w:R`\(x+1=0\) y \(x^2-4=0\Rightarrow x=\pm2\).`, h:'Son tres.'}]},
    {src:'Ejercicio de práctica', p:R`x^3-9x=0`, steps:[
-     {q:'Saca factor común.', k:['x','(',')','sup','2','-','9','=','0','3'], a:['x(x^{2}-9)=0'], w:'x está en los dos términos.', h:'x(…)'},
+     {q:'Saca factor común.', k:['x','(',')','pot','2','-','9','=','0','3'], a:['x(x^{2}-9)=0'], w:'x está en los dos términos.', h:'x(…)'},
      {q:'Escribe todas las soluciones separadas por coma.', k:['0','3','-3','9',','], a:['0,3,-3'], set:true, w:R`\(x=0\) o \(x^2=9\Rightarrow x=\pm3\).`, h:'No olvides el cero.'}]},
   ]},
 
@@ -293,7 +293,7 @@ const FUND = [
   ],
   lego:[
    {src:'Ejercicio de práctica', p:R`3^x=81`, steps:[
-     {q:'Escribe 81 como potencia de 3.', k:['3','sup','x','4','=','9','81','2'], a:['3^{x}=3^{4}'], w:R`\(81=3^4\).`, h:'3·3·3·3'},
+     {q:'Escribe 81 como potencia de 3.', k:['3','pot','x','4','=','9','81','2'], a:['3^{x}=3^{4}'], w:R`\(81=3^4\).`, h:'3·3·3·3'},
      {q:'Iguala los exponentes.', k:['x','=','4','27','3'], a:['x=4'], w:'Misma base ⇒ mismo exponente.', h:'Compara exponentes.'}]},
    {src:'Ejercicio de práctica', p:R`e^{2x}=7`, steps:[
      {q:'Aplica ln a ambos lados.', k:['2x','=','ln','7','(',')','x','e'], a:['2x=ln7','2x=ln(7)'], w:R`\(\ln(e^{2x})=2x\).`, h:'ln y e se cancelan.'},
@@ -317,7 +317,7 @@ const FUND = [
   ],
   lego:[
    {src:'Ejercicio de práctica', p:R`\log_3x=2`, steps:[
-     {q:'Pasa a forma exponencial.', k:['x','=','3','2','sup','log_3'], a:['x=3^{2}'], w:R`\(\log_b x=y\iff x=b^y\).`, h:'La base 3 se eleva al 2.'},
+     {q:'Pasa a forma exponencial.', k:['x','=','3','2','pot','log_3'], a:['x=3^{2}'], w:R`\(\log_b x=y\iff x=b^y\).`, h:'La base 3 se eleva al 2.'},
      {q:'Calcula x.', k:['x','=','9','6','8'], a:['x=9'], w:R`\(3^2=9\).`, h:'3·3'}]},
    {src:'Ejercicio de práctica', p:R`\ln x+\ln2=\ln10`, steps:[
      {q:'Junta el lado izquierdo en un solo logaritmo.', k:['ln','(',')','2x','=','10','x','2','+'], a:['ln(2x)=ln(10)','ln(2x)=ln10'], w:R`\(\ln a+\ln b=\ln(ab)\).`, h:'Suma de ln = ln del producto.'},
@@ -346,7 +346,7 @@ const FUND = [
   ],
   lego:[
    {src:'Ejercicio de práctica', p:R`2\cos x=\sqrt3,\quad x\in[0,2\pi)`, steps:[
-     {q:'Despeja cos x.', k:['cos','x','=','frac','sqrt','3','2'], a:['cosx=frac{sqrt{3}}{2}'], w:'Divide entre 2.', h:'cos x = (…)/2'},
+     {q:'Despeja cos x.', k:['cos','x','=','frac','sqrt','3','2'], a:['cos(x)=frac{sqrt{3}}{2}'], w:'Divide entre 2.', h:'cos x = (…)/2'},
      {q:'Escribe todas las soluciones en [0, 2π), separadas por coma.', k:['frac','π','11π','5π','6','3',','], a:['frac{π}{6},frac{11π}{6}'], set:true, w:R`Referencia \(\frac\pi6\); coseno positivo en I y IV: \(2\pi-\frac\pi6=\frac{11\pi}6\).`, h:'Coseno positivo: cuadrantes I y IV.'}]},
    {src:'Ejercicio de práctica', p:R`\tan x=1,\quad x\in[0,2\pi)`, steps:[
      {q:'Primera solución (cuadrante I).', k:['x','=','frac','π','4','3','2'], a:['x=frac{π}{4}'], w:R`\(\tan\frac\pi4=1\).`, h:'Tabla de valores notables.'},

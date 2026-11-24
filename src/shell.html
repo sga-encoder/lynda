@@ -16,6 +16,13 @@
 <!--@@VENDOR@@-->
 <style>
   /* Animaciones del juego (catálogo): cambio antes → después y flotación */
+  @keyframes demo-arrastre{0%,12%{transform:translate(0,0);opacity:0}18%{opacity:1;transform:translate(0,0)}55%{transform:translate(4.2rem,-6.4rem);opacity:1}62%,100%{transform:translate(4.2rem,-6.4rem);opacity:0}}
+  @keyframes demo-aparece{0%,58%{opacity:0;transform:scale(.6)}66%{opacity:1;transform:scale(1.1)}72%,92%{opacity:1;transform:scale(1)}100%{opacity:0}}
+  @keyframes demo-caret{0%,25%{opacity:0}30%,58%{opacity:1}62%,100%{opacity:0}}
+  @keyframes orbe-a{0%{transform:rotate(0deg) translateX(30px)}70%{transform:rotate(540deg) translateX(4px);opacity:1}75%,100%{transform:rotate(560deg) translateX(0);opacity:0}}
+  @keyframes orbe-b{0%{transform:rotate(180deg) translateX(30px)}70%{transform:rotate(720deg) translateX(4px);opacity:1}75%,100%{transform:rotate(740deg) translateX(0);opacity:0}}
+  @keyframes destello{0%,70%{transform:scale(0);opacity:0}76%{transform:scale(1.4);opacity:1}100%{transform:scale(2.2);opacity:0}}
+  @keyframes fusion-pop{0%,70%{transform:scale(.55);opacity:.35}80%{transform:scale(1.25);opacity:1}90%,100%{transform:scale(1);opacity:1}}
   @keyframes cat-a{0%,42%{opacity:1}50%,92%{opacity:0}100%{opacity:1}}
   @keyframes cat-b{0%,42%{opacity:0}50%,92%{opacity:1}100%{opacity:0}}
   @keyframes flotar{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
@@ -33,7 +40,12 @@
 <header class="sticky top-0 z-30 flex items-center gap-2 border-b border-stone-200 bg-white/95 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-4 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
   <button id="menuBtn" class="flex h-10 w-10 items-center justify-center rounded-xl border border-stone-200 text-lg touch-manipulation md:hidden dark:border-zinc-700" aria-label="Temas de la sección">☰</button>
   <h1 class="flex-1 truncate text-base font-bold"><a href="#/">∫ Guía de Cálculo</a></h1>
-  <button data-dict-open class="hidden h-10 rounded-xl border border-blue-600 bg-blue-600 px-3 text-sm md:inline-flex md:items-center text-white hover:bg-blue-700 dark:border-blue-400 dark:bg-blue-400 dark:text-zinc-950" aria-label="Abrir diccionario de propiedades" title="Diccionario de propiedades (tecla D)">📖<span class="hidden sm:inline"> Diccionario</span></button>
+  <nav class="hidden items-center gap-1 md:flex" aria-label="Navegación principal">
+    <a href="#/" data-bn="home" class="rounded-xl px-3 py-2 text-sm hover:bg-blue-50 dark:hover:bg-blue-950/40"><span>🏠</span> Inicio</a>
+    <a href="#/ruta" data-bn="ruta" class="rounded-xl px-3 py-2 text-sm hover:bg-blue-50 dark:hover:bg-blue-950/40"><span>🗺️</span> Ruta</a>
+    <a href="#/jugar" data-bn="P" class="rounded-xl px-3 py-2 text-sm hover:bg-blue-50 dark:hover:bg-blue-950/40"><span>🎮</span> Juego</a>
+    <button data-dict-open class="h-10 rounded-xl border border-blue-600 bg-blue-600 px-3 text-sm text-white hover:bg-blue-700 dark:border-blue-400 dark:bg-blue-400 dark:text-zinc-950" title="Diccionario de propiedades (tecla D)">📖 Diccionario</button>
+  </nav>
   <button id="themeBtn" class="flex h-10 min-w-10 items-center justify-center rounded-xl border border-stone-200 px-2.5 text-sm touch-manipulation hover:border-blue-500 dark:border-zinc-700" aria-label="Cambiar tema">🌓<span class="hidden sm:inline"> Tema</span></button>
 </header>
 <div class="mx-auto flex max-w-6xl">
@@ -55,11 +67,10 @@
 <div id="juegoPiezas" class="fixed inset-0 z-[46] hidden bg-black/40"></div>
 
 <!-- Barra de navegación inferior (celular) -->
-<nav id="bottomNav" class="fixed inset-x-0 bottom-0 z-30 flex border-t border-stone-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden dark:border-zinc-800 dark:bg-zinc-900/95" aria-label="Secciones">
-    <a href="#/" data-bn="home"  class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🏠</span>Inicio</a>
-    <a href="#/f" data-bn="F"  class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🧱</span>Fundamentos</a>
-    <a href="#/jugar" data-bn="P"  class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🎮</span>Practicar</a>
-    <a href="#/integral" data-bn="I"  class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">∫</span>Integral</a>
+<nav id="bottomNav" class="fixed inset-x-0 bottom-0 z-30 flex border-t border-stone-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden dark:border-zinc-800 dark:bg-zinc-900/95" aria-label="Navegación principal">
+    <a href="#/" data-bn="home" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🏠</span>Inicio</a>
+    <a href="#/ruta" data-bn="ruta" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🗺️</span>Ruta</a>
+    <a href="#/jugar" data-bn="P" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🎮</span>Juego</a>
     <button data-dict-open data-bn="dict" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">📖</span>Diccionario</button>
 </nav>
 

@@ -103,7 +103,7 @@ class Dominio {
   }
   aplicables(raiz){ return new Set(this.cartas.all().filter(c => !c.free && c.targets(raiz).length).map(c => c.id)); }
 }
-const PIEZAS_CALC = ['1','2','3','4','5','6','7','8','9','0','x','+','-','·','(',')','sin','cos','tan','ln','e','sup','frac','sqrt'];
+const PIEZAS_CALC = ['1','2','3','4','5','6','7','8','9','0','x','+','-','·','(',')','sin','cos','tan','ln','exp','pot','frac','sqrt'];
 function libreCalc(conC){
   return (src, raiz, solucion) => {
     let e; try { e = K.parse(src); } catch (err){ return {error:err.message}; }
@@ -216,10 +216,10 @@ function piezasCalc(e){
     case '^':
       if (K.isNum(e.e) && e.e.q.equals(new Q(1, 2))) return [{t:'sqrt', z:[piezasCalc(e.b)]}];
       if (K.isNum(e.e) && e.e.q.sign < 0) return [{t:'frac', z:[[pz('1')], piezasCalc(K.simp(K.pow(e.b, e.e.q.neg())))]}];
-      return [...(e.b.k === 'f' ? [pz('('), ...piezasCalc(e.b), pz(')')] : par(e.b)), {t:'sup', z:[piezasCalc(e.e)]}];
+      return [{t:'pot', z:[piezasCalc(e.b), piezasCalc(e.e)]}];     // recuadro base + exponente
     case 'f':
-      if (e.f === 'exp') return [pz('e'), {t:'sup', z:[piezasCalc(e.a)]}];
-      return [pz(e.f === 'lnabs' ? 'ln' : e.f), pz('('), ...piezasCalc(e.a), pz(')')];
+      if (e.f === 'exp') return [{t:'exp', z:[piezasCalc(e.a)]}];
+      return [{t:e.f === 'lnabs' ? 'ln' : e.f, z:[piezasCalc(e.a)]}];   // la función contiene su argumento
   }
   throw new Error('No se puede convertir');
 }

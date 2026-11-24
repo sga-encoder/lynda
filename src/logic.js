@@ -186,31 +186,148 @@ const secTotales = sec => SECCIONES_AP[sec].lista().reduce((a,T)=>{ const p=tema
 const dictBtn = (cat, label='📖 Ver propiedades en el diccionario') =>
   `<button class="${C.chip}" data-dict-cat="${cat}">${label}</button>`;
 
+/* ---------- Tutorial interactivo de fichas (ejercicios con clave t-fichas-<i>) ---------- */
+const TUT = [{id:'fichas', lego:[
+  {src:'Tutorial 1 · Tu primera ficha', p:R`5`, steps:[
+    {q:'Toca la categoría 🔢 Números y luego toca el 5 (o arrástralo al lienzo). Después pulsa ✔ Verificar.', k:['5','3','8'], a:['5'], w:'Tocar una ficha la pone en el espacio azul; arrastrarla te deja elegir el lugar exacto.', h:'Busca el 5 en 🔢 Números.'}]},
+  {src:'Tutorial 2 · El orden importa', p:R`2x+3`, steps:[
+    {q:'Arma 2x + 3. Si una ficha queda en otro lugar, arrástrala: la barra azul te muestra dónde caerá. Tócala para quitarla.', k:['2','x','+','3'], a:['2x+3'], w:'Las fichas se leen de izquierda a derecha y de arriba abajo, como un texto.', h:'2, luego x, luego +, luego 3.'}]},
+  {src:'Tutorial 3 · Recuadros: la potencia', p:R`x^{2}`, steps:[
+    {q:'Abre ƒ Funciones y pon la ficha □^□. Es un recuadro con dos espacios: base (grande) y exponente (pequeño). Toca un espacio para volverlo azul y llénalo.', k:['pot','x','2'], a:['x^{2}'], w:'Todas las funciones son recuadros que CONTIENEN a otras fichas: así nunca queda un exponente flotando.', h:'Base: x. Exponente: 2. Usa ⇥ Siguiente espacio para saltar.'}]},
+  {src:'Tutorial 4 · Recuadros dentro de recuadros', p:R`\frac{\sin(x)}{2}`, steps:[
+    {q:'Pon la fracción (🧩 Agrupar), dentro del numerador la función sin(□) y dentro de ella la x; abajo el 2. «⤴ Salir» te lleva al espacio de afuera.', k:['frac','sin','x','2'], a:['frac{sin(x)}{2}'], w:'Una función puede ir dentro de una fracción, de una raíz o de otra función.', h:'Fracción → numerador: sin → dentro: x. Denominador: 2.'}]},
+  {src:'Tutorial 5 · Límites: escribir y reemplazar', p:R`\lim_{x\to1}(x+4)`, steps:[
+    {q:'Primero escribe la fórmula con la ficha lím: en el primer espacio la variable (x), en el segundo hacia dónde tiende (1) y en el paréntesis la expresión.', k:['lim','x','1','+','4'], a:['lim_{x→1}(x+4)'], w:'El primer paso siempre es escribir la fórmula completa.', h:'lím, x, 1 y adentro x + 4.'},
+    {q:'¡Reemplaza! Esta es tu fórmula: arrastra el 1 y suéltalo ENCIMA de la x de la expresión (se pone roja).', copia:true, reemplazar:'1', valor:5, k:['1'], a:['lim_{x→1}((1)+4)'], w:'Sustituir es cambiar cada x por el valor al que tiende.', h:'Arrastra (no toques) el 1 hasta la x de adentro.'},
+    {q:'Calcula el resultado.', k:['5','4','1'], a:['5'], w:'1 + 4 = 5.', h:'Suma.'}]},
+  {src:'Tutorial 6 · Usar propiedades (cartas)', p:R`2(x+3)`, steps:[
+    {q:'Arma 2(x + 3) con los paréntesis de 🧩 Agrupar.', k:['2','(',')','x','+','3'], a:['2(x+3)'], w:'Los paréntesis agrupan lo que se multiplica por 2.', h:'2, (, x, +, 3, ).'},
+    {q:'Aplica una propiedad: toca 🃏 Propiedades y elige «Distributiva» (o escríbelo tú). Luego verifica.', copia:true, k:['2x','6','+','x','2'], a:['2x+6'], w:'Las cartas del juego son las mismas propiedades: aquí las aplicas directamente sobre tus fichas.', h:'2·x + 2·3.'}]},
+]}];
+
+/* Demostración animada: una ficha viaja de la bandeja al lienzo */
+const DEMO_FICHAS = `
+  <div class="relative h-44 overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 dark:border-zinc-800 dark:bg-zinc-900" aria-hidden="true">
+    <div class="absolute inset-x-3 top-3 flex h-16 items-center gap-1.5 rounded-xl border-2 border-dashed border-blue-400 bg-white px-2 dark:bg-zinc-950">
+      <span class="flex h-10 min-w-10 items-center justify-center rounded-md border border-b-4 border-blue-500 bg-blue-50 px-2 font-serif text-lg text-blue-950 dark:bg-blue-950/60 dark:text-blue-100">2</span>
+      <span class="flex h-10 items-start gap-0.5 rounded-md border border-b-4 border-violet-500 bg-violet-50 p-1 opacity-0 [animation:demo-aparece_4.5s_ease-in-out_infinite] dark:bg-violet-950/60">
+        <span class="flex h-8 min-w-7 items-center justify-center self-end rounded border border-dashed border-stone-300 font-serif italic">x</span><span class="flex h-5 min-w-5 items-center justify-center rounded border border-dashed border-stone-300 text-xs">2</span></span>
+      <span class="h-9 w-1 rounded-full bg-blue-500 [animation:demo-caret_4.5s_ease-in-out_infinite]"></span>
+    </div>
+    <div class="absolute inset-x-3 bottom-3 flex h-14 items-center justify-center gap-2 rounded-xl bg-white/70 dark:bg-zinc-800/70">
+      <span class="flex h-11 min-w-11 items-center justify-center rounded-md border border-b-4 border-violet-500 bg-violet-50 px-2 text-sm dark:bg-violet-950/60">□<sup>□</sup></span>
+      <span class="flex h-11 min-w-11 items-center justify-center rounded-md border border-b-4 border-emerald-500 bg-emerald-50 px-2 text-sm dark:bg-emerald-950/60">½</span>
+      <span class="flex h-11 min-w-11 items-center justify-center rounded-md border border-b-4 border-violet-500 bg-violet-50 px-2 text-sm dark:bg-violet-950/60">sin(□)</span>
+    </div>
+    <span class="absolute left-[calc(50%-4.6rem)] top-[7.9rem] flex h-11 min-w-11 items-center justify-center rounded-md border border-b-4 border-violet-500 bg-violet-100 px-2 text-sm shadow-xl ring-2 ring-blue-400 [animation:demo-arrastre_4.5s_ease-in-out_infinite] dark:bg-violet-900">□<sup>□</sup></span>
+    <span class="absolute left-[calc(50%-3.4rem)] top-[9.2rem] text-2xl [animation:demo-arrastre_4.5s_ease-in-out_infinite]">👆</span>
+  </div>`;
+
+/** Pestaña de Inicio: la última elegida; la primera vez, el tutorial de fichas. */
+const homeTab = () => { let t = null; try { t = sessionStorage.getItem('calcint:homeTab'); } catch {} return t || (Object.keys(done).some(k=>k.startsWith('t-')) ? 'fund' : 'tut'); };
+const HOME_TABS = [['tut','🧩','Fichas'], ['fund','🧱','Fundamentos'], ['dif','📈','Diferencial'], ['int','∫','Integral'], ['juego','🎮','Juego']];
+/** Progreso de propiedades practicadas (3 ejercicios por carta). */
+function propsProgreso(domId){
+  const cs = DefensaAlgebraica.cartasPracticables(domId);
+  return {cs, n:cs.reduce((a,c)=>a+[0,1,2].filter(i=>done[`p-${domId}-${c.id}-${i}`]).length,0), tot:cs.length*3};
+}
+function propsGrid(domId){
+  const {cs} = propsProgreso(domId);
+  return `<div class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">${cs.map(c=>{ const n=[0,1,2].filter(i=>done[`p-${domId}-${c.id}-${i}`]).length;
+    return `<a href="#/p/${domId}/${c.id}" class="flex items-center gap-2 rounded-xl border border-stone-200 bg-white p-2.5 text-sm hover:border-blue-500 dark:border-zinc-800 dark:bg-zinc-900"><span class="text-2xl">${c.icon}</span><span class="min-w-0 flex-1"><b class="block truncate">${c.name}</b><span class="text-xs text-stone-500 dark:text-zinc-400">${n===3?'✅ 3/3':`${n}/3 ejercicios`}</span></span></a>`; }).join('')}</div>`;
+}
 function pageHome(){
   const fAll = FUND.reduce((a,T)=>a+T.lego.length,0), fOk = FUND.reduce((a,T)=>a+fundProgress(T).n,0);
   const iAll = LESSONS.reduce((a,L)=>a+L.exercises.length,0), iOk = LESSONS.reduce((a,L)=>a+lessonProgress(L).n,0);
-  const bar = (n,t) => `<div class="my-2 h-2 overflow-hidden rounded-full bg-stone-200 dark:bg-zinc-800"><div class="h-full bg-emerald-500" style="width:${t?100*n/t:0}%"></div></div><small class="text-stone-500 dark:text-zinc-400">${n}/${t} ejercicios</small>`;
+  const bar = (n,t,txt='ejercicios') => `<div class="my-2 h-2 overflow-hidden rounded-full bg-stone-200 dark:bg-zinc-800"><div class="h-full bg-emerald-500" style="width:${t?100*n/t:0}%"></div></div><small class="text-stone-500 dark:text-zinc-400">${n}/${t} ${txt}</small>`;
   const sec = (href, icon, title, sub, extra) => `<a href="${href}" class="block rounded-2xl border border-stone-200 bg-white p-5 shadow-sm hover:border-blue-500 dark:border-zinc-800 dark:bg-zinc-900"><div class="text-3xl">${icon}</div><b class="mt-2 block text-lg">${title}</b><p class="!my-1 text-sm text-stone-600 dark:text-zinc-400">${sub}</p>${extra}</a>`;
+  const tab = homeTab();
+  const tutOk = TUT[0].lego.filter((_,i)=>done[`t-fichas-${i}`]).length;
+  const propsBloque = (domId, titulo) => { const pp = propsProgreso(domId);
+    return `<h3 class="${C.h3}">🃏 Propiedades del juego · ${titulo}</h3><p class="${C.src}">Las mismas cartas del juego, cada una con 3 ejercicios: toca la carta, elige dónde aplicarla y escoge el resultado. ${pp.n}/${pp.tot} hechos.</p>${propsGrid(domId)}`; };
+  const cuerpo = {
+    tut: `<h3 class="${C.h3}">🧩 Cómo usar las fichas</h3>
+      <p class="${C.src}">Mira la animación y luego practica: cada tarjeta es un mini‑ejercicio real (${tutOk}/${TUT[0].lego.length} hechos).</p>
+      ${DEMO_FICHAS}
+      <ol class="text-sm">
+        <li><b>Categorías:</b> 🔢 Números, 𝑥 Variables, ± Signos, ƒ Funciones (potencia, raíz, eˣ, sin, ln, lím…) y 🧩 Agrupar (fracción y paréntesis). <b>Toca</b> una para fijar su menú 📌 o <b>mantenla</b> para asomarlo y arrastrar.</li>
+        <li><b>Recuadros:</b> las funciones son cajas con espacios adentro. El espacio <b class="text-blue-700 dark:text-blue-300">azul</b> recibe las fichas que tocas; ⇥ salta al siguiente y ⤴ sale al de afuera.</li>
+        <li><b>Arrastrar:</b> una barra azul muestra dónde caerá la ficha. Para quitarla, tócala o suéltala fuera del lienzo.</li>
+        <li><b>Reemplazar:</b> en los límites arrastra el número <b>encima</b> de cada x.</li>
+        <li><b>Propiedades:</b> en Fundamentos, 🃏 Propiedades aplica una carta del juego a lo que armaste.</li></ol>
+      ${TUT[0].lego.map((ex,k)=>legoCard(ex, `t-fichas-${k}`, k)).join('')}`,
+    fund: `<div class="mt-4 grid gap-4 md:grid-cols-2">${sec('#/f','🧱','Temas de Fundamentos','Operaciones, fracciones, factorización, ecuaciones e inecuaciones, con ejercicios de fichas.', bar(fOk,fAll))}
+      ${sec('#/p/fund','🃏','Propiedades (cartas)','Distributiva, términos semejantes, transponer, dividir ambos lados y operar.', bar(propsProgreso('fund').n, propsProgreso('fund').tot))}</div>${propsBloque('fund','Fundamentos')}`,
+    dif: `<div class="mt-4 grid gap-4 md:grid-cols-2">${sec('#/d','📈','Temas de Cálculo diferencial','Límites (escribir, reemplazar y calcular), continuidad, derivadas, cadena, implícita, optimización y L\'Hôpital.', bar(secTotales('d').n, secTotales('d').tot))}
+      ${sec('#/p/dif','🃏','Propiedades de derivadas','Suma, constante, potencia, tabla, producto y cadena.', bar(propsProgreso('dif').n, propsProgreso('dif').tot))}</div>${propsBloque('dif','Diferencial')}`,
+    int: `<div class="mt-4 grid gap-4 md:grid-cols-2">${sec('#/integral','∫','Cálculo integral','Técnicas de integración, impropias y la solución del examen.', bar(iOk,iAll))}
+      ${sec('#/p/int','🃏','Propiedades de integrales','Suma, constante, potencia, ln, tabla, sustitución y + C.', bar(propsProgreso('int').n, propsProgreso('int').tot))}</div>${propsBloque('int','Integral')}`,
+    juego: `<a href="#/jugar" class="mt-4 flex items-center gap-4 rounded-2xl bg-gradient-to-r from-indigo-950 to-violet-900 p-5 text-white shadow-sm touch-manipulation active:scale-[0.98] transition-transform"><span class="text-5xl">👽</span><span><b class="block text-lg">🎮 Defensa Algebraica</b><span class="text-sm text-indigo-200">Resuelve ecuaciones, derivadas e integrales con cartas para dar energía a los soldados. Catálogo, mejoras, mazo y 💾 partidas guardadas dentro del juego.</span></span></a>
+      <a href="#/ruta" class="mt-3 flex items-center gap-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/30"><span class="text-4xl">🗺️</span><span><b class="block">Ruta de progreso</b><span class="text-sm text-stone-600 dark:text-zinc-400">Todo lo que haces suma XP y desbloquea problemas, cartas, dificultades y bonificadores del juego.</span></span></a>`,
+  }[tab];
   return `
   <h2 class="${C.h2}">Matemáticas para el cálculo, paso a paso</h2>
-  <p class="${C.lead}">Empieza por los fundamentos, sigue con cálculo diferencial y termina con cálculo integral. Cada tema explica lo básico, resuelve ejemplos de nivel medio y difícil diciendo <b>qué</b> se hace y <b>por qué</b>, y te deja ejercicios.</p>
-  <div class="mt-5 grid gap-4 md:grid-cols-3">
-    ${sec('#/f','🧱','1 · Fundamentos','Operaciones, fracciones, factorización, ecuaciones e inecuaciones. Ejercicios con piezas para armar.', bar(fOk,fAll))}
-    ${sec('#/d','📈','2 · Cálculo diferencial','Límites, continuidad, derivadas, cadena, implícita, máximos, optimización y L\'Hôpital.', bar(secTotales('d').n, secTotales('d').tot))}
-    ${sec('#/integral','∫','3 · Cálculo integral','Técnicas de integración, impropias y la solución del examen.', bar(iOk,iAll))}
+  <p class="${C.lead}">Aprende con fichas, practica las propiedades como cartas y ponlas a prueba en el juego. Todo suma en tu 🗺️ Ruta.</p>
+  <div class="sticky top-[57px] z-10 -mx-3.5 mt-3 flex gap-1.5 overflow-x-auto bg-stone-50/95 px-3.5 py-2 backdrop-blur [scrollbar-width:none] dark:bg-zinc-950/95" role="tablist">
+    ${HOME_TABS.map(([id,ic,n])=>`<button role="tab" aria-selected="${tab===id}" data-home-tab="${id}" class="flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-semibold touch-manipulation ${tab===id?'border-blue-600 bg-blue-600 text-white dark:border-blue-400 dark:bg-blue-400 dark:text-zinc-950':'border-stone-200 bg-white dark:border-zinc-700 dark:bg-zinc-900'}">${ic} ${n}</button>`).join('')}
   </div>
-  <a href="#/jugar" class="mt-4 flex items-center gap-4 rounded-2xl bg-gradient-to-r from-indigo-950 to-violet-900 p-5 text-white shadow-sm touch-manipulation active:scale-[0.98] transition-transform"><span class="text-5xl">👽</span><span><b class="block text-lg">🎮 Practicar: Defensa Algebraica</b><span class="text-sm text-indigo-200">Juego de cartas: resuelve ecuaciones, derivadas e integrales para dar energía a los soldados. Elige practicar Fundamentos, Diferencial, Integral o todo junto.</span></span></a>
-  <div class="${C.card} mt-6"><b>📖 Diccionario de propiedades</b>
-    <p class="!my-1.5">Todas las propiedades y fórmulas en un solo lugar, con buscador. Ábrelo desde cualquier página con el botón <b>📖 Diccionario</b> de la barra superior (o la tecla <kbd class="rounded border border-stone-300 px-1 text-xs dark:border-zinc-600">D</kbd>).</p>
-    <button class="${C.btnP}" data-dict-open>Abrir diccionario</button></div>
-  <div class="${C.card}"><b>🧩 ¿Cómo funcionan los ejercicios con piezas?</b>
-    <ol>
-      <li>Cada paso te dice <b>qué hacer</b> y te da un <b>lienzo en blanco</b>.</li>
-      <li>Abajo hay una barra de <b>categorías</b>: 🔢 Números, 𝑥 Variables, ± Signos, ƒ Funciones y 🧩 Agrupar (fracción, raíz, exponente, paréntesis).</li>
-      <li><b>Toca</b> una categoría y su menú queda <b>fijo</b> 📌: toca piezas para añadirlas al espacio azul o arrástralas al lienzo. <b>Mantenla presionada</b> y el menú se <b>asoma</b>: desliza el dedo a la pieza, llévala al lienzo y suelta; el menú se cierra solo.
-      <li>Toca una pieza del lienzo para quitarla, o arrástrala para moverla.</li>
-      <li>Pulsa <b>Verificar</b>. Si está bien, pasas al siguiente paso; si no, usa la pista o mira la solución.</li>
-    </ol></div>`;
+  ${cuerpo}`;
+}
+
+/* ---------- Propiedades: índice por área y práctica de una carta ---------- */
+const DOM_NOMBRE = {fund:['🧱','Fundamentos'], dif:['📈','Cálculo diferencial'], int:['∫','Cálculo integral']};
+function pagePropsIndex(domId){
+  const [ic, n] = DOM_NOMBRE[domId], pp = propsProgreso(domId);
+  return `<div class="text-sm text-stone-500 dark:text-zinc-400"><a href="#/" class="underline">Inicio</a> › Propiedades</div>
+  <h2 class="${C.h2}">🃏 Propiedades · ${ic} ${n}</h2>
+  <p class="${C.lead}">Cada propiedad es una carta del juego. Hay 3 ejercicios por carta (${pp.n}/${pp.tot} hechos). Cada ejercicio resuelto suma XP en la 🗺️ Ruta.</p>
+  ${propsGrid(domId)}
+  <div class="mt-4 flex flex-wrap gap-2">${Object.keys(DOM_NOMBRE).filter(d=>d!==domId).map(d=>`<a class="${C.btn}" href="#/p/${d}">${DOM_NOMBRE[d][0]} ${DOM_NOMBRE[d][1]}</a>`).join('')}</div>`;
+}
+function pageProp(domId, cartaId){
+  const c = DefensaAlgebraica.cartasPracticables(domId).find(x=>x.id===cartaId);
+  if (!c) return pagePropsIndex(domId);
+  const cs = DefensaAlgebraica.cartasPracticables(domId), i = cs.findIndex(x=>x.id===cartaId), prev = cs[i-1], next = cs[i+1];
+  return `<div class="text-sm text-stone-500 dark:text-zinc-400"><a href="#/p/${domId}" class="underline">Propiedades · ${DOM_NOMBRE[domId][1]}</a> › ${i+1} de ${cs.length}</div>
+  <h2 class="${C.h2}">${c.icon} ${c.name}</h2>
+  <p class="${C.lead}">${c.desc}. ${c.pista}</p>
+  ${c.formula ? `<div class="${C.prob}">\\[${c.formula}\\]</div>` : ''}
+  <div class="${C.card}"><b>¿Cómo se practica?</b><ol class="text-sm"><li>Toca <b>Usar</b> (es como jugar la carta).</li><li>Si la propiedad se puede usar en varias partes, se marcan en colores: toca dónde aplicarla.</li><li>Elige cuál es el resultado correcto.</li></ol></div>
+  <div data-practica></div>
+  <div class="mt-8 flex flex-wrap justify-between gap-2.5">
+    ${prev ? `<a class="${C.btn}" href="#/p/${domId}/${prev.id}">◂ ${prev.name}</a>` : `<a class="${C.btn}" href="#/p/${domId}">◂ Todas</a>`}
+    ${next ? `<a class="${C.btn}" href="#/p/${domId}/${next.id}">${next.name} ▸</a>` : `<a class="${C.btn}" href="#/jugar">🎮 Al juego ▸</a>`}
+  </div>`;
+}
+function montarPractica(domId, cartaId){
+  const host = document.querySelector('[data-practica]'); if (!host) return;
+  new DefensaAlgebraica.PracticaPropiedades(host, {domId, cartaId,
+    isDone: k => !!done[k],
+    onDone: k => { if (!done[k]){ done[k] = true; store.set('done', done); buildNavFromHash(); } }}).render();
+}
+
+/* ---------- Ruta (pase de batalla) ---------- */
+function rutaApp(){ return new DefensaAlgebraica.Ruta(new DefensaAlgebraica.Progreso(new DefensaAlgebraica.SaveRepository()), () => Object.keys(done).filter(k => done[k])); }
+function pageRuta(){
+  const R = rutaApp().resumen(), sig = R.tiers[R.nivelReal+1];
+  const TONO = {problema:'bg-sky-100 text-sky-900 dark:bg-sky-950/60 dark:text-sky-200', carta:'bg-violet-100 text-violet-900 dark:bg-violet-950/60 dark:text-violet-200', dificultad:'bg-rose-100 text-rose-900 dark:bg-rose-950/60 dark:text-rose-200', bonus:'bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200', puntos:'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200'};
+  const ETQ = {problema:'Problema', carta:'Propiedad', dificultad:'Dificultad', bonus:'Bonificador', puntos:'Premio'};
+  return `<h2 class="${C.h2}">🗺️ Ruta de progreso</h2>
+  <p class="${C.lead}">Como un pase de batalla: todo lo que resuelves suma XP (ejercicios de fichas y de propiedades, problemas, oleadas y misiones del juego) y cada nivel desbloquea contenido nuevo del juego.</p>
+  ${R.dev ? `<div class="${C.card} border-amber-400 bg-amber-50 dark:bg-amber-950/30">🧪 <b>Modo desarrollo activo</b>: todo está desbloqueado (también el catálogo). Desactívalo en el menú del juego para seguir la Ruta.</div>` : ''}
+  <div class="${C.card} flex items-center gap-4">
+    <div class="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-orange-500 font-black text-white shadow"><span class="text-[10px] uppercase">Nivel</span><span class="text-2xl leading-none">${R.nivelReal+1}</span></div>
+    <div class="min-w-0 flex-1"><b>${R.xp} XP</b> <span class="text-sm text-stone-500 dark:text-zinc-400">· ${R.ejercicios} ejercicios de la guía</span>
+      <div class="mt-1.5 h-3 overflow-hidden rounded-full bg-stone-200 dark:bg-zinc-800"><div class="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500" style="width:${Math.min(100,100*R.xp/R.max)}%"></div></div>
+      <small class="text-stone-500 dark:text-zinc-400">${sig ? `Faltan ${sig.xp - R.xp} XP para el nivel ${sig.i+1}` : '¡Ruta completa!'}</small></div></div>
+  <ol class="relative mt-6 !list-none border-l-4 border-stone-200 pl-6 dark:border-zinc-800">
+    ${R.tiers.map(t=>`<li class="relative mb-5" id="ruta-${t.i}">
+      <span class="absolute -left-[2.35rem] top-1 flex h-8 w-8 items-center justify-center rounded-full border-4 text-sm font-black ${t.ok?'border-amber-400 bg-amber-300 text-amber-950':'border-stone-200 bg-white text-stone-400 dark:border-zinc-800 dark:bg-zinc-900'}">${t.ok?'✓':t.i+1}</span>
+      <div class="rounded-2xl border p-3 ${t.ok?'border-amber-300 bg-white dark:border-amber-700 dark:bg-zinc-900':'border-stone-200 bg-stone-100/60 opacity-80 dark:border-zinc-800 dark:bg-zinc-900/40'} ${sig && sig.i===t.i?'ring-2 ring-blue-400':''}">
+        <div class="flex items-baseline justify-between"><b>Nivel ${t.i+1}${t.titulo?` · ${t.titulo}`:''}</b><span class="text-xs text-stone-500 dark:text-zinc-400">${t.xp} XP ${t.ok?'· desbloqueado':'🔒'}</span></div>
+        <div class="mt-2 flex flex-wrap gap-1.5">${t.premios.map(p=>`<span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${TONO[p.tipo]}"><span>${p.icon}</span><span class="opacity-70">${ETQ[p.tipo]}:</span> ${p.nombre}${p.reclamable?` <button data-reclamar="${t.i}" class="ml-1 rounded-full bg-emerald-600 px-2 text-white">Reclamar</button>`:p.reclamado?' ✓':''}</span>`).join('')}</div></div></li>`).join('')}
+  </ol>
+  <div class="mt-2 flex flex-wrap gap-2"><a class="${C.btnP}" href="#/jugar">🎮 Ir al juego</a><a class="${C.btn}" href="#/">🏠 Seguir aprendiendo</a></div>`;
 }
 
 function pageSecIndex(sec){
@@ -306,8 +423,9 @@ document.addEventListener('keydown', e=>{
    #/integral, #/l1… #/bases, #/estrategia, #/examen → Cálculo integral
    ===================================================================== */
 function currentId(){
-  const [r, sub] = location.hash.replace(/^#\/?/,'').split('/');
+  const [r, sub, sub2] = location.hash.replace(/^#\/?/,'').split('/');
   if (!r || r==='inicio') return 'home';
+  if (r==='p') return 'p/' + (sub||'') + (sub2 ? '/'+sub2 : '');
   if (r==='f' || r==='d') return sub ? r+'/'+sub : r;
   if (r==='diferencial') return 'd';
   return r;
@@ -316,8 +434,10 @@ function buildNav(cur){
   const grp = (t, href, open) => `<a href="${href}" class="mx-1 mb-1 mt-4 flex items-center justify-between rounded-lg px-1.5 py-1 text-xs font-bold uppercase tracking-wider ${open?'text-blue-700 dark:text-blue-300':'text-stone-500 dark:text-zinc-400'} hover:bg-blue-50 dark:hover:bg-blue-950/40">${t}<span>${open?'▾':'▸'}</span></a>`;
   const a = (href,label,id,extra='') => `<a href="${href}" class="flex justify-between gap-1.5 rounded-lg px-2.5 py-1.5 text-[0.93rem] hover:bg-blue-50 dark:hover:bg-blue-950/50 ${cur===id?'bg-blue-50 font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300':''}">${label}${extra}</a>`;
   const cnt = (n,t) => `<span class="text-xs font-normal text-stone-500 dark:text-zinc-400">${n}/${t}</span>`;
-  const sec = cur==='home' ? 'home' : cur==='jugar' ? 'P' : cur.startsWith('f') ? 'F' : cur.startsWith('d') ? 'D' : 'I';
-  let h = a('#/','🏠 Inicio','home') + a('#/jugar','🎮 Practicar: Defensa Algebraica','jugar') + `<button data-dict-open class="mt-1 flex w-full rounded-lg px-2.5 py-1.5 text-left text-[0.93rem] hover:bg-blue-50 dark:hover:bg-blue-950/50">📖 Diccionario</button>`;
+  const sec = cur==='home' ? 'home' : cur==='jugar' ? 'P' : cur==='ruta' ? 'ruta' : cur.startsWith('p/') ? 'props' : cur.startsWith('f') ? 'F' : cur.startsWith('d') ? 'D' : 'I';
+  let h = a('#/','🏠 Inicio','home') + a('#/ruta','🗺️ Ruta','ruta') + a('#/jugar','🎮 Juego: Defensa Algebraica','jugar') + `<button data-dict-open class="mt-1 flex w-full rounded-lg px-2.5 py-1.5 text-left text-[0.93rem] hover:bg-blue-50 dark:hover:bg-blue-950/50">📖 Diccionario</button>`;
+  h += grp('🃏 Propiedades (cartas)', '#/p/fund', sec==='props');
+  if (sec==='props') h += Object.keys(DOM_NOMBRE).map(d => { const pp = propsProgreso(d); return a('#/p/'+d, `${DOM_NOMBRE[d][0]} ${DOM_NOMBRE[d][1]}`, 'p/'+d, cnt(pp.n, pp.tot)); }).join('');
   h += grp('🧱 Fundamentos', '#/f', sec==='F'||sec==='home');
   if (sec==='F'||sec==='home') h += a('#/f','Todos los temas','f') + FUND.map((T,i)=>{const p=fundProgress(T);return a('#/f/'+T.id, `${i+1}. ${T.short}`, 'f/'+T.id, cnt(p.n,p.tot))}).join('');
   h += grp('📈 Cálculo diferencial', '#/d', sec==='D');
@@ -327,11 +447,12 @@ function buildNav(cur){
     LESSONS.map(L=>{const p=lessonProgress(L);return a('#/'+L.id, `${L.n}. ${L.short}`, L.id, cnt(p.n,p.tot))}).join('') +
     a('#/estrategia','🧭 ¿Qué técnica uso?','estrategia') + a('#/examen','📝 Solución del examen','examen');
   side.innerHTML = h;
-  // Barra inferior (celular): marca la sección actual
+  // Barra inferior y superior: Inicio · Ruta · Juego · Diccionario (los temas cuentan como Inicio)
+  const nav = sec==='ruta' ? 'ruta' : sec==='P' ? 'P' : 'home';
   const ON = ['text-blue-700','dark:text-blue-300','font-semibold'];
   document.querySelectorAll('[data-bn]').forEach(el=>{
-    const on = el.dataset.bn===sec; el.classList.remove(...ON); if (on) el.classList.add(...ON);
-    el.querySelector('span').classList.toggle('bg-blue-100', on); el.querySelector('span').classList.toggle('dark:bg-blue-950', on);
+    const on = el.dataset.bn===nav; el.classList.remove(...ON); if (on) el.classList.add(...ON);
+    el.querySelector('span')?.classList.toggle('bg-blue-100', on); el.querySelector('span')?.classList.toggle('dark:bg-blue-950', on);
   });
 }
 function buildNavFromHash(){ buildNav(currentId()); }
@@ -345,7 +466,7 @@ const scrim = document.getElementById('scrim');
 function toggleMenu(open){ side.classList.toggle('-translate-x-full', !open); scrim.classList.toggle('hidden', !open); }
 scrim.onclick = ()=>toggleMenu(false);
 function route(){
-  const [r, sub] = location.hash.replace(/^#\/?/,'').split('/');
+  const [r, sub, sub2] = location.hash.replace(/^#\/?/,'').split('/');
   const view = document.getElementById('view');
   const L = LESSONS.find(x=>x.id===r);
   const SEC = r==='diferencial' ? 'd' : r;
@@ -353,7 +474,9 @@ function route(){
   let html, title;
   if (T){ html = pageSecTopic(SEC, T); title = T.short; }
   else if (SECCIONES_AP[SEC]){ html = pageSecIndex(SEC); title = SECCIONES_AP[SEC].nombre; }
-  else if (r==='jugar'){ html = pageHome(); title = 'Practicar'; }
+  else if (r==='jugar'){ html = pageHome(); title = 'Juego'; }
+  else if (r==='ruta'){ html = pageRuta(); title = 'Ruta'; }
+  else if (r==='p' && DOM_NOMBRE[sub]){ html = sub2 ? pageProp(sub, sub2) : pagePropsIndex(sub); title = 'Propiedades'; }
   else if (r==='integral'){ html = pageIntegral(); title = 'Cálculo integral'; }
   else if (L){ html = pageLesson(L); title = L.short; }
   else if (r==='bases'){ html = pageBases(); title = 'Bases para integrar'; }
@@ -365,8 +488,10 @@ function route(){
   buildNavFromHash();
   renderMath(view);
   if (T) T.lego.forEach((_,k)=>renderLego(`${SEC}-${T.id}-${k}`));
+  if (!r && homeTab()==='tut') TUT[0].lego.forEach((_,k)=>renderLego(`t-fichas-${k}`));
+  if (r==='p' && sub2) montarPractica(sub, sub2);
   toggleMenu(false);
-  const target = sub && !T && document.getElementById('b-'+sub);
+  const target = sub && !T && r!=='p' && document.getElementById('b-'+sub);
   if (target) setTimeout(()=>target.scrollIntoView({behavior:'smooth',block:'start'}),30);
   else window.scrollTo(0,0);
   document.title = title + ' · Guía de Cálculo';
@@ -429,6 +554,12 @@ window.addEventListener('hashchange', route);
 window.addEventListener('load', route);
 
 /* ---------- Practicar: juego (se crea al entrar por primera vez) ---------- */
+document.addEventListener('click', e=>{
+  const ht = e.target.closest('[data-home-tab]');
+  if (ht){ try { sessionStorage.setItem('calcint:homeTab', ht.dataset.homeTab); } catch {} return route(); }
+  const rc = e.target.closest('[data-reclamar]');
+  if (rc){ const pts = rutaApp().reclamar(+rc.dataset.reclamar); return route(); }
+});
 let JUEGO = null;
 function abrirJuego(){
   JUEGO ??= new DefensaAlgebraica.GameApp(document.getElementById('juego'), {
@@ -436,6 +567,7 @@ function abrirJuego(){
     onExit: () => { location.hash = '#/'; },
     piezas: new DefensaAlgebraica.TableroPiezas(() => document.getElementById('juegoPiezas')),
   });
+  JUEGO.progreso.data = new DefensaAlgebraica.Progreso(new DefensaAlgebraica.SaveRepository()).data;   // por si la Ruta cambió algo fuera del juego
   JUEGO.open(); document.body.classList.add('overflow-hidden');
 }
 function cerrarJuego(){ if (JUEGO){ JUEGO.close(); document.body.classList.remove('overflow-hidden'); } }

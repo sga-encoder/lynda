@@ -97,10 +97,46 @@ const separarCoef = t => { const m = /^(\d+(?:\.\d+)?)([a-zA-Zπ])$/.exec(t); re
 const separarCifras = t => /^\d{2,}$/.test(t) ? t.split('') : [t];
 const piezasDe = k => [...new Set(k.flatMap(t => /^[-+]./.test(t) ? [t[0], t.slice(1)] : [t]).flatMap(separarCoef).flatMap(separarCifras))];
 /** Cifras seguidas en un mismo espacio se agrupan en UNA ficha (1, 2 → 12). Se modifica el mismo arreglo. */
-const esCifras = n => !n.z && !n.sub && /^\d+$/.test(n.t);
+const esCifras = n => !!n && !n.z && !n.sub && /^\d+$/.test(n.t);
+/* Monomios: signo + número + variable se agrupan en UNA ficha (−, 3, x → −3x).
+   - El 1 delante de una letra no se ve (1x → x), pero sigue en el editor y se puede sacar.
+   - Un monomio positivo pegado detrás de uno negativo recibe su «+» (−3x 5 → −3x + 5).
+   - Al inicio del espacio el «+» sobra y desaparece. */
+const esSigno = n => n && !n.z && !n.sub && (n.t === '-' || n.t === '+');
+const esLetra = n => n && !n.z && !n.sub && /^[a-zA-Zπ]$/.test(n.t);
+const partesDe = n => n.mono ? [...n.partes] : /^\d+$/.test(n.t) ? [n.t] : [n.t];
+function textoMono(partes){
+  const p = [...partes];
+  for (let i = 0; i < p.length - 1; i++) if (p[i] === '1' && /^[a-zA-Zπ]$/.test(p[i + 1])) p.splice(i, 1);   // 1x → x
+  return p.join('');
+}
+function hacerMono(n, partes){ Object.assign(n, {t:textoMono(partes), mono:true, partes}); delete n.z; return n; }
 function fusionarNumeros(zone){
+  // 1) cifras seguidas → un número
   for (let i = zone.length - 1; i > 0; i--)
     if (esCifras(zone[i]) && esCifras(zone[i-1])){ zone[i-1].t += zone[i].t; zone.splice(i, 1); }
+  // 2) [signo] [número] [letra] → monomio
+  for (let i = 0; i < zone.length; i++){
+    const n = zone[i]; if (n.z || n.sub) continue;
+    let j = i, partes = [];
+    if (esSigno(zone[j]) && (esCifras(zone[j+1]) || esLetra(zone[j+1]) || zone[j+1]?.mono && !esSigno({t:zone[j+1].partes[0]}))){ partes.push(zone[j].t); j++; }
+    if (zone[j]?.mono && partes.length){ partes.push(...zone[j].partes); j++; }
+    else {
+      if (esCifras(zone[j])){ partes.push(zone[j].t); j++; }
+      if (esLetra(zone[j]) && (partes.length)){ partes.push(zone[j].t); j++; }
+    }
+    const tieneNum = partes.some(x => /^\d+$/.test(x)), tieneLetra = partes.some(x => /^[a-zA-Zπ]$/.test(x)), tieneSigno = esSigno({t:partes[0]});
+    if (j - i >= 2 && (tieneSigno || (tieneNum && tieneLetra))){ zone.splice(i, j - i, hacerMono({}, partes)); }
+  }
+  // 3) «+» que falta detrás de un monomio negativo; «+» sobrante al inicio; monomios de una sola parte vuelven a ser fichas
+  for (let i = 0; i < zone.length; i++){
+    if (i > 0 && esCifras(zone[i]) && zone[i-1].mono && zone[i-1].partes[0] === '-') zone[i] = hacerMono({}, ['+', zone[i].t]);   // −3x 5 → −3x + 5
+    const n = zone[i]; if (!n.mono) continue;
+    if (i === 0 && n.partes[0] === '+') n.partes.shift();
+    if (i > 0 && zone[i-1].mono && zone[i-1].partes[0] === '-' && !esSigno({t:n.partes[0]})) n.partes.unshift('+');
+    if (n.partes.length === 1){ zone[i] = {t:n.partes[0]}; continue; }
+    n.t = textoMono(n.partes);
+  }
 }
 const ABC = [...'abcdefghijklmnopqrstuvwxyz', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
 const LIM_RE = /^lim_\{(.+?)→(.+?)\}\((.*)\)$/;
@@ -352,12 +388,14 @@ function renderLego(key){
 function propsHTML(key, st){
   const chip = 'inline-flex min-h-10 items-center gap-1.5 rounded-xl border px-3 text-sm touch-manipulation active:scale-95';
   if (!st.verProps) return `<button class="${chip} mt-2 border-violet-300 bg-violet-50 text-violet-900 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-100" data-lg="props">🃏 Propiedades</button>`;
-  const L = st.root.length && typeof DefensaAlgebraica !== 'undefined' ? DefensaAlgebraica.propiedadesParaLienzo(ser(st.root)) : [];
+  const D = typeof DefensaAlgebraica !== 'undefined' ? DefensaAlgebraica : null;
+  const libres = D ? D.cartasLibres(new D.Progreso(new D.SaveRepository()), () => Object.keys(done).filter(k => done[k])) : null;   // solo las desbloqueadas en la Ruta
+  const L = st.root.length && D ? D.propiedadesParaLienzo(ser(st.root), id => !libres || libres.has(id)) : [];
   st.propsLista = L;
   return `<div class="mt-2 rounded-xl border border-violet-300 bg-violet-50 p-2 dark:border-violet-700 dark:bg-violet-950/40">
     <div class="flex items-center justify-between text-xs font-semibold text-violet-900 dark:text-violet-100"><span>🃏 Propiedades que se pueden aplicar a lo que armaste</span><button data-lg="props" class="h-8 w-8 rounded-lg" aria-label="Cerrar">✕</button></div>
     <div class="mt-1.5 flex flex-wrap gap-1.5">${L.length ? L.map(c => `<button class="${chip} border-violet-400 bg-white dark:bg-zinc-900" data-lg="prop:${c.id}">${c.icon} ${c.name}</button>`).join('')
-      : `<span class="text-sm text-stone-600 dark:text-zinc-300">${st.root.length ? 'Ninguna carta aplica aquí (o falta completar lo armado).' : 'Primero arma algo en el lienzo.'}</span>`}</div></div>`;
+      : `<span class="text-sm text-stone-600 dark:text-zinc-300">${st.root.length ? 'Ninguna de tus cartas desbloqueadas aplica aquí (las demás se ganan en la 🗺️ Ruta).' : 'Primero arma algo en el lienzo.'}</span>`}</div></div>`;
 }
 const SECCION_LEGO = {f:() => FUND, d:() => DIF, z:() => [{id:'demo', lego:ejerciciosProbar()}]};   // z: pruebas del tutorial      // prefijo de la clave → temas
 function legoEx(key){                 // key = <f|d>-<tema>-<i>
@@ -417,9 +455,9 @@ function legoAction(key, act){
 /** Panel para editar un número agrupado: sus cifras se despliegan arriba; se pueden reordenar o borrar. */
 function editorNumeroHTML(st){
   const ed = st.editNum; if (!ed) return '';
-  const cifras = ed.node.t.split(''), b = 'inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border px-2 text-sm touch-manipulation active:scale-95';
+  const cifras = ed.node.mono ? ed.node.partes : ed.node.t.split(''), b = 'inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border px-2 text-sm touch-manipulation active:scale-95';
   return `<div data-editor class="mb-2 rounded-xl border-2 border-blue-400 bg-white p-2.5 shadow-lg dark:bg-zinc-900">
-    <div class="flex items-center justify-between text-sm"><span>✏️ Cifras del número <b>${ed.node.t}</b></span><button data-lg="dig-ok" class="${b} border-blue-600 bg-blue-600 font-semibold text-white">✓ Listo</button></div>
+    <div class="flex items-center justify-between text-sm"><span>✏️ Fichas de <b>${ed.node.t}</b></span><button data-lg="dig-ok" class="${b} border-blue-600 bg-blue-600 font-semibold text-white">✓ Listo</button></div>
     <div class="mt-2 flex flex-wrap justify-center gap-1.5">${cifras.map((c, i) => `<button data-lg="dig:${i}" data-dig="${i}" style="touch-action:none" class="${b} min-h-12 min-w-12 border-b-4 border-blue-500 bg-blue-50 font-serif text-xl text-blue-950 dark:bg-blue-950/60 dark:text-blue-100 ${ed.sel === i ? 'ring-4 ring-amber-400' : ''}">${c}</button>`).join('')}</div>
     <p class="mt-1.5 text-center text-xs text-stone-500 dark:text-zinc-400">${ed.sel == null ? 'Toca una cifra para moverla o borrarla, o arrástrala al lienzo para sacarla del número.' : `Cifra «${cifras[ed.sel]}» seleccionada:`}</p>
     ${ed.sel == null ? '' : `<div class="mt-1 flex justify-center gap-1.5"><button data-lg="dig-izq" class="${b} border-stone-300 bg-white dark:border-zinc-600 dark:bg-zinc-800" ${ed.sel === 0 ? 'disabled' : ''}>◀ Mover</button><button data-lg="dig-der" class="${b} border-stone-300 bg-white dark:border-zinc-600 dark:bg-zinc-800" ${ed.sel === cifras.length - 1 ? 'disabled' : ''}>Mover ▶</button><button data-lg="dig-del" class="${b} border-rose-300 bg-rose-50 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200">🗑 Borrar</button></div>`}
@@ -428,7 +466,7 @@ function editorNumeroHTML(st){
 /** Acciones del editor de cifras. */
 function accionCifras(st, act){
   const ed = st.editNum; if (!ed) return;
-  const d = ed.node.t.split('');
+  const d = ed.node.mono ? [...ed.node.partes] : ed.node.t.split('');
   if (act === 'dig-ok'){ st.editNum = null; return; }
   if (act.startsWith('dig:')){ const i = +act.slice(4); ed.sel = ed.sel === i ? null : i; return; }
   if (ed.sel == null) return;
@@ -436,7 +474,7 @@ function accionCifras(st, act){
   if (act === 'dig-izq' && ed.sel > 0){ [d[ed.sel-1], d[ed.sel]] = [d[ed.sel], d[ed.sel-1]]; ed.sel--; }
   if (act === 'dig-der' && ed.sel < d.length-1){ [d[ed.sel+1], d[ed.sel]] = [d[ed.sel], d[ed.sel+1]]; ed.sel++; }
   if (act === 'dig-del'){ d.splice(ed.sel, 1); ed.sel = null; }
-  if (d.length){ ed.node.t = d.join(''); if (d.length === 1) st.editNum = null; }
+  if (d.length){ if (ed.node.mono) hacerMono(ed.node, d); else ed.node.t = d.join(''); if (d.length === 1) st.editNum = null; }
   else { const z = allZones(st.root).find(z => z.includes(ed.node)); if (z) z.splice(z.indexOf(ed.node), 1); st.editNum = null; }
   st.msg = null;
 }
@@ -560,7 +598,7 @@ function zoneAt(x, y, key){
 }
 document.addEventListener('pointerdown', e=>{
   const cardEl = e.target.closest('[data-lego]'), kEd = cardEl?.dataset.lego;
-  if (kEd && LEGO[kEd]?.editNum && !e.target.closest('[data-editor]') && !e.target.closest('[data-n]')){   // tocar fuera cierra el editor
+  if (kEd && LEGO[kEd]?.editNum && !e.target.closest('[data-editor]')){   // tocar fuera cierra el editor
     LEGO[kEd].editNum = null; addEventListener('pointerup', () => renderLego(kEd), {once:true});
   }
   const dg = e.target.closest('[data-dig]');
@@ -587,7 +625,7 @@ document.addEventListener('pointerdown', e=>{
     const [key, zid, i] = nEl.dataset.n.split('|');
     DRAG = {key, src:'node', zone:ZREG[key][+zid], i:+i, el, x0:e.clientX, y0:e.clientY, moved:false, lift:e.pointerType==='mouse'?0:48};
     const nodo = DRAG.zone[DRAG.i];
-    if (!LEGO_HOOKS[key] && esCifras(nodo) && nodo.t.length > 1){          // mantener presionado un número → editar sus cifras
+    if (!LEGO_HOOKS[key] && (nodo.mono || esCifras(nodo) && nodo.t.length > 1)){          // mantener presionado un número → editar sus cifras
       const d = DRAG;
       d.timer = setTimeout(() => { if (DRAG !== d || d.moved) return; DRAG = null; legoState(key).editNum = {node:nodo, sel:null}; try { navigator.vibrate?.(20); } catch {} renderLego(key); }, 450);
     }
@@ -625,9 +663,9 @@ document.addEventListener('pointerup', e=>{
     if (!d.moved) return;                                            // un toque lo maneja el clic (seleccionar)
     const zEl = zoneAt(e.clientX, e.clientY - d.lift, d.key), ed = st.editNum;
     if (zEl && ed){ const {zone} = findZone(zEl.dataset.z), idx = dropIndex(zEl, e.clientX, e.clientY - d.lift);
-      snapshot(st); const cif = ed.node.t.split(''); const [c] = cif.splice(d.i, 1);
-      if (cif.length) ed.node.t = cif.join(''); else { const z = allZones(st.root).find(z => z.includes(ed.node)); z?.splice(z.indexOf(ed.node), 1); }
-      st.editNum = cif.length > 1 ? {node:ed.node, sel:null} : null;
+      snapshot(st); const cif = ed.node.mono ? [...ed.node.partes] : ed.node.t.split(''); const [c] = cif.splice(d.i, 1);
+      if (cif.length){ if (ed.node.mono) hacerMono(ed.node, cif); else ed.node.t = cif.join(''); } else { const z = allZones(st.root).find(z => z.includes(ed.node)); z?.splice(z.indexOf(ed.node), 1); }
+      st.editNum = null;                                             // al sacar una cifra el editor se cierra
       zone.splice(Math.min(idx, zone.length), 0, {t:c});
       st.msg = {ok:true, t:`Sacaste el ${c} del número. Recuerda: si queda pegado a otras cifras, se vuelven a juntar.`};
     }

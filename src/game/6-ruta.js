@@ -380,11 +380,18 @@ class PracticaPropiedades {
   }
 }
 /** Propiedades del juego aplicables a lo armado en el lienzo de Aprender (solo Fundamentos: ecuaciones y expresiones). */
-function propiedadesParaLienzo(src){
+function propiedadesParaLienzo(src, libre = () => true){
   let raiz; try { raiz = parsePieces(src); } catch { return []; }
   const dom = DOMINIOS.fund;
-  return dom.mano(raiz).filter(c => !c.free).flatMap(c => c.targets(raiz).slice(0, 1).map(p => {
+  return dom.mano(raiz).filter(c => !c.free && libre(c.id)).flatMap(c => c.targets(raiz).slice(0, 1).map(p => {
     let nueva; try { nueva = normalize(c.apply(raiz, p)); } catch { return null; }
     return {id:c.id, name:c.name, icon:c.icon, piezas:piezasFund(nueva)};
   }).filter(Boolean));
+}
+
+/** Cartas (propiedades) que la Ruta ya desbloqueó: fuera del juego también se respetan. */
+function cartasLibres(progreso, doneKeys){
+  const R = new Ruta(progreso, doneKeys);
+  if (R.dev) return null;                                            // modo desarrollador: todas
+  return new Set([...R.tipos()].flatMap(id => CARTAS_DE_TIPO[id] ?? []));
 }

@@ -223,9 +223,15 @@ function zoneHTML(key, zone, depth, sm=false){
          : 'min-h-9 min-w-9 p-0.5 gap-0.5 rounded-lg border-2 border-dashed border-stone-300 bg-white/80 dark:border-zinc-600 dark:bg-zinc-900/80';
   const ring = active ? ' ring-2 ring-blue-400 dark:ring-blue-500' : '';
   const empty = zone.length ? '' : (isRoot ? `<span class="pointer-events-none select-none text-sm text-stone-400 dark:text-zinc-500">Lienzo vacío: abre una categoría y arrastra o toca piezas…</span>` : '');
-  return `<div data-z="${key}|${id}" class="flex ${isRoot ? 'lego-raiz relative min-w-0 max-w-full flex-nowrap overflow-x-auto' : 'shrink-0 flex-nowrap'} items-center ${base}${ring}">${zone.map((n,i)=>nodeHTML(key,n,id,i,depth,sm)).join('')}${empty}</div>`;
+  return `<div data-z="${key}|${id}" class="flex ${isRoot ? 'lego-raiz relative min-w-0 max-w-full flex-nowrap overflow-x-auto' : 'shrink-0 flex-nowrap'} items-center ${base}${ring}">${zone.map((n,i)=>conBorrar(st, n, nodeHTML(key,n,id,i,depth,sm))).join('')}${empty}</div>`;
 }
 const RADICAL = '<svg viewBox="0 0 12 30" preserveAspectRatio="none" aria-hidden="true" class="w-3 shrink-0 self-stretch text-emerald-700 dark:text-emerald-300"><path d="M0 17 L3 16 L6.5 28 L11 1 L12 1" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>';
+/** La ficha tocada muestra un botón flotante 🗑 para eliminarla (un toque ya no borra directamente). */
+function conBorrar(st, n, html){
+  if (st.borrar !== n) return html;
+  const badge = '<button data-lg="borrar" aria-label="Eliminar ficha" class="absolute -right-1.5 -top-1.5 z-20 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-rose-600 text-xs text-white shadow-lg ring-2 ring-rose-300 [animation:flotar_1.4s_ease-in-out_infinite] dark:border-zinc-900">🗑</button>';
+  return html.replace('class="', 'class="relative ring-2 ring-rose-400 ').replace('>', '>' + badge);
+}
 function nodeHTML(key, n, zid, i, depth, sm){
   const attr = `data-n="${key}|${zid}|${i}"`;
   const grab = 'touch-none select-none cursor-grab';
@@ -472,6 +478,7 @@ function legoAction(key, act){
     if (act==='abc'){ st.abc = !st.abc; }
     if (act==='nextzone'){ const zs = allZones(st.root); st.active = zs[(zs.indexOf(st.active||st.root)+1) % zs.length]; }
     if (act==='outzone'){ st.active = (st.active && parentZone(st.root, st.active)) || null; }
+  if (act==='borrar') borrarSeleccion(st);
     return renderLego(key);
   }
   const st = legoState(key), ex = legoEx(key), s = ex.steps[st.step];
@@ -496,6 +503,7 @@ function legoAction(key, act){
   if (act==='nextzone'){ const zs = allZones(st.root); st.active = zs[(zs.indexOf(st.active||st.root)+1) % zs.length]; }
   if (act==='outzone'){ st.active = (st.active && parentZone(st.root, st.active)) || null; }
   if (act==='props'){ st.verProps = !st.verProps; }
+  if (act==='borrar') borrarSeleccion(st);
   if (act.startsWith('guia:')){ st.guia = {carta:act.slice(5), nodo:null}; st.verProps = false; st.msg = null; }
   if (act === 'guia-no' || act.startsWith('lado:') || act === 'dividir') aplicarGuia(st, act);
   if (act==='usarprev' && st.prev){ snapshot(st); st.root = clonar(st.prev); st.active = null; st.msg = {ok:true, t:'📋 Copié tu paso anterior al lienzo: modifícalo para escribir el siguiente.'}; }
@@ -560,6 +568,11 @@ function ajustarLienzo(el, zoom){
     raiz.scrollLeft = t * (raiz.scrollWidth - raiz.clientWidth); };
   barra.onpointerdown = e => { e.preventDefault(); e.stopPropagation(); barra.setPointerCapture(e.pointerId); mover(e); barra.onpointermove = mover; };
   barra.onpointerup = barra.onpointercancel = () => { barra.onpointermove = null; };
+}
+function borrarSeleccion(st){
+  const n = st.borrar; st.borrar = null; if (!n) return;
+  const z = allZones(st.root).find(z => z.includes(n)); if (!z) return;
+  snapshot(st); z.splice(z.indexOf(n), 1); if (st.active && !allZones(st.root).includes(st.active)) st.active = null; st.msg = null;
 }
 /** Pantalla completa del lienzo: usa la API del navegador si existe; si no, la tarjeta igual ocupa toda la ventana. */
 function pantallaCompleta(key, on){
@@ -665,6 +678,9 @@ document.addEventListener('pointerdown', e=>{
     return;
   }
   const tokEl = e.target.closest('[data-tok]');
+  if (e.target.closest('[data-lg="borrar"]')) return;             // el clic del 🗑 lo maneja legoAction
+  { const kB = e.target.closest('[data-lego]')?.dataset.lego, stB = kB && LEGO[kB];
+    if (stB?.borrar && !e.target.closest('[data-n]')){ stB.borrar = null; addEventListener('pointerup', () => renderLego(kB), {once:true}); } }
   const nEl = e.target.closest('[data-n]');
   const zEl = e.target.closest('[data-z]');
   // Un toque sobre el fondo de un espacio (más interno que cualquier pieza) lo vuelve "activo"
@@ -737,7 +753,7 @@ document.addEventListener('pointerup', e=>{
       renderLego(d.key); return;
     }
     if (d.src==='bank') insertNode(d.key, st.active || st.root, null, newNode(d.t));
-    else { snapshot(st); d.zone.splice(d.i,1); st.active=null; st.msg=null; }
+    else { const n = d.zone[d.i]; st.borrar = st.borrar === n ? null : n; st.msg = null; }   // tocar: aparece el 🗑 flotante
     renderLego(d.key); return;
   }
   const Y = e.clientY - d.lift;

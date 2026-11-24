@@ -137,10 +137,11 @@ function fusionarNumeros(zone){
   }
   // 3) «+» que falta detrás de un monomio negativo; «+» sobrante al inicio; monomios de una sola parte vuelven a ser fichas
   for (let i = 0; i < zone.length; i++){
-    if (i > 0 && esCifras(zone[i]) && zone[i-1].mono && zone[i-1].partes[0] === '-') zone[i] = hacerMono({}, ['+', zone[i].t]);   // −3x 5 → −3x + 5
+    const esTermino = m => m && !m.sub && (m.mono || esCifras(m) || esLetra(m));        // término que pide un «+» delante del siguiente
+    if (i > 0 && esCifras(zone[i]) && esTermino(zone[i-1])) zone[i] = hacerMono({}, ['+', zone[i].t]);   // 3x 5 → 3x + 5
     const n = zone[i]; if (!n.mono) continue;
-    if (i === 0 && n.partes[0] === '+') n.partes.shift();
-    if (i > 0 && zone[i-1].mono && zone[i-1].partes[0] === '-' && !esSigno({t:n.partes[0]})) n.partes.unshift('+');
+    if (i === 0 && n.partes[0] === '+') n.partes.shift();                                  // el de adelante no lleva «+»
+    if (i > 0 && esTermino(zone[i-1]) && !esSigno({t:n.partes[0]})) n.partes.unshift('+'); // si pasa atrás, se le genera
     if (n.partes.length === 1){ zone[i] = {t:n.partes[0]}; continue; }
     n.t = textoMono(n.partes);
   }
@@ -227,6 +228,36 @@ function zoneHTML(key, zone, depth, sm=false){
 }
 const RADICAL = '<svg viewBox="0 0 12 30" preserveAspectRatio="none" aria-hidden="true" class="w-3 shrink-0 self-stretch text-emerald-700 dark:text-emerald-300"><path d="M0 17 L3 16 L6.5 28 L11 1 L12 1" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>';
 /** La ficha tocada muestra un botón flotante 🗑 para eliminarla (un toque ya no borra directamente). */
+/** Coeficiente y letra de un término simple (3x, −x, 5, y). null si no lo es. */
+function terminoDe(n){
+  if (!n || n.z || n.sub) return null;
+  const partes = n.mono ? n.partes : [n.t];
+  const txt = partes.join('');
+  const m = /^([-+]?)(\d*)([a-zA-Zπ]?)$/.exec(txt);
+  if (!m || (!m[2] && !m[3])) return null;
+  return {c:(m[1] === '-' ? -1 : 1) * (m[2] ? +m[2] : 1), l:m[3]};
+}
+/** ¿Se pueden operar a y b dentro de la zona? (semejantes y del mismo lado del «=») */
+function operables(zone, a, b){
+  const A = terminoDe(a), B = terminoDe(b);
+  if (!A || !B || A.l !== B.l) return null;
+  const ia = zone.indexOf(a), ib = zone.indexOf(b);
+  if (ia < 0 || ib < 0) return null;
+  if (zone.slice(Math.min(ia, ib), Math.max(ia, ib)).some(x => x.t === '=')) return null;
+  return {c:A.c + B.c, l:A.l};
+}
+function nodoDeTermino({c, l}){
+  const abs = Math.abs(c);
+  if (!l) return c < 0 ? hacerMono({}, ['-', String(abs)]) : {t:String(abs)};
+  if (c === 0) return {t:'0'};
+  return hacerMono({}, [c < 0 ? '-' : '+', String(abs), l]);
+}
+/** Elemento DOM de un nodo tras el último render. */
+function elDeNodo(key, node){
+  const zs = ZREG[key] || [];
+  for (let z = 0; z < zs.length; z++){ const i = zs[z].indexOf(node); if (i >= 0) return document.querySelector(`[data-n="${key}|${z}|${i}"]`); }
+  return null;
+}
 function conBorrar(st, n, html){
   if (st.borrar !== n) return html;
   const badge = '<button data-lg="borrar" aria-label="Eliminar ficha" class="absolute -right-1.5 -top-1.5 z-20 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-rose-600 text-xs text-white shadow-lg ring-2 ring-rose-300 [animation:flotar_1.4s_ease-in-out_infinite] dark:border-zinc-900">🗑</button>';
@@ -725,6 +756,20 @@ document.addEventListener('pointermove', e=>{
   const Y = e.clientY - DRAG.lift;
   const tx = DRAG.src==='bank' && /^\d/.test(DRAG.t) && puedeSustituir(DRAG.key) ? xAt(e.clientX, Y, DRAG.key) : null;
   if (tx){ tx.el.classList.add('ring-4','ring-rose-400'); hideCaret(); return; }
+  if (DRAG.src==='node'){                                             // mantener una ficha encima de otra
+    const bajo = document.elementFromPoint(e.clientX, Y)?.closest('[data-n]');
+    const ok = bajo && bajo !== DRAG.el && !DRAG.el.contains(bajo) && !bajo.contains(DRAG.el) && bajo.dataset.n.startsWith(DRAG.key+'|');
+    const sobre = DRAG.sobre;
+    if (sobre && (!ok || sobre.el !== bajo)){ sobre.el.classList.remove('lego-sena'); clearTimeout(sobre.timer); DRAG.sobre = null; }
+    if (ok && !DRAG.sobre){
+      const [, zid, i] = bajo.dataset.n.split('|'), zona = ZREG[DRAG.key][+zid], s = {el:bajo, zona, nodo:zona[+i], listo:false};
+      if (terminoDe(s.nodo) && terminoDe(DRAG.zone[DRAG.i])){
+        s.timer = setTimeout(() => { s.listo = true; bajo.classList.add('lego-sena'); buzz(15); }, 550);
+        DRAG.sobre = s;
+      }
+    }
+    if (DRAG.sobre?.listo){ hideCaret(); return; }
+  }
   const z = zoneAt(e.clientX, Y, DRAG.key);
   if (z){ z.classList.add('bg-blue-100','dark:bg-blue-900/40'); showCaret(z, dropIndex(z, e.clientX, Y)); } else hideCaret();
 });
@@ -761,6 +806,23 @@ document.addEventListener('pointerup', e=>{
   if (tx){ snapshot(st); const nd = tx.zone[tx.i];
     if (nd.mono){ const hojas = nd.partes.map(q => q === 'x' ? {t:d.t, sub:true} : {t:q}); tx.zone.splice(tx.i, 1, ...hojas); }   // −5x → −5(3)
     else tx.zone.splice(tx.i, 1, {t:d.t, sub:true}); st.msg = null; buzz(12); renderLego(d.key); return; }
+  if (d.sobre) clearTimeout(d.sobre.timer);
+  if (d.src==='node' && d.sobre?.listo){                             // soltar sobre la ficha que hizo la seña
+    const node = d.zone[d.i], {zona, nodo:bajo} = d.sobre;
+    snapshot(st);
+    const r = d.zone === zona ? operables(zona, node, bajo) : null;
+    if (r){
+      zona.splice(zona.indexOf(bajo), 1, nodoDeTermino(r)); zona.splice(zona.indexOf(node), 1);
+      st.msg = {ok:true, t:'¡Operaste dos términos semejantes!'}; buzz(20); renderLego(d.key); return;
+    }
+    d.zone.splice(d.zone.indexOf(node), 1);                          // no se puede: queda a un lado y la de abajo vibra
+    const T = terminoDe(node), aparte = T && !node.mono && T.c > 0 ? hacerMono({}, ['+', node.t]) : node;
+    zona.splice(zona.indexOf(bajo) + 1, 0, aparte);
+    st.msg = {ok:false, t:'Esos términos no se pueden operar (no son semejantes o están a lados distintos del «=»).'};
+    renderLego(d.key);
+    const elB = elDeNodo(d.key, bajo); if (elB){ elB.classList.add('lego-vibrar'); setTimeout(() => elB.classList.remove('lego-vibrar'), 700); }
+    buzz([30, 40, 30]); return;
+  }
   const zEl = zoneAt(e.clientX, Y, d.key);
   if (d.src==='bank'){
     if (zEl){ const {zone} = findZone(zEl.dataset.z); insertNode(d.key, zone, dropIndex(zEl,e.clientX,Y), newNode(d.t)); }
@@ -780,7 +842,7 @@ document.addEventListener('pointerup', e=>{
   }
   renderLego(d.key);
 });
-document.addEventListener('pointercancel', ()=>{ if (DRAG && DRAG.ghost) DRAG.ghost.remove(); DRAG=null; hideCaret(); });
+document.addEventListener('pointercancel', ()=>{ if (DRAG?.sobre){ clearTimeout(DRAG.sobre.timer); DRAG.sobre.el.classList.remove('lego-sena'); } if (DRAG && DRAG.ghost) DRAG.ghost.remove(); DRAG=null; hideCaret(); });
 // Teclado: Enter/Espacio sobre una pieza del banco la añade
 document.addEventListener('click', e=>{
   const tokEl = e.target.closest('[data-tok]');

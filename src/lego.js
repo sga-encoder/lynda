@@ -314,6 +314,10 @@ function renderLego(key){
     <div class="rounded-xl border border-blue-300 bg-blue-50/40 p-3 dark:border-blue-800 dark:bg-blue-950/20 ${full ? 'landscape:grid landscape:grid-cols-[minmax(0,1fr)_minmax(16rem,42%)] landscape:gap-3' : ''}"><div class="min-w-0">
       ${herr}
       <div class="mb-2 flex flex-wrap items-baseline gap-2"><span class="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white dark:bg-blue-400 dark:text-zinc-950">Paso ${st.step+1} de ${steps.length}</span><b>${s.q}</b></div>
+      ${st.log.length ? `<div class="mb-2 rounded-xl border border-emerald-300 bg-emerald-50/70 p-2 dark:border-emerald-800 dark:bg-emerald-950/30">
+        <div class="text-[11px] font-bold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">📝 Tu proceso hasta aquí</div>
+        <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 overflow-x-auto text-sm">${st.log.map((l, i) => `<span class="whitespace-nowrap">${i ? '<span class="text-emerald-600">⟶</span> ' : ''}${kx(ansTex(l.built ?? steps[i].a[0]))}</span>`).join('')}</div>
+        ${!s.copia && st.prev ? `<button class="${C.btn} mt-1.5 !min-h-9 !py-1 !text-xs" data-lg="usarprev">📋 Empezar desde mi paso anterior</button>` : ''}</div>` : ''}
       ${editorNumeroHTML(st)}
       <div data-ajuste style="zoom:${z}">${zoneHTML(key, st.root, 0)}</div>
       <div data-desliza class="hidden mt-1.5">
@@ -392,13 +396,14 @@ function legoAction(key, act){
   if (act==='undo' && st.hist.length){ st.root = JSON.parse(st.hist.pop()); st.active=null; st.msg=null; }
   if (act==='clear'){ snapshot(st); st.root = s.copia && st.prev ? clonar(st.prev) : []; st.active=null; st.msg=null; }
   if (act==='hint'){ st.msg = {ok:true, t:'💡 '+s.h}; }
-  if (act==='reveal'){ st.log.push({seen:true}); st.prev = treeOf(s.a[0]); st.step++; st.root=[]; st.hist=[]; st.active=null; st.tries=0; st.msg=null; prepararPaso(ex, st); }
+  if (act==='reveal'){ st.log.push({seen:true, built:s.a[0]}); st.prev = treeOf(s.a[0]); st.step++; st.root=[]; st.hist=[]; st.active=null; st.tries=0; st.msg=null; prepararPaso(ex, st); }
   if (act==='restart'){ delete LEGO[key]; }
   if (act==='closecat'){ st.cat=null; st.pin=false; }
   if (act==='abc'){ st.abc = !st.abc; }
   if (act==='nextzone'){ const zs = allZones(st.root); st.active = zs[(zs.indexOf(st.active||st.root)+1) % zs.length]; }
   if (act==='outzone'){ st.active = (st.active && parentZone(st.root, st.active)) || null; }
   if (act==='props'){ st.verProps = !st.verProps; }
+  if (act==='usarprev' && st.prev){ snapshot(st); st.root = clonar(st.prev); st.active = null; st.msg = {ok:true, t:'📋 Copié tu paso anterior al lienzo: modifícalo para escribir el siguiente.'}; }
   if (act.startsWith('dig')) accionCifras(st, act);
   if (act==='zoom+') st.zoom = Math.min(1.6, +((st.zoom ?? 1) + 0.1).toFixed(1));
   if (act==='zoom-') st.zoom = Math.max(0.5, +((st.zoom ?? 1) - 0.1).toFixed(1));

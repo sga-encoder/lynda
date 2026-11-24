@@ -590,7 +590,7 @@ class BattleScene extends Scene {
       this.abrirCapa(`<div class="m-auto flex w-full max-w-sm flex-col items-center gap-3 text-center">
         <span class="rounded-full bg-amber-400 px-3 py-0.5 text-xs font-black text-zinc-950">🆕 NUEVO · ${CAT[n.cat] ?? ''} · ${i + 1}/${lista.length}</span>
         <div class="text-7xl [animation:flotar_2s_ease-in-out_infinite]">${x.icon}</div><h2 class="text-2xl font-black">${x.name}</h2>
-        <p class="text-sm text-zinc-300">${x.desc}</p><p class="text-xs text-sky-300">+3 ⚙️ chatarra por descubrirlo · míralo en 📚 Catálogo</p>
+        <p class="text-sm text-zinc-300">${x.desc}</p><p class="text-xs text-sky-300">+1 ⚙️ chatarra por descubrirlo · míralo en 📚 Catálogo</p>
         <button data-a="sig" class="${UI.btnP} w-full">${i < lista.length - 1 ? 'Siguiente ▸' : 'Ver resumen ▸'}</button></div>`,
         e => { if (e.target.closest('[data-a="sig"]')){ i++; paso(); } });
     };

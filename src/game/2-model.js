@@ -263,13 +263,14 @@ class Progreso {
   }
   /** Registra algo encontrado por primera vez (para el catálogo). Devuelve true si es nuevo. */
   /** Registra algo nuevo para el catálogo. Descubrir o usar algo por primera vez da ⚙️ chatarra de premio. */
-  descubrir(cat, id){ const l = this.data.desc[cat]; if (l.includes(id)) return false; l.push(id); this.data.chatarra = (this.data.chatarra ?? 0) + 3; (this.nuevos ??= []).push({cat, id}); this.guardar(); return true; }
+  descubrir(cat, id){ const l = this.data.desc[cat]; if (l.includes(id)) return false; l.push(id); this.data.chatarra = (this.data.chatarra ?? 0) + 1; (this.nuevos ??= []).push({cat, id}); this.guardar(); return true; }
   conocido(cat, id){ return this.data.desc[cat].includes(id); }
   disponible(id){ const r = MEJORAS[id].requiere; return !r || this.conocido(...r); }
   ganarPuntos(n){ this.data.puntos += n; this.guardar(); }
   guardarMazo(dom, lista){ this.data.mazo[dom] = lista.slice(0, MAX_MAZO); this.guardar(); }
   nivel(id){ return this.data.mejoras[id] ?? 0; }
-  costo(id){ return MEJORAS[id].costo(this.nivel(id)); }
+  /** Las mejoras permanentes cuestan bastante y encarecen rápido: se consiguen jugando muchas partidas. */
+  costo(id){ const n = this.nivel(id); return Math.round(MEJORAS[id].costo(n) * 3 * (1 + 0.6 * n)); }
   puedeComprar(id){ return this.disponible(id) && this.nivel(id) < MEJORAS[id].max && this.data.puntos >= this.costo(id); }
   comprar(id){ if (!this.puedeComprar(id)) return false; this.data.puntos -= this.costo(id); this.data.mejoras[id] = this.nivel(id) + 1; this.guardar(); return true; }
   total(stat){ return Object.entries(MEJORAS).reduce((s, [id, m]) => s + (m.efecto?.[stat] ?? 0) * this.nivel(id), 0); }

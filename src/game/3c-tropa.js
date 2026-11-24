@@ -57,7 +57,7 @@ const BLINDAJES_TROPA = {
   ingeniero:[['overol-acero', 'Overol de acero', '🧥', {vida:3, reduccion:0.1}, 'Resistente.'], ['exotraje', 'Exotraje', '🦾', {reduccion:0.35}, 'Casi indestructible.'], ['escudo-reparador', 'Escudo reparador', '🔩', {vida:2, regen:0.5}, 'Se repara solo.']],
 };
 const TIPOS_TROPA = Object.keys(SOLDADOS_UNICOS);
-const costoTropa = nivel => 6 + nivel * 6;          // ⚙️ chatarra para subir del nivel n al n+1
+const costoTropa = nivel => Math.round(30 * nivel ** 1.7);   // ⚙️ chatarra para subir del nivel n al n+1: 30, 98, 194, 317
 /** Nivel de la Ruta en que se desbloquea un tipo de soldado (el resto de su equipo llega después). */
 function nivelTipoRuta(tipo){ const i = RUTA_HITOS().findIndex(h => (h.soldados ?? []).includes(tipo)); return i < 0 ? 0 : i; }
 /** ¿Está desbloqueado este elemento? k = posición (0–3 soldados, 0–2 armas/blindajes). */

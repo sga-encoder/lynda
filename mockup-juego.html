@@ -1140,13 +1140,14 @@ class Progreso {
   }
   /** Registra algo encontrado por primera vez (para el catálogo). Devuelve true si es nuevo. */
   /** Registra algo nuevo para el catálogo. Descubrir o usar algo por primera vez da ⚙️ chatarra de premio. */
-  descubrir(cat, id){ const l = this.data.desc[cat]; if (l.includes(id)) return false; l.push(id); this.data.chatarra = (this.data.chatarra ?? 0) + 3; (this.nuevos ??= []).push({cat, id}); this.guardar(); return true; }
+  descubrir(cat, id){ const l = this.data.desc[cat]; if (l.includes(id)) return false; l.push(id); this.data.chatarra = (this.data.chatarra ?? 0) + 1; (this.nuevos ??= []).push({cat, id}); this.guardar(); return true; }
   conocido(cat, id){ return this.data.desc[cat].includes(id); }
   disponible(id){ const r = MEJORAS[id].requiere; return !r || this.conocido(...r); }
   ganarPuntos(n){ this.data.puntos += n; this.guardar(); }
   guardarMazo(dom, lista){ this.data.mazo[dom] = lista.slice(0, MAX_MAZO); this.guardar(); }
   nivel(id){ return this.data.mejoras[id] ?? 0; }
-  costo(id){ return MEJORAS[id].costo(this.nivel(id)); }
+  /** Las mejoras permanentes cuestan bastante y encarecen rápido: se consiguen jugando muchas partidas. */
+  costo(id){ const n = this.nivel(id); return Math.round(MEJORAS[id].costo(n) * 3 * (1 + 0.6 * n)); }
   puedeComprar(id){ return this.disponible(id) && this.nivel(id) < MEJORAS[id].max && this.data.puntos >= this.costo(id); }
   comprar(id){ if (!this.puedeComprar(id)) return false; this.data.puntos -= this.costo(id); this.data.mejoras[id] = this.nivel(id) + 1; this.guardar(); return true; }
   total(stat){ return Object.entries(MEJORAS).reduce((s, [id, m]) => s + (m.efecto?.[stat] ?? 0) * this.nivel(id), 0); }
@@ -1902,7 +1903,7 @@ const BLINDAJES_TROPA = {
   ingeniero:[['overol-acero', 'Overol de acero', '🧥', {vida:3, reduccion:0.1}, 'Resistente.'], ['exotraje', 'Exotraje', '🦾', {reduccion:0.35}, 'Casi indestructible.'], ['escudo-reparador', 'Escudo reparador', '🔩', {vida:2, regen:0.5}, 'Se repara solo.']],
 };
 const TIPOS_TROPA = Object.keys(SOLDADOS_UNICOS);
-const costoTropa = nivel => 6 + nivel * 6;          // ⚙️ chatarra para subir del nivel n al n+1
+const costoTropa = nivel => Math.round(30 * nivel ** 1.7);   // ⚙️ chatarra para subir del nivel n al n+1: 30, 98, 194, 317
 /** Nivel de la Ruta en que se desbloquea un tipo de soldado (el resto de su equipo llega después). */
 function nivelTipoRuta(tipo){ const i = RUTA_HITOS().findIndex(h => (h.soldados ?? []).includes(tipo)); return i < 0 ? 0 : i; }
 /** ¿Está desbloqueado este elemento? k = posición (0–3 soldados, 0–2 armas/blindajes). */
@@ -2606,7 +2607,7 @@ class BattleScene extends Scene {
       this.abrirCapa(`<div class="m-auto flex w-full max-w-sm flex-col items-center gap-3 text-center">
         <span class="rounded-full bg-amber-400 px-3 py-0.5 text-xs font-black text-zinc-950">🆕 NUEVO · ${CAT[n.cat] ?? ''} · ${i + 1}/${lista.length}</span>
         <div class="text-7xl [animation:flotar_2s_ease-in-out_infinite]">${x.icon}</div><h2 class="text-2xl font-black">${x.name}</h2>
-        <p class="text-sm text-zinc-300">${x.desc}</p><p class="text-xs text-sky-300">+3 ⚙️ chatarra por descubrirlo · míralo en 📚 Catálogo</p>
+        <p class="text-sm text-zinc-300">${x.desc}</p><p class="text-xs text-sky-300">+1 ⚙️ chatarra por descubrirlo · míralo en 📚 Catálogo</p>
         <button data-a="sig" class="${UI.btnP} w-full">${i < lista.length - 1 ? 'Siguiente ▸' : 'Ver resumen ▸'}</button></div>`,
         e => { if (e.target.closest('[data-a="sig"]')){ i++; paso(); } });
     };

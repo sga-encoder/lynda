@@ -51,10 +51,15 @@ class MenuScene extends Scene {
         <p class="mt-2 text-xs text-zinc-400">${disp.length ? `${disp.length} tipo(s) de problema disponibles` : 'Aún no hay problemas: completa ejercicios en Aprender'}${disp.length < total ? ' · más se desbloquean avanzando en Aprender' : ''}.</p></div>
       <button data-a="jugar" class="${UI.btnP} !min-h-14 text-lg" ${disp.length ? '' : 'disabled'}>▶ Jugar</button>
       <div class="grid grid-cols-2 gap-3"><button data-a="mejoras" class="${UI.btn}">🛠 Mejoras <span class="text-amber-300">${d.puntos} 🔬</span></button><button data-a="ayuda" class="${UI.btn}">❓ Cómo jugar</button></div>
+      <div><b class="text-sm">Modo asistido</b>
+        <div class="mt-2 grid grid-cols-4 gap-1.5">${NIVELES_AYUDA.map((n, i) => `<button data-ayuda="${i}" class="flex min-h-14 flex-col items-center justify-center rounded-2xl border-2 px-1 text-xs font-semibold touch-manipulation ${(d.asistido ?? 0) === i ? 'border-sky-400 bg-sky-400/15 text-sky-200' : 'border-zinc-700 bg-zinc-900'}"><span class="text-lg">${n.icon}</span>${n.nombre}</button>`).join('')}</div>
+        <p class="mt-1.5 text-xs text-zinc-400">${NIVELES_AYUDA[d.asistido ?? 0].desc}${(d.asistido ?? 0) ? ` XP ×${NIVELES_AYUDA[d.asistido].xp}.` : ''}</p></div>
       <label class="${UI.card} flex items-center gap-3 text-sm"><input type="checkbox" data-a="semi" class="h-5 w-5 accent-emerald-400" ${d.semi ? 'checked' : ''}><span><b>🃏 Cartas semiautomáticas</b> <span class="text-zinc-400">(eliges el resultado correcto al aplicar cada carta)</span></span></label>
       <label class="${UI.card} flex items-center gap-3 text-sm"><input type="checkbox" data-a="todo" class="h-5 w-5 accent-amber-400" ${d.todo ? 'checked' : ''}><span><b>🧪 Todo desbloqueado</b> <span class="text-zinc-400">(modo desarrollo: ignora el avance en Aprender)</span></span></label>
       <p class="text-center text-xs text-zinc-500">Récord: ${d.record} XP · Partidas: ${d.partidas}</p>
     </div>`).onclick = e => {
+      const ay = e.target.closest('[data-ayuda]')?.dataset.ayuda;
+      if (ay != null){ d.asistido = +ay; p.guardar(); return this.enter(); }
       const modo = e.target.closest('[data-modo]')?.dataset.modo;
       if (modo){ d.modo = modo; p.guardar(); return this.enter(); }
       const a = e.target.closest('[data-a]')?.dataset.a;
@@ -134,9 +139,11 @@ class Run {
 /* ---------- Cartas (diseño) ---------- */
 const GRAD = {fund:'from-sky-400 to-indigo-500', dif:'from-emerald-400 to-teal-600', int:'from-fuchsia-400 to-violet-600', libre:'from-amber-300 to-orange-500', combo:'from-rose-400 to-amber-400', nuevo:'from-zinc-500 to-zinc-700'};
 const ktMini = tex => window.katex ? katex.renderToString(tex, {throwOnError:false, strict:false}) : tex;
-function cartaHTML(c, dom, {sel = false, attr = `data-carta="${c.id}"`, chica = false} = {}){
+function cartaHTML(c, dom, {sel = false, attr = `data-carta="${c.id}"`, chica = false, marca = null} = {}){
   const g = c.free ? GRAD.libre : GRAD[dom.id];
-  return `<button ${attr} class="relative ${chica ? 'h-[7.5rem] w-[5.4rem]' : 'h-[9.6rem] w-[6.7rem]'} shrink-0 rounded-2xl bg-gradient-to-br ${g} p-[2px] text-left shadow-lg shadow-black/50 touch-manipulation select-none transition-transform active:scale-95 ${sel ? '-translate-y-2 ring-2 ring-amber-300' : ''}">
+  const ayuda = marca === 'mejor' ? 'ring-4 ring-amber-300 animate-pulse' : marca === 'aplica' ? 'ring-2 ring-emerald-300/80' : '';
+  return `<button ${attr} class="relative ${chica ? 'h-[7.5rem] w-[5.4rem]' : 'h-[9.6rem] w-[6.7rem]'} shrink-0 rounded-2xl bg-gradient-to-br ${g} p-[2px] text-left shadow-lg shadow-black/50 touch-manipulation select-none transition-transform active:scale-95 ${sel ? '-translate-y-2 ring-2 ring-amber-300' : ayuda}">
+    ${marca === 'mejor' ? '<span class="absolute -top-2 left-1/2 z-10 -translate-x-1/2 rounded-full bg-amber-300 px-2 text-[9px] font-black text-zinc-950">SIGUIENTE</span>' : ''}
     <span class="flex h-full flex-col rounded-[14px] bg-zinc-950/95 p-1.5">
       <span class="${chica ? 'text-[8px]' : 'text-[9.5px]'} font-black uppercase leading-tight tracking-wide text-white">${c.name}</span>
       <span class="mx-auto mt-1 flex ${chica ? 'h-8 w-8 text-lg' : 'h-11 w-11 text-2xl'} items-center justify-center rounded-full bg-gradient-to-br ${g} shadow-inner shadow-black/40">${c.icon}</span>
@@ -175,12 +182,12 @@ class BattleScene extends Scene {
       </div>
       <div data-h="zona" class="relative flex min-h-0 flex-1 flex-col">
         <div class="flex min-h-0 flex-1 flex-col px-3 pt-1.5">
-          <div class="flex items-center justify-between text-xs text-zinc-400"><span data-h="tipo"></span><span data-h="pasos"></span></div>
-          <div data-h="expr" class="mt-1 flex min-h-16 items-center justify-center overflow-x-auto rounded-2xl bg-zinc-900 px-2 text-xl text-white [&_[data-t]]:cursor-pointer [&_[data-t]]:rounded-md [&_[data-t]]:bg-amber-400/30 [&_[data-t]]:outline [&_[data-t]]:outline-2 [&_[data-t]]:outline-amber-300"></div>
+          <div class="flex items-center justify-between gap-2 text-xs text-zinc-400"><span data-h="tipo"></span><span class="flex items-center gap-2"><span data-h="pasos"></span><button data-a="pista" data-h="btnPista" class="hidden rounded-full border border-sky-500/60 bg-sky-500/10 px-2 py-1 text-sky-200 touch-manipulation">💡 Pista</button></span></div>
+          <div data-h="expr" class="mt-1 flex min-h-16 items-center justify-center overflow-x-auto rounded-2xl bg-zinc-900 px-2 text-xl text-white [&_[data-mejor]]:!bg-emerald-400/40 [&_[data-mejor]]:!outline-emerald-300 [&_[data-t]]:cursor-pointer [&_[data-t]]:rounded-md [&_[data-t]]:bg-amber-400/30 [&_[data-t]]:outline [&_[data-t]]:outline-2 [&_[data-t]]:outline-amber-300"></div>
           <div data-h="msg" class="min-h-9 py-1 text-center text-sm"></div>
         </div>
         <div data-h="quiz" class="hidden px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"></div>
-        <div data-h="mano" class="flex gap-2 overflow-x-auto px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 [scrollbar-width:none]"></div>
+        <div data-h="mano" class="flex gap-2 overflow-x-auto px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-4 [scrollbar-width:none]"></div>
         <div data-h="libre" class="absolute inset-0 z-10 hidden"></div>
       </div>
       <div data-h="capa" class="absolute inset-0 z-20 hidden"></div>
@@ -209,12 +216,13 @@ class BattleScene extends Scene {
     r.combos.forEach(c => c.usado = false);                          // los combos se recargan cada ronda
     const C = CLIMAS[clima];
     this.aviso(`Misión ${r.mision} · Oleada ${r.oleada}${this.cfg.jefe ? ' · 👹 JEFE' : ''}\n${C.icon} ${C.name}: ${C.desc}`);
-    if (this.raiz) this.dibujarMano(); else this.nuevoProblema();
+    if (!this.raiz || this.resuelto) this.nuevoProblema(); else this.dibujarMano();   // el problema en curso se conserva hasta resolverlo
   }
   nuevoProblema(){
     const d = this.app.progreso.data;
     const {type, dom, root, par, solucion} = this.app.problemas.create({doneKeys:this.app.doneKeys(), mision:Math.min(3, this.run.mision), modo:d.modo, todo:d.todo});
-    Object.assign(this, {tipo:type, dom, solucion, raiz:root, par, dist:par, pasos:0, combo:this.combo ?? 0, carta:null, quiz:null, historial:new Set([dom.key(root)]), tPaso:performance.now()});
+    Object.assign(this, {tipo:type, dom, solucion, raiz:root, par, dist:par, pasos:0, combo:this.combo ?? 0, carta:null, quiz:null, historial:new Set([dom.key(root)]), tPaso:performance.now(), resuelto:false, pistaMostrada:false, avisoPendiente:false});
+    this.$('btnPista').classList.toggle('hidden', !this.ayuda);
     this.dibujarProblema(); this.dibujarMano();
   }
 
@@ -225,7 +233,12 @@ class BattleScene extends Scene {
       const lento = this.app.piezas.abierto ? 0.5 : 1;            // el mundo va más lento mientras escribes un paso libre
       this.t += dt; this.mundo.update(dt * lento, this.director);
       if (this.mundo.anuncio){ this.aviso(this.mundo.anuncio); this.mundo.anuncio = null; }
-      if (this.director.terminada(this.mundo)) this.oleadaTerminada();
+      if (this.director.terminada(this.mundo)){
+        if (this.resuelto) this.oleadaTerminada();                 // solo se pasa de oleada con el problema resuelto
+        else if (!this.avisoPendiente){ this.avisoPendiente = true; this.mensaje('🧮 No quedan enemigos: termina este problema para pasar a la siguiente oleada.', 'amber'); }
+      }
+      const espera = NIVELES_AYUDA[this.ayuda].espera;
+      if (!this.pistaMostrada && !this.resuelto && !this.quiz && !this.capaAbierta && (now - this.tPaso) / 1000 > espera){ this.pistaMostrada = true; this.mostrarPista(); }
     }
     this.renderer.draw(this.mundo, this.t); this.hud();
     this.raf = requestAnimationFrame(this.loop);
@@ -249,8 +262,10 @@ class BattleScene extends Scene {
 
 
   /* ---- Problema y cartas ---- */
+  get ayuda(){ return this.app.progreso.data.asistido ?? 0; }
   dibujarProblema(){
-    const marcas = this.carta ? new Map(this.objetivos.map((p, i) => [p.join('.'), i])) : null;
+    const mejor = this.ayuda >= 3 && this.carta ? this.dom.mejorJugada(this.raiz) : null;
+    const marcas = this.carta ? new Map(this.objetivos.map((p, i) => [p.join('.'), mejor && mejor.carta === this.carta && mejor.path.join('.') === p.join('.') ? `${i},mejor=1` : i])) : null;
     this.$('expr').innerHTML = texJuego(this.dom.tex(this.raiz, marcas));
     this.$('tipo').textContent = (this.director.generando ? '' : '⭐ Extra · ') + `${this.dom.icon} ${this.dom.consigna(this.raiz)}`;   // consigna neutra: no revela el método
     this.$('pasos').textContent = `Pasos ${this.pasos} · mínimo ${this.par}`;
@@ -261,9 +276,24 @@ class BattleScene extends Scene {
     if (quiz) return this.dibujarQuiz();
     const r = this.run, propios = r.combos.filter(c => !c.hecho).length;
     this.$('mano').innerHTML =
-      this.dom.mano(this.raiz).map(c => cartaHTML(c, this.dom, {sel:this.carta === c})).join('') +   // todas se ven igual: no se revela cuáles sirven
+      this.manoConAyuda().join('') +
       r.combosDe(this.dom.id).map(cb => comboHTML(cb, this.dom)).join('') +
       (propios < MAX_COMBOS_PROPIOS ? `<button data-a="taller" class="flex h-[9.6rem] w-[6.7rem] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-zinc-600 text-center text-xs text-zinc-300 touch-manipulation active:scale-95"><span class="text-3xl">🔗</span><b>Crear combo</b><span class="text-[10px] text-zinc-500">${propios}/${MAX_COMBOS_PROPIOS} propios</span></button>` : '');
+  }
+  /** Sin ayuda todas las cartas se ven igual; con ayuda media se iluminan las que sirven y con alta se marca la mejor. */
+  manoConAyuda(){
+    const aplica = this.ayuda >= 2 ? this.dom.aplicables(this.raiz) : null, mejor = this.ayuda >= 3 ? this.dom.mejorJugada(this.raiz) : null;
+    return this.dom.mano(this.raiz).map(c => cartaHTML(c, this.dom, {sel:this.carta === c, marca: mejor?.carta === c ? 'mejor' : aplica?.has(c.id) ? 'aplica' : null}));
+  }
+  mostrarPista(){
+    if (!this.ayuda || this.resuelto) return;
+    const m = this.dom.mejorJugada(this.raiz);
+    if (!m) return this.mensaje('💡 Prueba con el ✍️ Paso libre.', 'amber');
+    const c = m.carta, varios = c.targets(this.raiz).length > 1;
+    const txt = this.ayuda === 1 ? `💡 ${c.pista}`
+      : this.ayuda === 2 ? `💡 ${c.pista} Prueba con <b>${c.icon} ${c.name}</b>.`
+      : `💡 Usa <b>${c.icon} ${c.name}</b> ${ktMini(c.formula ?? '')}${varios ? ' en la parte que se marca en verde.' : '.'}`;
+    this.mensaje(txt, 'amber');
   }
   mensaje(html, tono = 'zinc'){
     const color = {zinc:'text-zinc-300', rose:'text-rose-300', amber:'text-amber-300', emerald:'text-emerald-300'}[tono];
@@ -274,6 +304,7 @@ class BattleScene extends Scene {
     const a = e.target.closest('[data-a]')?.dataset.a;
     if (a === 'pausa') return this.mostrarPausa();
     if (a === 'taller') return this.abrirTaller();
+    if (a === 'pista'){ this.pistaMostrada = true; return this.mostrarPista(); }
     if (a === 'quiz-no'){ this.quiz = null; this.carta = null; this.dibujarProblema(); this.dibujarMano(); return this.mensaje(''); }
     const op = e.target.closest('[data-opcion]')?.dataset.opcion;
     if (op != null && this.quiz) return this.elegirOpcion(+op);
@@ -297,11 +328,11 @@ class BattleScene extends Scene {
   /** Semiautomático: el jugador elige cuál es el resultado correcto de aplicar la carta. */
   resultadoDe(c, path){
     const correcto = c.apply(this.raiz, path);
-    const distr = this.app.progreso.data.semi ? this.dom.distractores(correcto, this.app.rng, 2) : [];
+    const distr = this.app.progreso.data.semi ? this.dom.distractores(correcto, this.app.rng, this.ayuda >= 3 ? 1 : 2) : [];
     if (!distr.length) return this.aplicar(correcto, {carta:c});
     this.quiz = {carta:c, correcto, opciones:this.app.rng.shuffle([correcto, ...distr])};
     this.dibujarProblema(); this.dibujarMano();
-    this.mensaje(`¿Qué queda al aplicar <b>${c.icon} ${c.name}</b>?`, 'amber');
+    this.mensaje(`¿Qué queda al aplicar <b>${c.icon} ${c.name}</b>?${this.ayuda >= 2 ? ` <span class="text-zinc-300">${ktMini(c.formula ?? '')}</span>` : ''}`, 'amber');
   }
   dibujarQuiz(){
     const q = this.quiz;
@@ -371,12 +402,13 @@ class BattleScene extends Scene {
     const r = this.run, k = this.dom.key(nueva), d = this.dom.solver.distance(nueva);
     const repetido = this.historial.has(k), avance = repetido ? 0 : Math.max(0, this.dist - d);
     const segundos = (performance.now() - this.tPaso) / 1000;
-    this.raiz = nueva; this.dist = d; this.pasos++; this.historial.add(k); this.tPaso = performance.now(); this.carta = null; this.quiz = null;
+    this.raiz = nueva; this.dist = d; this.pasos++; this.historial.add(k); this.tPaso = performance.now(); this.carta = null; this.quiz = null; this.pistaMostrada = false;
+    r.tPasos = (r.tPasos ?? 0) + segundos; r.nPasos = (r.nPasos ?? 0) + 1;
     if (avance > 0){
       this.combo++;
       const pts = this.puntuador.puntuar({avance, segundos, combo:this.combo - 1, libre, cadena, ventana:r.loadout.efecto('ventana', 0)});
       const energia = pts.energia * r.loadout.energiaMult;
-      r.energia.agregar(energia); this.ganarXP(pts.xp * r.xpMult);
+      r.energia.agregar(energia); this.ganarXP(pts.xp * r.xpMult * NIVELES_AYUDA[this.ayuda].xp);
       const extras = pts.detalle.map(d => `${d.nombre} ×${d.mult.toFixed(1)}`).join(' · ');
       this.mensaje(`+${Math.round(energia)} ⚡ ${extras ? `<span class="text-sky-300">(${extras})</span>` : ''}`, 'emerald');
       this.mundo.texto(this.mundo.base.cx, this.mundo.base.cy - 30, `+${Math.round(energia)}⚡`, '#fde047');
@@ -390,12 +422,14 @@ class BattleScene extends Scene {
   problemaResuelto(){
     const r = this.run, bono = this.puntuador.bonoProblema(this.pasos, this.par);
     r.problemas++; if (bono.eficiente) r.eficientes++;
-    r.energia.agregar(bono.energia * r.loadout.energiaMult); this.ganarXP(bono.xp * r.xpMult);
+    r.energia.agregar(bono.energia * r.loadout.energiaMult); this.ganarXP(bono.xp * r.xpMult * NIVELES_AYUDA[this.ayuda].xp);
     this.director.problemasResueltos++;
     this.mundo.debilitarJefes();
     this.dibujarProblema(); this.$('mano').innerHTML = ''; this.$('quiz').classList.add('hidden');
     this.mensaje(`✅ ¡Resuelto en ${this.pasos} pasos!${bono.eficiente ? ' <b class="text-sky-300">Eficiencia máxima</b>' : ''} +${bono.xp} XP`, 'emerald');
-    setTimeout(() => { if (!this.terminado) this.nuevoProblema(); }, 1100);
+    this.resuelto = true;
+    // Si la oleada ya terminó, la siguiente trae el problema nuevo; si no, llega uno nuevo (nunca reemplaza a uno sin resolver)
+    setTimeout(() => { if (!this.terminado && this.resuelto && !this.director.terminada(this.mundo)) this.nuevoProblema(); }, 1100);
   }
   ganarXP(n){
     const r = this.run; r.xp += n; r.xpTotal += n;
@@ -414,6 +448,14 @@ class BattleScene extends Scene {
   elegirBonificadores(){
     const l = this.run.loadout, rng = this.app.rng, elegido = {};
     const ops = {arma: l.opciones('arma', rng), tactico: l.opciones('tactico', rng)};
+    const rec = {};
+    if (this.ayuda >= 1){
+      const w = this.mundo, v = w.vistos, total = Math.max(1, Object.values(v).reduce((a, b) => a + b, 0)), cuenta = ids => ids.reduce((s, id) => s + (v[id] ?? 0), 0) / total;
+      const R = new Recomendador({voladores:cuenta(['nave', 'dron', 'bombardero', 'caza', 'portadrones', 'acorazado', 'mente']), blindados:cuenta(['blindado', 'coloso']), escuderos:cuenta(['escudero']),
+        rapidos:cuenta(['saltador', 'dron', 'caza']), grupo:w.enemigos.length >= 6 || total > 20, base:w.base.vida / w.base.vidaMax, sinEnergia:w.tiempoSinEnergia / Math.max(1, w.tiempo),
+        bajasPropias:w.bajasPropias, pasoLento:(this.run.tPasos ?? 0) / Math.max(1, this.run.nPasos ?? 1) > 12});
+      for (const tipo of ['arma', 'tactico']){ rec[tipo] = R.mejor(ops[tipo]); if (this.ayuda >= 3) elegido[tipo] = rec[tipo].i; }
+    }
     const propsDe = op => op.accion === 'fusionar' ? BONUS_DEFS[op.receta.resultado].props : op.accion === 'mejorar' ? op.bonus.props : op.accion === 'nuevo' ? BONUS_DEFS[op.id].props : null;
     const etiqueta = op => op.accion === 'reparar' ? ['🔧', 'Reparar base', '+30 de vida'] :
       op.accion === 'fusionar' ? [BONUS_DEFS[op.receta.resultado].icon, `Fusionar: ${BONUS_DEFS[op.receta.resultado].name}`, `${BONUS_DEFS[op.receta.a].name} + ${BONUS_DEFS[op.receta.b].name} → nivel 4 y libera un espacio`] :
@@ -425,7 +467,8 @@ class BattleScene extends Scene {
       ${['arma', 'tactico'].map(tipo => `
         <div class="mt-4 flex items-baseline justify-between"><b>${tipo === 'arma' ? '🔫 Armas' : '🧠 Tácticos'}</b><span class="text-sm">${espacios(tipo)}</span></div>
         <div class="mt-2 grid gap-2">${ops[tipo].map((op, i) => { const [ic, n, d] = etiqueta(op), on = elegido[tipo] === i;
-          return `<button data-op="${tipo}|${i}" class="flex items-center gap-3 rounded-2xl border-2 p-3 text-left touch-manipulation ${on ? 'border-emerald-400 bg-emerald-400/10' : 'border-zinc-700 bg-zinc-900'}"><span class="text-3xl">${ic}</span><span><b>${n}</b><br><small class="text-zinc-400">${d}</small><span class="mt-1 flex flex-wrap gap-1">${chipsProps(propsDe(op))}</span></span></button>`; }).join('')}</div>`).join('')}
+          const sug = rec[tipo]?.i === i;
+          return `<button data-op="${tipo}|${i}" class="relative flex items-center gap-3 rounded-2xl border-2 p-3 text-left touch-manipulation ${on ? 'border-emerald-400 bg-emerald-400/10' : sug ? 'border-sky-500/70 bg-zinc-900' : 'border-zinc-700 bg-zinc-900'}">${sug ? '<span class="absolute -top-2 right-3 rounded-full bg-sky-400 px-2 text-[10px] font-black text-zinc-950">⭐ SUGERIDO</span>' : ''}<span class="text-3xl">${ic}</span><span><b>${n}</b><br><small class="text-zinc-400">${d}</small>${sug && this.ayuda >= 2 ? `<br><small class="text-sky-300">💡 ${rec[tipo].razon}</small>` : ''}<span class="mt-1 flex flex-wrap gap-1">${chipsProps(propsDe(op))}</span></span></button>`; }).join('')}</div>`).join('')}
       <button data-a="ok" class="${UI.btnP} mt-5" ${elegido.arma != null && elegido.tactico != null ? '' : 'disabled'}>Continuar</button>`,
     e => {
       const op = e.target.closest('[data-op]')?.dataset.op;

@@ -150,7 +150,7 @@ class World {
   #balas = new Pool(() => ({})); #parts = new Pool(() => ({}));
   constructor({bus, loadout, energia, base, extraSoldados = 0}){
     Object.assign(this, {bus, loadout, energia, base, extraSoldados});
-    this.reclutarT = 0.8; this.reclutados = 0; this.armas = []; this.clima = CLIMAS.despejado; this.rayoT = 6; this.flash = 0; this.shake = 0; this.anuncio = null;
+    this.reclutarT = 0.8; this.reclutados = 0; this.vistos = {}; this.tiempoSinEnergia = 0; this.tiempo = 0; this.bajasPropias = 0; this.armas = []; this.clima = CLIMAS.despejado; this.rayoT = 6; this.flash = 0; this.shake = 0; this.anuncio = null;
     this.sincronizarArmas();
   }
   get aliens(){ return this.enemigos.filter(e => !e.vuela); }
@@ -164,8 +164,10 @@ class World {
   sacudir(s){ this.shake = Math.max(this.shake, s); }
 
   update(dt, director){
+    if (this.sinEnergia) this.tiempoSinEnergia += dt; this.tiempo += dt;
     this.sinEnergia = false;
     director.update(dt, this);
+    for (const e of this.enemigos) if (!e.contado){ e.contado = true; this.vistos[e.tipo] = (this.vistos[e.tipo] ?? 0) + 1; }
     const L = this.loadout, C = this.clima, lento = L.efecto('lentitud', 1) * (C.vel ?? 1);
     this.flash = Math.max(0, this.flash - dt * 3); this.shake = Math.max(0, this.shake - dt);
     // Base: regeneración y reclutamiento cuando hay espacio
@@ -208,7 +210,7 @@ class World {
       if (e.jefe){ this.sacudir(0.8); this.anuncio = `🏆 ¡${e.name} derrotado!`; }
       if (!e.sinXP) this.bus.emit('enemigo-muerto', {tipo:e.tipo, xp:e.xp, jefe:!!e.jefe});
     }
-    for (const s of this.soldados.filter(s => s.vida <= 0)){ this.soldados.splice(this.soldados.indexOf(s), 1); this.explosion(s.x, s.cy, '#fca5a5', 8); }
+    for (const s of this.soldados.filter(s => s.vida <= 0)){ this.bajasPropias++; this.soldados.splice(this.soldados.indexOf(s), 1); this.explosion(s.x, s.cy, '#fca5a5', 8); }
     if (this.base.vida <= 0) this.bus.emit('base-destruida');
   }
 

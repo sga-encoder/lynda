@@ -154,6 +154,39 @@ const COMBOS_HECHOS = {
 };
 const MAX_COMBOS_PROPIOS = 3, MAX_CARTAS_COMBO = 5;
 
+/* ---------- Modo asistido (3 niveles) ---------- */
+const NIVELES_AYUDA = [
+  {icon:'🚫', nombre:'Sin ayuda', desc:'Solo tú y las cartas.', xp:1, espera:Infinity},
+  {icon:'🌱', nombre:'Leve', desc:'Pista conceptual si te atascas; ⭐ en el potenciador sugerido.', xp:0.9, espera:14},
+  {icon:'🧭', nombre:'Media', desc:'Se iluminan las cartas que sirven; la pista nombra la carta; sugerencias con explicación.', xp:0.8, espera:9},
+  {icon:'🦮', nombre:'Alta', desc:'Marca la mejor carta y dónde usarla; quita una opción incorrecta; preselecciona potenciadores.', xp:0.65, espera:5},
+];
+
+/** Recomienda potenciadores según lo que pasa en la batalla (reglas tipo Strategy). */
+class Recomendador {
+  constructor(ctx){ this.c = ctx; }         // ctx: {voladores, blindados, escuderos, rapidos, grupo, base, sinEnergia, bajasPropias, pasoLento}
+  puntuar(op){
+    const c = this.c, r = [];
+    const id = op.accion === 'fusionar' ? op.receta.resultado : op.accion === 'mejorar' ? op.bonus.id : op.id;
+    const p = BONUS_DEFS[id]?.props ?? {};
+    let pts = op.accion === 'mejorar' ? 1.2 : 1;
+    if (op.accion === 'fusionar'){ pts += 5; r.push('La fusión es más fuerte y libera un espacio.'); }
+    if (op.accion === 'reparar' && c.base < 0.7){ pts += 3; r.push('La base está dañada.'); }
+    if (c.voladores > 0.3 && (p.prioridad === 'aire' || id === 'tesla')){ pts += 3; r.push('Hay muchos voladores y esta arma los prioriza.'); }
+    if (c.voladores > 0.3 && p.alcance === 'tierra'){ pts -= 2; }
+    if (c.blindados > 0.15 && (p.dano === 'energia' || p.efecto === 'perforar' || id === 'municion')){ pts += 2.5; r.push('Hay alienígenas blindados: la energía o la perforación ignoran su armadura.'); }
+    if (c.escuderos > 0.15 && (p.dano === 'fisico' || p.dano === 'explosivo')){ pts += 1.5; r.push('Hay escuderos: resisten la energía, no lo físico.'); }
+    if (c.grupo && (p.objetivo === 'area' || p.objetivo === 'cadena')){ pts += 2; r.push('Los enemigos llegan en grupo: conviene daño en área o en cadena.'); }
+    if (c.rapidos > 0.2 && id === 'lenta'){ pts += 2.5; r.push('Hay enemigos rápidos: la cámara lenta los frena.'); }
+    if (c.sinEnergia > 0.15 && id === 'amplificador'){ pts += 3; r.push('Te quedas sin energía a menudo.'); }
+    if (c.base < 0.6 && id === 'escudo'){ pts += 3; r.push('La base está dañada.'); }
+    if (c.bajasPropias >= 3 && (id === 'botiquin' || id === 'reclutas')){ pts += 2.5; r.push('Estás perdiendo soldados.'); }
+    if (c.pasoLento && id === 'concentracion'){ pts += 2.5; r.push('Tus pasos son lentos: tendrás más tiempo para el bono de rapidez.'); }
+    return {pts, razon:r[0] ?? (op.accion === 'mejorar' ? 'Mejorar lo que ya tienes es una apuesta segura.' : 'Buena opción general.')};
+  }
+  mejor(ops){ return ops.map((op, i) => ({i, ...this.puntuar(op)})).sort((a, b) => b.pts - a.pts)[0]; }
+}
+
 /* ---------- Puntuación de cada paso (Strategy compuesta) ---------- */
 class ReglaVelocidad   { nombre = 'rápido';    mult(c){ const v = c.ventana ?? 0; return c.segundos < 6 + v ? 1.5 : c.segundos < 12 + v ? 1.25 : 1; } }
 class ReglaCombo       { nombre = 'combo';     mult(c){ return 1 + Math.min(c.combo, 5) * 0.1; } }
@@ -186,7 +219,7 @@ class SaveRepository {                               // patrón Repository: el r
   save(data){ try { localStorage.setItem(this.#key, JSON.stringify(data)); } catch {} }
 }
 class Progreso {
-  constructor(repo){ this.repo = repo; this.data = {puntos:0, mejoras:{}, record:0, partidas:0, modo:'fund', todo:true, semi:true, ...repo.load()}; }
+  constructor(repo){ this.repo = repo; this.data = {puntos:0, mejoras:{}, record:0, partidas:0, modo:'fund', todo:true, semi:true, asistido:0, ...repo.load()}; }
   nivel(id){ return this.data.mejoras[id] ?? 0; }
   costo(id){ return MEJORAS[id].costo(this.nivel(id)); }
   puedeComprar(id){ return this.nivel(id) < MEJORAS[id].max && this.data.puntos >= this.costo(id); }

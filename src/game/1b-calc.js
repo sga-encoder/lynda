@@ -75,10 +75,33 @@ const cartasIntegral = () => new CardRegistry()
   .register(cartaMasC)
   .register(new PasoLibreCard());
 
+/* ---------- Pistas conceptuales de cada carta (modo asistido leve) ---------- */
+const PISTAS = {
+  dist:'Hay un número multiplicando un paréntesis.', seme:'Hay términos parecidos que se pueden juntar.', mover:'Deja las x de un lado y los números del otro.',
+  div:'La x tiene un número multiplicándola.', oper:'Queda una división de números por calcular.',
+  'd-suma':'Es una suma: puedes derivar cada parte por separado.', 'd-kf':'Hay un número multiplicando: puede salir de la derivada.', 'd-cte':'Hay un número solo: su derivada es fácil.',
+  'd-pot':'Hay una potencia de x.', 'd-tabla':'Hay una función básica de x (sin, cos, tan, eˣ, ln).', 'd-prod':'Hay dos funciones de x multiplicándose.', 'd-cad':'Hay una función dentro de otra.',
+  'i-suma':'Es una suma: integra cada parte por separado.', 'i-kf':'Hay un número multiplicando: sácalo de la integral.', 'i-cte':'Hay un número solo dentro de una integral.',
+  'i-pot':'Hay una potencia de x.', 'i-ln':'Aparece 1/x.', 'i-tabla':'Hay una función básica de x (cos, sin, eˣ, sec²).', 'i-sust':'Hay una función de (kx + b).', 'i-c':'Ya no quedan integrales: ¿qué falta al final?',
+};
+
 /* ---------- Dominios (cada área del juego) ---------- */
 class Dominio {
   /** @param {{id,nombre,icon,cartas:CardRegistry,key:Function,tex:Function,resuelto:Function,mano:Function,libre:Function,piezas:Function,tipos:ProblemType[]}} o */
-  constructor(o){ Object.assign(this, o); this.solver = new Solver(this.cartas.all().filter(c => !c.free), {key:o.key, resuelto:o.resuelto}); this.tipos.forEach(t => t.dominio = this); }
+  constructor(o){
+    Object.assign(this, o); this.solver = new Solver(this.cartas.all().filter(c => !c.free), {key:o.key, resuelto:o.resuelto}); this.tipos.forEach(t => t.dominio = this);
+    this.cartas.all().forEach(c => c.pista ??= PISTAS[c.id]);
+  }
+  /** Mejor jugada según el solucionador (para el modo asistido). */
+  mejorJugada(raiz){
+    let mejor = null;
+    for (const c of this.cartas.all().filter(c => !c.free)) c.targets(raiz).forEach((p, i) => {
+      const d = this.solver.distance(c.apply(raiz, p));
+      if (!mejor || d < mejor.d) mejor = {carta:c, path:p, i, d};
+    });
+    return mejor;
+  }
+  aplicables(raiz){ return new Set(this.cartas.all().filter(c => !c.free && c.targets(raiz).length).map(c => c.id)); }
 }
 const PIEZAS_CALC = ['1','2','3','4','5','6','7','8','9','0','x','+','-','·','(',')','sin','cos','tan','ln','e','sup','frac','sqrt'];
 function libreCalc(conC){

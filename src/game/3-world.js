@@ -162,7 +162,8 @@ class WaveDirector {
 class World {
   enemigos = []; soldados = []; balas = []; balasEnemigas = []; particulas = []; rayos = []; textos = [];
   #balas = new Pool(() => ({})); #parts = new Pool(() => ({}));
-  constructor({bus, loadout, energia, base, extraSoldados = 0, mej = () => 0, torreta = 0, peloton = null, soldadosOk = () => true, perfil = null, titular = null, potencia = () => null}){
+  constructor({bus, loadout, energia, base, extraSoldados = 0, mej = () => 0, torreta = 0, peloton = null, soldadosOk = () => true, perfil = null, titular = null, potencia = () => null, fx = () => null}){
+    this.fx = fx;
     this.potencia = potencia;                        // efecto de los potenciadores de la partida para un arma
     this.perfil = perfil; this.titular = titular;   // perfil(uid) → estadísticas del soldado concreto; titular(tipo) → soldado por defecto del tipo
     this.soldadosOk = soldadosOk;                  // tipos de soldado desbloqueados en la Ruta
@@ -252,8 +253,9 @@ class World {
         const eq = s.perfil ? d.ataque.dano : this.equipoDe(s.tipo), Q = s.perfil ? {} : EQUIPO[eq] ?? {};   // con perfil, el tipo de daño lo da el arma equipada
         const critico = Math.random() < ep.crit, dmg = d.ataque.dmg * (s.mult ?? 1) * (eq === d.ataque.dano ? 1 : Q.mult ?? 1) * (1 + ep.dmg) * (critico ? 2 : 1);
         for (let k = 0; k <= ep.extra; k++)                              // Ráfaga Fibonacci: balas extra
+          { const fx = s.perfil ? this.fx(s.perfil.armaId) : null;          // partículas propias del arma (cambian con sus potenciadores)
           this.disparar({x:s.x + 4, y:s.cy - 3 - k * 2, obj:o, golpe:{dmg, dano:eq, area:Math.max(d.ataque.area ?? 0, Q.area ?? 0) + ep.area, alcance:'tierra', perf:ep.perf, efecto:ep.congela ? 'congelar' : undefined}, parabola:!!d.ataque.parabola,
-            vel:(d.ataque.parabola ? 120 : 260) * (1 - k * 0.08), color:critico ? '#fde047' : d.ataque.area ? '#fb923c' : '#e5e7eb', r:critico ? 1.8 : d.ataque.area ? 2 : 1.1});
+            vel:(d.ataque.parabola ? 120 : 260) * (1 - k * 0.08), fx, hist:fx?.estela ? [] : null, color:critico ? '#fde047' : fx?.color ?? (d.ataque.area ? '#fb923c' : '#e5e7eb'), r:(critico ? 1.6 : 1) * (fx?.r ?? 1) * (d.ataque.area ? 1.8 : 1.1)}); }
       }
       if (d.apoyo && (s.apoyoT -= dt) <= 0){
         s.apoyoT = d.apoyo.cd * Math.max(0.35, 1 + ep.cd);
@@ -353,6 +355,7 @@ class World {
         if (b.u >= 1) this.impacto(b, vivo);
         continue;
       }
+      if (b.hist){ b.hist.push(b.x, b.y); if (b.hist.length > 8 + 4 * b.fx.estela) b.hist.splice(0, 2); }   // estela
       if (!b.guiado && vivo){ b.tx = o.x; b.ty = o.cy; }
       const dx = b.tx - b.x, dy = b.ty - b.y, d = Math.hypot(dx, dy), paso = b.vel * velClima * dt;
       if (d <= paso + 3) this.impacto(b, vivo);
@@ -412,7 +415,7 @@ class World {
     } else if (vivo) this.golpear(b.obj, b.golpe);
   }
   disparar(o){
-    const b = this.#balas.tomar({muerta:false, guiado:false, parabola:false, tx:o.obj.x, ty:o.obj.cy, ...o});
+    const b = this.#balas.tomar({muerta:false, guiado:false, parabola:false, fx:null, hist:null, tx:o.obj.x, ty:o.obj.cy, ...o});
     if (b.parabola){ b.x0 = b.x; b.y0 = b.y; b.u = 0; b.dist = Math.max(40, Math.hypot(b.tx - b.x, b.ty - b.y)); }
     this.balas.push(b);
   }
@@ -437,6 +440,22 @@ class Renderer {
     this.cv.width = Math.round(r.width * dpr); this.cv.height = Math.round(r.height * dpr);
     this.esc = this.cv.width / MUNDO.W;
   }
+  /** Dibuja un disparo con la forma de su arma: bala, orbe, rayo, perdigones, onda o granada, más estela y chispas. */
+  bala(c, b, t){
+    const f = b.fx;
+    if (b.hist && b.hist.length > 2){ c.strokeStyle = b.color; c.globalAlpha = 0.45; c.lineWidth = b.r; c.beginPath(); c.moveTo(b.hist[0], b.hist[1]); for (let i = 2; i < b.hist.length; i += 2) c.lineTo(b.hist[i], b.hist[i + 1]); c.lineTo(b.x, b.y); c.stroke(); c.globalAlpha = 1; }
+    c.fillStyle = b.color;
+    const forma = f?.forma ?? 'bala';
+    if (forma === 'orbe'){ c.globalAlpha = 0.35; c.beginPath(); c.arc(b.x, b.y, b.r * 2.6, 0, 6.28); c.fill(); c.globalAlpha = 1; c.beginPath(); c.arc(b.x, b.y, b.r * 1.2, 0, 6.28); c.fill(); }
+    else if (forma === 'rayo'){ const a = Math.atan2(b.ty - b.y, b.tx - b.x); c.strokeStyle = b.color; c.lineWidth = b.r * 1.2; c.beginPath(); c.moveTo(b.x - Math.cos(a) * 7, b.y - Math.sin(a) * 7); c.lineTo(b.x, b.y); c.stroke(); }
+    else if (forma === 'perdigon'){ for (let k = -1; k <= 1; k++){ c.beginPath(); c.arc(b.x - 1, b.y + k * 2, b.r * 0.8, 0, 6.28); c.fill(); } }
+    else if (forma === 'onda'){ c.strokeStyle = b.color; c.lineWidth = 1.4; c.beginPath(); c.arc(b.x, b.y, b.r * 2.4, -1.1, 1.1); c.stroke(); }
+    else if (forma === 'granada'){ c.beginPath(); c.arc(b.x, b.y, b.r * 1.3, 0, 6.28); c.fill(); c.strokeStyle = '#1c1917'; c.lineWidth = 0.6; c.stroke(); }
+    else { c.beginPath(); c.arc(b.x, b.y, b.r, 0, 6.28); c.fill(); }
+    if (f?.perfora){ c.strokeStyle = '#67e8f9'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(b.x - 5, b.y); c.lineTo(b.x + 2, b.y); c.stroke(); }
+    if (f?.chispas && Math.sin(t * 40 + b.x) > 0.3){ c.fillStyle = '#fef08a'; c.fillRect(b.x + 1.5, b.y - 2, 1, 1); c.fillRect(b.x - 2, b.y + 1.5, 1, 1); }
+    if (f?.anillo){ c.strokeStyle = b.color; c.globalAlpha = 0.4; c.lineWidth = 0.6; c.beginPath(); c.arc(b.x, b.y, b.r + 2 + f.anillo, 0, 6.28); c.stroke(); c.globalAlpha = 1; }
+  }
   draw(m, t){
     const c = this.ctx, {W, H, suelo} = MUNDO, sh = m.shake > 0 ? (Math.random() - 0.5) * 6 * m.shake : 0;
     c.setTransform(this.esc, 0, 0, this.esc, sh * this.esc, sh * 0.6 * this.esc);
@@ -456,7 +475,8 @@ class Renderer {
     this.base(c, m.base);
     m.soldados.forEach(s => this.soldado(c, s, t));
     m.enemigos.forEach(e => this.enemigo(c, e, t));
-    for (const b of [...m.balas, ...m.balasEnemigas]){ c.fillStyle = b.color; c.beginPath(); c.arc(b.x, b.y, b.r, 0, 6.28); c.fill(); }
+    for (const b of m.balas) this.bala(c, b, t);
+    for (const b of m.balasEnemigas){ c.fillStyle = b.color; c.beginPath(); c.arc(b.x, b.y, b.r, 0, 6.28); c.fill(); }
     for (const r of m.rayos){
       c.strokeStyle = r.color; c.lineWidth = 2.2; c.globalAlpha = Math.min(1, r.t * 8); c.beginPath();
       r.puntos.forEach((p, i) => i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)); c.stroke();

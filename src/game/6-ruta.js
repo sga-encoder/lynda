@@ -146,7 +146,7 @@ class Ruta {
             ...(h.tipos ?? []).map(id => ({tipo:'problema', icon:nombreTipo[id]?.icon ?? '🧮', nombre:nombreTipo[id]?.name ?? id})),
             ...cartas.map(id => ({tipo:'carta', icon:cartaInfo[id]?.icon ?? '🃏', nombre:cartaInfo[id]?.name ?? id})),
             ...(h.difs ?? []).map(id => ({tipo:'dificultad', icon:dificultad(id).icon, nombre:`Dificultad ${dificultad(id).nombre}`})),
-            ...(h.bonus ?? []).map(id => ({tipo:'bonus', icon:BONUS_DEFS[id].icon, nombre:BONUS_DEFS[id].name})),
+            ...(h.bonus ?? []).filter(id => BONUS_DEFS[id].tipo === 'tactico').map(id => ({tipo:'bonus', icon:BONUS_DEFS[id].icon, nombre:BONUS_DEFS[id].name})),
             ...(h.soldados ?? []).map(id => ({tipo:'bonus', icon:SOLDADOS[id].icon, nombre:`Soldado: ${SOLDADOS[id].name}`})),
             ...(h.supers ? [{tipo:'bonus', icon:'⚡', nombre:'Superpotenciadores (6)'}] : []),
             ...(h.peloton ? [{tipo:'bonus', icon:'🪖', nombre:'Estrategia de pelotón (tipos de soldado y munición)'}] : []),

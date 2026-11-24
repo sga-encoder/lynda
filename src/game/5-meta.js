@@ -56,6 +56,7 @@ class VistaPrevia extends Renderer {
     const g = c.createLinearGradient(0, 0, 0, 70); g.addColorStop(0, '#0b1023'); g.addColorStop(1, '#312e81'); c.fillStyle = g; c.fillRect(0, 0, 120, 70);
     c.fillStyle = '#1c1917'; c.fillRect(0, 58, 120, 12);
     c.setTransform(s, 0, 0, s, 0, s * (58 - suelo));                  // coordenadas del mundo con el suelo en y = 58
+    if (it.kind === 'potarma') return this.armaSoldado(c, it, t);
     if (it.kind === 'arma') return this.arma(c, it.id, t);
     if (it.kind === 'soldado') return this.soldadoAnim(c, it.id, t);
     return this.enemigoAnim(c, it.id, t);
@@ -71,6 +72,18 @@ class VistaPrevia extends Renderer {
     if (e.vuela){ e.y = MUNDO.suelo - 30 + Math.sin(t * 2) * 3; if (e.escudoMental) e.escudoT = (t % 4) < 1.5 ? 1 : 0; }
     else { e.y = MUNDO.suelo; if (id === 'saltador'){ const u = t % 2; if (u < 0.7) e.y -= 18 * Math.sin(Math.PI * u / 0.7); } if (id === 'excavador') e.bajoTierra = (t % 3) < 1.5; }
     this.enemigo(c, e, t);
+  }
+  /** Un soldado dispara su arma: se ven sus partículas (y cómo las cambia el potenciador). */
+  armaSoldado(c, it, t){
+    const s = new Soldado(0, it.tipo); s.x = 18; this.soldado(c, s);
+    const e = ENEMIGOS.explorador(100, {vida:1, velocidad:1}); e.x = 100; e.y = MUNDO.suelo; e.estado = 'camina'; e.fase = t * 6; this.enemigo(c, e, t);
+    const fx = fxDisparo({potenciadores:it.pot ? {[it.pot]:3} : {}}, it.arma), granada = fx.forma === 'granada' || fx.forma === 'orbe' && it.tipo === 'granadero';
+    for (let k = 0; k < 3; k++){
+      const u = ((t * 0.9 + k / 3) % 1), x = 24 + 72 * u, y = MUNDO.suelo - 12 - (granada ? 26 * Math.sin(Math.PI * u) : 0);
+      const hist = fx.estela ? Array.from({length:3 + 2 * fx.estela}, (_, j) => [x - (j + 1) * 3, y]).reverse().flat() : null;
+      this.bala(c, {x, y, tx:100, ty:MUNDO.suelo - 12, fx, hist, color:fx.color, r:fx.r * 1.2}, t);
+      if (u > 0.93 && fx.anillo){ c.strokeStyle = fx.color; c.globalAlpha = 0.6; c.beginPath(); c.arc(100, MUNDO.suelo - 10, 4 + fx.anillo * 2, 0, 6.28); c.stroke(); c.globalAlpha = 1; }
+    }
   }
   arma(c, id, t){
     const d = BONUS_DEFS[id], p = d.props, {suelo} = MUNDO, u = (t % 1.4) / 1.4;
@@ -99,13 +112,16 @@ class CatalogoScene extends Scene {
   dominioDisponible(dom){ const d = this.app.progreso.data; return this.todo || dom.tipos.some(t => d.todo || this.app.tipoDesbloqueado(t)); }
   items(){
     if (this.tab === 'cartas') return Object.values(DOMINIOS).flatMap(dom => dom.cartas.all().map(c => ({kind:'carta', id:c.id, c, dom, ok:this.todo || c.free && this.dominioDisponible(dom) || this.app.cartaDesbloqueada(c.id), name:c.name})));
-    if (this.tab === 'armas') return Object.entries(BONUS_DEFS).filter(([, d]) => d.tipo === 'arma' && !d.fusion).map(([id, d]) => ({kind:'arma', id, d, ok:this.conocido('armas', id), name:d.name}));
+    // Armas = las de los soldados (3 por tipo) y, debajo de cada una, sus 6 potenciadores
+    if (this.tab === 'armas') return TIPOS_TROPA.flatMap(tipo => ARMAS_TROPA[tipo].flatMap(([id, name, icon, st, desc], k) => [
+      {kind:'potarma', grupo:id, tipo, arma:id, pot:null, id, x:{icon, nombre:name, desc}, ok:this.todo || tropaDesbloqueada(this.app, tipo, 'arma', k), name},
+      ...PLANTILLAS_POT.map(p => { const pid = `${id}:${p.k}`; return {kind:'potarma', grupo:id, tipo, arma:id, pot:pid, id:pid, x:POTENCIADORES[pid], ok:this.conocido('potenciadores', pid), name:POTENCIADORES[pid].nombre}; })]));
     if (this.tab === 'tacticos') return Object.entries(BONUS_DEFS).filter(([, d]) => d.tipo === 'tactico' && !d.fusion).map(([id, d]) => ({kind:'tactico', id, d, ok:this.conocido('tacticos', id), name:d.name}));
     // Fusiones: se sabe que existen, pero no cómo se consiguen (se descubren jugando)
     // ⚡ Potenciadores: 6 superpotenciadores + 6 por cada una de las 15 armas de los soldados
-    if (this.tab === 'potenciadores') return [...Object.entries(SUPERPOTENCIADORES).map(([id, x]) => ({kind:'pot', id, d:{icon:x.icon}, x, grupo:'super', ok:this.conocido('potenciadores', id), name:x.nombre})),
-      ...Object.values(POTENCIADORES).map(x => ({kind:'pot', id:x.id, d:{icon:x.icon}, x, grupo:x.arma, ok:this.conocido('potenciadores', x.id), name:x.nombre}))];
-    if (this.tab === 'fusiones') return FUSIONES.map(f => ({kind:'fusion', id:f.resultado, d:BONUS_DEFS[f.resultado], ok:this.conocido('fusiones', f.resultado), name:BONUS_DEFS[f.resultado].name}));
+    // Fusiones = superpotenciadores (3 de arma y 3 con táctica) + fusiones entre tácticos
+    if (this.tab === 'fusiones') return [...Object.entries(SUPERPOTENCIADORES).map(([id, x]) => ({kind:'pot', id, d:{icon:x.icon}, x, grupo:'super', ok:this.conocido('potenciadores', id), name:x.nombre})),
+      ...FUSIONES.filter(f => BONUS_DEFS[f.a].tipo === 'tactico' && BONUS_DEFS[f.b].tipo === 'tactico').map(f => ({kind:'fusion', grupo:'fus', id:f.resultado, d:BONUS_DEFS[f.resultado], ok:this.conocido('fusiones', f.resultado), name:BONUS_DEFS[f.resultado].name}))];
     // Entidades en dos grupos: 🪖 Soldados y 👽 Alienígenas (comunes, Comandantes y Soberanos)
     const g = id => INFO_ENEMIGO[id].grupo ?? (ENEMIGOS[id](0, {vida:1, velocidad:1}).jefe ? 'soberano' : 'comun');
     const orden = {comun:0, comandante:1, soberano:2};
@@ -128,11 +144,11 @@ class CatalogoScene extends Scene {
     <div class="mx-auto flex h-full max-w-2xl flex-col px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
       <div class="flex items-center justify-between">${btnVolver}${this.app.progreso.data.todo ? '<span class="text-xs text-amber-300">🧪 Modo desarrollador: todo visible</span>' : ''}</div>
       <h2 class="mt-3 text-2xl font-black">📚 Catálogo</h2>
-      ${tabs([['cartas', '🃏', 'Cartas'], ['armas', '🔫', 'Armas'], ['tacticos', '🧠', 'Tácticos'], ['fusiones', '⚗️', 'Fusiones'], ['potenciadores', '⚡', 'Potenciadores'], ['entidades', '👽', 'Entidades']], this.tab)}
+      ${tabs([['cartas', '🃏', 'Cartas'], ['armas', '🔫', 'Armas'], ['tacticos', '🧠', 'Tácticos'], ['fusiones', '⚗️', 'Fusiones'], ['entidades', '👽', 'Entidades']], this.tab)}
       <p class="mt-1 text-xs text-zinc-400">${this.tab === 'cartas' ? `${ok}/${items.length} cartas disponibles · las demás se desbloquean en la 🗺️ Ruta o avanzando en Aprender`
         : this.tab === 'fusiones' ? `${ok}/${items.length} fusiones descubiertas · existen fusiones entre armas, entre tácticos y entre armas y tácticos. ¿Cuáles? Descúbrelo jugando.`
         : `${ok}/${items.length} descubiertos · se descubren al obtenerlos o verlos en una partida`}</p>
-      <div class="mt-2 grid flex-1 grid-cols-2 content-start gap-2 overflow-y-auto pb-4 sm:grid-cols-3">${items.map((it, i) => (it.grupo && it.grupo !== items[i - 1]?.grupo ? `<div class="col-span-full mt-2 text-sm font-black text-zinc-300">${it.kind === 'pot' ? (it.grupo === 'super' ? '🌟 Superpotenciadores' : `${it.x.armaIcon} ${it.x.armaNombre}`) : {soldados:'🪖 Soldados', comun:'👽 Alienígenas · comunes y de cada mundo', comandante:'🎖️ Alienígenas · Comandantes (subjefes)', soberano:'👑 Alienígenas · Soberanos (jefes)'}[it.grupo]}</div>` : '') + this.tile(it, i)).join('')}</div>
+      <div class="mt-2 grid flex-1 grid-cols-2 content-start gap-2 overflow-y-auto pb-4 sm:grid-cols-3">${items.map((it, i) => (it.grupo && it.grupo !== items[i - 1]?.grupo ? `<div class="col-span-full mt-2 text-sm font-black text-zinc-300">${it.kind === 'potarma' ? `${SOLDADOS[it.tipo].icon} ${it.x.nombre ?? it.name} · ${SOLDADOS[it.tipo].name}` : it.kind === 'pot' ? '🌟 Superpotenciadores' : it.kind === 'fusion' ? '⚗️ Fusiones de tácticos' : {soldados:'🪖 Soldados', comun:'👽 Alienígenas · comunes y de cada mundo', comandante:'🎖️ Alienígenas · Comandantes (subjefes)', soberano:'👑 Alienígenas · Soberanos (jefes)'}[it.grupo]}</div>` : '') + this.tile(it, i)).join('')}</div>
       <div data-h="detalle" class="absolute inset-0 z-20 hidden"></div>
     </div>`).onclick = e => this.click(e);
     this.animar();
@@ -140,7 +156,7 @@ class CatalogoScene extends Scene {
   animar(){
     const vistas = [...this.app.root.querySelectorAll('canvas[data-prev], canvas[data-grande]')].map(cv => {
       const it = cv.dataset.grande != null ? this.detalle : this.lista[+cv.dataset.prev];
-      return new VistaPrevia(cv, {kind:it.kind === 'enemigo' ? 'enemigo' : it.kind === 'fusion' ? 'arma' : it.kind, id:it.id});
+      return new VistaPrevia(cv, it.kind === 'potarma' ? it : {kind:it.kind === 'enemigo' ? 'enemigo' : it.kind === 'fusion' ? 'arma' : it.kind, id:it.id});
     });
     const t0 = performance.now();
     const paso = now => { const t = (now - t0) / 1000; vistas.forEach(v => v.dibujar(t)); this.raf = requestAnimationFrame(paso); };
@@ -174,6 +190,10 @@ class CatalogoScene extends Scene {
           <span class="absolute text-emerald-300 [animation:cat-b_4s_ease-in-out_infinite]">${texJuego(despues, false)}</span></div>
         <p class="mt-1 text-center text-xs text-zinc-500">Ejemplo animado: antes → después</p>
         <p class="mt-2 text-xs text-zinc-400">Área: ${it.dom.icon} ${it.dom.nombre} · usada en partidas: ${P.conocido('cartas', it.id) ? 'sí' : 'todavía no'}</p>`;
+    } else if (it.kind === 'potarma'){
+      const x = it.x;
+      vista = `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl"></canvas>`;
+      cuerpo = `<p class="text-sm text-zinc-300">${x.desc}</p><p class="mt-2 text-xs text-zinc-400">${it.pot ? `Potenciador de <b>${x.armaNombre}</b> (${SOLDADOS[it.tipo].name}): se elige al subir de nivel en la partida, hasta nivel ${MAX_POT}. Mira cómo cambia el disparo.` : `Arma de ${SOLDADOS[it.tipo].name}: se equipa y mejora en 🪖 Pelotón. Tiene 6 potenciadores.`}</p>`;
     } else if (it.kind === 'pot'){
       const x = it.x;
       vista = `<div class="flex h-36 items-center justify-center"><span class="text-7xl [animation:flotar_2s_ease-in-out_infinite]">${x.icon}</span></div>`;

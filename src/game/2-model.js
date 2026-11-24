@@ -107,7 +107,7 @@ class Bonus {
 
 class Loadout {
   armas = []; tacticos = [];
-  constructor(){ this.armas.push(new Bonus('rifle')); }
+  constructor(){}   // las armas ahora son las de los soldados (con sus potenciadores); el loadout guarda los tácticos
   lista(tipo){ return tipo === 'arma' ? this.armas : this.tacticos; }
   tiene(id){ return [...this.armas, ...this.tacticos].find(b => b.id === id); }
   /** Opciones para elegir al subir de nivel (nuevos, mejoras o fusiones). */
@@ -229,7 +229,7 @@ class Puntuador {
 
 /* ---------- Mejoras permanentes (fuera de la partida) ----------
    Se compran con 🔬 puntos de investigación (misiones completadas + XP). */
-const CATEGORIAS_MEJORA = [['cientificos', '🧪', 'Científicos'], ['base', '🏰', 'Base'], ['soldados', '🪖', 'Soldados'], ['armas', '🔫', 'Armas'], ['tacticos', '🧠', 'Tácticos']];
+const CATEGORIAS_MEJORA = [['cientificos', '🧪', 'Científicos'], ['base', '🏰', 'Base'], ['soldados', '🪖', 'Soldados'], ['tacticos', '🧠', 'Tácticos']];   // las armas se mejoran en 🪖 Pelotón
 const TIPOS_SOLDADO = [['fusilero', '🔫', 'Fusilero'], ['pesado', '🛡️', 'Pesado'], ['granadero', '💣', 'Granadero'], ['medico', '⛑️', 'Médico'], ['ingeniero', '🔧', 'Ingeniero']];
 const MEJORAS = {
   laboratorio:{cat:'cientificos', icon:'🔬', name:'Laboratorio', desc:'+10 % de XP en cada paso', max:5, costo:n => 10 + 8 * n, efecto:{xp:0.1}},

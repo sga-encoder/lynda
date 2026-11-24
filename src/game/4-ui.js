@@ -172,7 +172,7 @@ class BattleScene extends Scene {
     Object.assign(this.cfg, {velocidad:this.cfg.velocidad * df.vel, vida:this.cfg.vida * df.vida, minimo:Math.round(this.cfg.minimo * df.cantidad), intervalo:this.cfg.intervalo / df.cantidad});
     this.director = new WaveDirector(this.cfg, this.app.rng);
     const P = this.app.progreso;
-    this.mundo ??= new World({bus:this.bus, loadout:r.loadout, energia:r.energia, base:r.base, extraSoldados:r.extraSoldados, mej:id => P.nivel(id), torreta:P.total('torreta'), soldadosOk:id => this.app.soldadoDesbloqueado(id), perfil:uid => perfilSoldado(P, uid), titular:tipo => titularDe(this.app, tipo), potencia:armaId => efectoPotencia(r, armaId), peloton:this.app.pelotonActivo() ? P.data.peloton : null});
+    this.mundo ??= new World({bus:this.bus, loadout:r.loadout, energia:r.energia, base:r.base, extraSoldados:r.extraSoldados, mej:id => P.nivel(id), torreta:P.total('torreta'), soldadosOk:id => this.app.soldadoDesbloqueado(id), perfil:uid => perfilSoldado(P, uid), titular:tipo => titularDe(this.app, tipo), potencia:armaId => efectoPotencia(r, armaId), fx:armaId => fxDisparo(r, armaId), peloton:this.app.pelotonActivo() ? P.data.peloton : null});
     const clima = r.mision === 1 && r.oleada === 1 ? 'despejado' : this.app.rng.pick(CLIMAS_ROTACION);
     this.mundo.ponerClima(clima);
     r.combos.forEach(c => c.usado = false);                          // los combos se recargan cada ronda
@@ -441,7 +441,7 @@ class BattleScene extends Scene {
       const R = new Recomendador({voladores:cuenta(['nave', 'dron', 'bombardero', 'caza', 'portadrones', 'acorazado', 'mente']), blindados:cuenta(['blindado', 'coloso']), escuderos:cuenta(['escudero']),
         rapidos:cuenta(['saltador', 'dron', 'caza']), grupo:w.enemigos.length >= 6 || total > 20, base:w.base.vida / w.base.vidaMax, sinEnergia:w.tiempoSinEnergia / Math.max(1, w.tiempo),
         bajasPropias:w.bajasPropias, pasoLento:(this.run.tPasos ?? 0) / Math.max(1, this.run.nPasos ?? 1) > 12});
-      for (const tipo of ['arma', 'tactico']){ rec[tipo] = R.mejor(ops[tipo]); if (this.ayuda >= 3) elegido[tipo] = rec[tipo].i; }
+      for (const tipo of ['tactico']){ rec[tipo] = R.mejor(ops[tipo]); if (this.ayuda >= 3) elegido[tipo] = rec[tipo].i; }
     }
     const propsDe = op => op.accion === 'fusionar' ? BONUS_DEFS[op.receta.resultado].props : op.accion === 'mejorar' ? op.bonus.props : op.accion === 'nuevo' ? BONUS_DEFS[op.id].props : null;
     const etiqueta = op => op.accion === 'reparar' ? ['🔧', 'Reparar base', '+30 de vida'] :
@@ -450,22 +450,22 @@ class BattleScene extends Scene {
       [BONUS_DEFS[op.id].icon, `${BONUS_DEFS[op.id].name} (nuevo)`, BONUS_DEFS[op.id].desc];
     const espacios = tipo => `${l.lista(tipo).map(b => `${b.def.icon}<sub>${b.nivel}</sub>`).join(' ')} <span class="text-zinc-500">${l.lista(tipo).length}/${ESPACIOS[tipo]}</span>`;
     const pintar = () => this.abrirCapa(`
-      <h2 class="text-center text-2xl font-black">⬆️ ¡Nivel ${this.run.nivel}!</h2><p class="text-center text-sm text-zinc-400">Elige 1 arma, 1 táctico${opsPot.length ? ' y 1 potenciador' : ''}</p>
+      <h2 class="text-center text-2xl font-black">⬆️ ¡Nivel ${this.run.nivel}!</h2><p class="text-center text-sm text-zinc-400">Elige ${opsPot.length ? '1 potenciador para las armas de tus soldados y ' : ''}1 táctico</p>
       ${opsPot.length ? `<div class="mt-4 flex items-baseline justify-between"><b>⚡ Potenciadores de tus soldados</b></div>
         <div class="mt-2 grid gap-2">${opsPot.map((op, i) => { const on = elegido.pot === i, s = op.accion === 'super' ? SUPERPOTENCIADORES[op.id] : POTENCIADORES[op.id], n = op.accion === 'pot' ? (this.run.potenciadores[op.id] ?? 0) : 0;
           return `<button data-pot="${i}" class="relative flex items-center gap-3 rounded-2xl border-2 p-3 text-left touch-manipulation ${on ? 'border-emerald-400 bg-emerald-400/10' : op.accion === 'super' ? 'border-amber-400/70 bg-zinc-900' : 'border-zinc-700 bg-zinc-900'}">${op.accion === 'super' ? '<span class="absolute -top-2 right-3 rounded-full bg-amber-400 px-2 text-[10px] font-black text-zinc-950">SÚPER</span>' : ''}<span class="text-3xl">${s.icon}</span><span><b>${s.nombre}</b>${op.accion === 'pot' ? ` ${pips(n + 1)}` : ''}<br><small class="text-zinc-400">${op.accion === 'pot' ? `${s.armaIcon} ${s.armaNombre}: ` : ''}${s.desc}</small></span></button>`; }).join('')}</div>` : ''}
-      ${['arma', 'tactico'].map(tipo => `
+      ${['tactico'].map(tipo => `
         <div class="mt-4 flex items-baseline justify-between"><b>${tipo === 'arma' ? '🔫 Armas' : '🧠 Tácticos'}</b><span class="text-sm">${espacios(tipo)}</span></div>
         <div class="mt-2 grid gap-2">${ops[tipo].map((op, i) => { const [ic, n, d] = etiqueta(op), on = elegido[tipo] === i;
           const sug = rec[tipo]?.i === i;
           return `<button data-op="${tipo}|${i}" class="relative flex items-center gap-3 rounded-2xl border-2 p-3 text-left touch-manipulation ${on ? 'border-emerald-400 bg-emerald-400/10' : sug ? 'border-sky-500/70 bg-zinc-900' : 'border-zinc-700 bg-zinc-900'}">${sug ? '<span class="absolute -top-2 right-3 rounded-full bg-sky-400 px-2 text-[10px] font-black text-zinc-950">⭐ SUGERIDO</span>' : ''}<span class="text-3xl">${ic}</span><span><b>${n}</b><br><small class="text-zinc-400">${d}</small>${sug && this.ayuda >= 2 ? `<br><small class="text-sky-300">💡 ${rec[tipo].razon}</small>` : ''}<span class="mt-1 flex flex-wrap gap-1">${chipsProps(propsDe(op))}</span></span></button>`; }).join('')}</div>`).join('')}
-      <button data-a="ok" class="${UI.btnP} mt-5" ${elegido.arma != null && elegido.tactico != null && (!opsPot.length || elegido.pot != null) ? '' : 'disabled'}>Continuar</button>`,
+      <button data-a="ok" class="${UI.btnP} mt-5" ${elegido.tactico != null && (!opsPot.length || elegido.pot != null) ? '' : 'disabled'}>Continuar</button>`,
     e => {
       const op = e.target.closest('[data-op]')?.dataset.op;
       if (op){ const [tipo, i] = op.split('|'); elegido[tipo] = +i; return pintar(); }
       const po = e.target.closest('[data-pot]')?.dataset.pot; if (po != null){ elegido.pot = +po; return pintar(); }
       if (e.target.closest('[data-a="ok"]')){
-        for (const tipo of ['arma', 'tactico']){
+        for (const tipo of ['tactico']){
           const o = ops[tipo][elegido[tipo]];
           if (o.accion === 'reparar') this.run.base.vida = Math.min(this.run.base.vidaMax, this.run.base.vida + 30); else l.aplicar(o);
           const nuevoId = o.accion === 'nuevo' ? o.id : o.accion === 'fusionar' ? o.receta.resultado : null;
@@ -482,7 +482,8 @@ class BattleScene extends Scene {
   }
   mostrarPausa(){
     this.abrirCapa(`<div class="m-auto flex w-full max-w-sm flex-col gap-3"><h2 class="text-center text-2xl font-black">⏸ Pausa</h2>
-      ${['arma', 'tactico'].map(tipo => `<div class="text-sm font-bold">${tipo === 'arma' ? '🔫 Armas' : '🧠 Tácticos'} ${this.run.loadout.lista(tipo).length}/${ESPACIOS[tipo]}</div>
+      <div class="text-sm font-bold">⚡ Potenciadores</div><div class="${UI.card} !p-2.5 text-xs">${Object.entries(this.run.potenciadores ?? {}).map(([id, n]) => `${POTENCIADORES[id].icon} ${POTENCIADORES[id].nombre} ${pips(n)}`).join('<br>') || 'Aún ninguno: se eligen al subir de nivel.'}${(this.run.supers ?? []).map(id => `<br>🌟 ${SUPERPOTENCIADORES[id].nombre}`).join('')}</div>
+      ${['tactico'].map(tipo => `<div class="text-sm font-bold">${tipo === 'arma' ? '🔫 Armas' : '🧠 Tácticos'} ${this.run.loadout.lista(tipo).length}/${ESPACIOS[tipo]}</div>
         ${this.run.loadout.lista(tipo).map(b => `<div class="${UI.card} !p-2.5"><div class="flex items-center gap-2"><span class="text-xl">${b.def.icon}</span><b class="flex-1 text-sm">${b.def.name}</b>${pips(b.nivel, b.nivel > 3 ? 4 : 3)}</div><div class="mt-1 flex flex-wrap gap-1">${chipsProps(b.props)}</div></div>`).join('') || '<div class="text-xs text-zinc-500">Sin tácticos todavía</div>'}`).join('')}
       <button data-a="seguir" class="${UI.btnP}">▶ Continuar</button>
       <div class="grid grid-cols-2 gap-2"><button data-a="guardar" class="${UI.btn} text-sm">💾 Guardar</button><button data-a="json" class="${UI.btn} text-sm">⬇ Descargar JSON</button></div>

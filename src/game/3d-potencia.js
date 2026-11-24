@@ -51,3 +51,15 @@ function superDisponibles(app, run){
   const tacticoMax = (run.loadout?.tacticos ?? []).some(b => b.nivel >= MAX_NIVEL);
   return Object.entries(SUPERPOTENCIADORES).filter(([id, s]) => !(run.supers ?? []).includes(id) && (s.clase === 'arma' ? maximos >= 2 : maximos >= 1 && tacticoMax)).map(([id]) => id);
 }
+
+/* ---------- Partículas: cada arma dispara distinto y sus potenciadores lo cambian ---------- */
+const FX_ARMA = {
+  'rifle-vector':{color:'#fde047', forma:'bala'}, 'carabina-pi':{color:'#c4b5fd', forma:'orbe'}, 'fusil-asintota':{color:'#f8fafc', forma:'rayo'},
+  'escopeta-matriz':{color:'#fbbf24', forma:'perdigon'}, 'martillo-tensor':{color:'#fb923c', forma:'onda'}, 'lanza-ion':{color:'#67e8f9', forma:'rayo'},
+  'lanzagranadas-pi':{color:'#fb923c', forma:'granada'}, 'mortero-raiz':{color:'#f97316', forma:'granada'}, 'granada-plasma':{color:'#e879f9', forma:'orbe'},
+};
+/** Aspecto del disparo según el arma y sus potenciadores (tamaño, estela, color, chispas…). */
+function fxDisparo(run, armaId){
+  const f = {color:'#e5e7eb', forma:'bala', ...(FX_ARMA[armaId] ?? {})}, pot = run?.potenciadores ?? {}, n = k => pot[`${armaId}:${k}`] ?? 0;
+  return {...f, r:1 + 0.3 * n('dano'), estela:n('cad') + n('alc'), perfora:n('perf') > 0, anillo:n('area'), chispas:n('crit') > 0};
+}

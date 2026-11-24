@@ -230,7 +230,7 @@ class BattleScene extends Scene {
   get ayuda(){ return this.app.progreso.data.asistido ?? 0; }
   dibujarProblema(){
     const mejor = this.ayuda >= 3 && this.carta ? this.dom.mejorJugada(this.raiz) : null;
-    const marcas = this.carta ? new Map(this.objetivos.flatMap((p, i) => this.carta.marcas(this.raiz, p).map(q => [q.join('.'), mejor && mejor.carta === this.carta && mejor.path.join('.') === p.join('.') ? `${i},mejor=1` : i]))) : null;
+    const marcas = this.carta ? new Map(this.objetivos.flatMap((p, i) => this.carta.marcas(this.raiz, p).map(q => [q.join('.'), mejor && mejor.carta === this.carta && mejor.path.join('.') === p.join('.') ? `${i},mejor=1` : i]))) : this.quiz?.cortas ? new Map(this.quiz.carta.marcas(this.raiz, this.quiz.path).map(q => [q.join('.'), 0])) : null;   // en la pregunta se ve el grupo elegido
     this.$('expr').innerHTML = texJuego(this.dom.tex(this.raiz, marcas));
     this.$('tipo').textContent = (this.director.generando ? '' : '⭐ Extra · ') + `${this.dom.icon} ${this.dom.consigna(this.raiz)}`;   // consigna neutra: no revela el método
     this.$('pasos').textContent = `Pasos ${this.pasos} · mínimo ${this.par}`;
@@ -293,6 +293,12 @@ class BattleScene extends Scene {
   /** Semiautomático: el jugador elige cuál es el resultado correcto de aplicar la carta. */
   resultadoDe(c, path){
     const correcto = c.apply(this.raiz, path);
+    if (c.opcionesCortas && this.app.progreso.data.semi){                // solo el resultado del grupo, no toda la expresión
+      const o = c.opcionesCortas(this.raiz, path, this.app.rng, this.ayuda >= 3 ? 1 : 2);
+      this.quiz = {carta:c, correcto, cortas:true, path, opciones:this.app.rng.shuffle([{vista:o.correcta, ok:true}, ...o.distractores.map(v => ({vista:v}))])};
+      this.dibujarProblema(); this.dibujarMano();
+      return this.mensaje(`¿Cuánto da juntar los términos marcados con <b>${c.icon} ${c.name}</b>?`, 'amber');
+    }
     const distr = this.app.progreso.data.semi ? this.dom.distractores(correcto, this.app.rng, this.ayuda >= 3 ? 1 : 2) : [];
     if (!distr.length) return this.aplicar(correcto, {carta:c});
     this.quiz = {carta:c, correcto, opciones:this.app.rng.shuffle([correcto, ...distr])};
@@ -302,12 +308,12 @@ class BattleScene extends Scene {
   dibujarQuiz(){
     const q = this.quiz;
     this.$('quiz').innerHTML = `<div class="grid gap-2">${q.opciones.map((o, i) => `
-      <button data-opcion="${i}" class="flex min-h-14 items-center justify-center overflow-x-auto rounded-2xl border-2 border-zinc-700 bg-zinc-900 px-3 text-lg touch-manipulation active:scale-[0.98] transition-transform">${texJuego(this.dom.tex(o), false)}</button>`).join('')}
+      <button data-opcion="${i}" class="flex min-h-14 items-center justify-center overflow-x-auto rounded-2xl border-2 border-zinc-700 bg-zinc-900 px-3 text-lg touch-manipulation active:scale-[0.98] transition-transform">${texJuego(this.dom.tex(o.vista ?? o), false)}</button>`).join('')}
       <button data-a="quiz-no" class="${UI.btn} !min-h-10 text-sm">Cancelar</button></div>`;
   }
   elegirOpcion(i){
     const q = this.quiz; this.quiz = null;
-    if (q.opciones[i] === q.correcto) return this.aplicar(q.correcto, {carta:q.carta});
+    if (q.cortas ? q.opciones[i]?.ok : q.opciones[i] === q.correcto) return this.aplicar(q.correcto, {carta:q.carta});
     this.combo = 0; this.pasos++;
     this.dibujarProblema(); this.dibujarMano();
     this.mensaje(`❌ Ese resultado tiene un error (revisa signos, exponentes y coeficientes). Sin energía.`, 'rose');

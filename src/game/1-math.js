@@ -240,6 +240,17 @@ class SemejantesCard extends Card {
     const k = path.at(-1).slice(1), base = path.slice(0, -1);
     return nodeAt(root, base).terms.flatMap((t, i) => likeKey(t) === k ? [[...base, i]] : []);
   }
+  /** En el modo semiautomático solo se pregunta el RESULTADO del grupo (p. ej. 7x), no toda la expresión. */
+  opcionesCortas(root, path, rng, n = 2){
+    const k = path.at(-1).slice(1), add = nodeAt(root, path.slice(0, -1));
+    const suma = add.terms.filter(t => likeKey(t) === k).reduce((q, t) => q.add(coefOf(t)), Q.of(0));
+    const termino = q => k === 'x' ? (q.isZero ? new Num(0) : q.isOne ? new X() : new Mul(q, new X())) : new Num(q);
+    const vistos = new Set([suma.n + '/' + suma.d]), malos = [];
+    for (const q of rng.shuffle([suma.add(1), suma.sub(1), suma.neg(), suma.add(2), suma.mul(2)])){
+      const key = q.n + '/' + q.d; if (vistos.has(key)) continue; vistos.add(key); malos.push(termino(q)); if (malos.length >= n) break;
+    }
+    return {correcta:termino(suma), distractores:malos};
+  }
   apply(root, path){
     const k = path.at(-1).slice(1), base = path.slice(0, -1), add = nodeAt(root, base);
     const suma = add.terms.filter(t => likeKey(t) === k).reduce((q, t) => q.add(coefOf(t)), Q.of(0));

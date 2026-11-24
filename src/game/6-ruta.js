@@ -335,13 +335,13 @@ class PracticaPropiedades {
   ejercicio(ex, i){
     const st = this.estado[i] ??= {fase:0, opciones:null, msg:null}, hecho = this.isDone(this.key(i));
     const marcas = st.fase >= 1 ? new Map(ex.objetivos.flatMap((p, j) => this.carta.marcas(ex.raiz, p).map(q => [q.join('.'), j]))) : null;
-    const pasoTxt = ['Toca la carta para usarla.', ex.objetivos.length > 1 ? 'Toca en la expresión DÓNDE aplicarla (cualquier parte marcada).' : 'Toca la parte marcada.', '¿Qué queda después de aplicarla? Elige el resultado.', '¡Correcto!'][st.fase];
+    const pasoTxt = ['Toca la carta para usarla.', ex.objetivos.length > 1 ? 'Toca en la expresión DÓNDE aplicarla (cualquier parte marcada).' : 'Toca la parte marcada.', this.carta.opcionesCortas ? '¿Cuánto da juntar los términos marcados? Elige el resultado.' : '¿Qué queda después de aplicarla? Elige el resultado.', '¡Correcto!'][st.fase];
     return `<div class="mt-4 rounded-2xl border border-stone-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900" data-ex="${i}">
       <div class="flex items-center gap-2 text-sm"><b>🃏 Ejercicio ${i + 1}</b><span class="ml-auto text-stone-500 dark:text-zinc-400">${hecho ? '✅ Resuelto' : `${Math.min(st.fase, 3)}/3`}</span></div>
-      <div class="mt-2 flex min-h-16 items-center justify-center overflow-x-auto rounded-xl bg-stone-100 px-2 text-lg dark:bg-zinc-950 [&_[data-t]]:cursor-pointer [&_[data-t]]:rounded-md [&_[data-t]]:bg-amber-300/40 [&_[data-t]]:outline [&_[data-t]]:outline-2 [&_[data-t]]:outline-amber-400 [&_[data-t='1']]:bg-sky-300/40 [&_[data-t='1']]:outline-sky-400 [&_[data-t='2']]:bg-fuchsia-300/40 [&_[data-t='2']]:outline-fuchsia-400" data-expr="${i}">${this.tex(this.dom.tex(st.fase === 3 ? ex.correcto : ex.raiz, st.fase === 1 ? marcas : null))}</div>
+      <div class="mt-2 flex min-h-16 items-center justify-center overflow-x-auto rounded-xl bg-stone-100 px-2 text-lg dark:bg-zinc-950 [&_[data-t]]:cursor-pointer [&_[data-t]]:rounded-md [&_[data-t]]:bg-amber-300/40 [&_[data-t]]:outline [&_[data-t]]:outline-2 [&_[data-t]]:outline-amber-400 [&_[data-t='1']]:bg-sky-300/40 [&_[data-t='1']]:outline-sky-400 [&_[data-t='2']]:bg-fuchsia-300/40 [&_[data-t='2']]:outline-fuchsia-400" data-expr="${i}">${this.tex(this.dom.tex(st.fase === 3 ? ex.correcto : ex.raiz, st.fase === 1 ? marcas : st.fase === 2 && st.j != null ? new Map(this.carta.marcas(ex.raiz, ex.objetivos[st.j]).map(q => [q.join('.'), 0])) : null))}</div>
       <p class="mt-2 text-sm font-semibold">${st.fase + 1 <= 3 ? `Paso ${st.fase + 1}: ` : ''}${pasoTxt}</p>
       ${st.fase === 0 ? `<button data-usar="${i}" class="mt-2 inline-flex min-h-12 items-center gap-2 rounded-xl bg-gradient-to-r ${GRAD[this.dom.id]} px-4 font-bold text-white touch-manipulation active:scale-95">${this.carta.icon} Usar «${this.carta.name}»</button>` : ''}
-      ${st.fase === 2 ? `<div class="mt-2 grid gap-2">${st.opciones.map((o, j) => `<button data-op="${i}|${j}" class="flex min-h-14 items-center justify-center overflow-x-auto rounded-xl border-2 border-stone-200 bg-white px-3 text-lg touch-manipulation active:scale-[0.98] dark:border-zinc-700 dark:bg-zinc-950">${this.tex(this.dom.tex(o), false)}</button>`).join('')}</div>` : ''}
+      ${st.fase === 2 ? `<div class="mt-2 grid gap-2">${st.opciones.map((o, j) => `<button data-op="${i}|${j}" class="flex min-h-14 items-center justify-center overflow-x-auto rounded-xl border-2 border-stone-200 bg-white px-3 text-lg touch-manipulation active:scale-[0.98] dark:border-zinc-700 dark:bg-zinc-950">${this.tex(this.dom.tex(o.vista ?? o), false)}</button>`).join('')}</div>` : ''}
       ${st.msg ? `<p class="mt-2 rounded-xl px-3 py-2 text-sm ${st.msg.ok ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200' : 'bg-rose-50 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200'}">${st.msg.t}</p>` : ''}
       ${st.fase === 3 ? `<button data-otra="${i}" class="mt-2 text-sm text-blue-700 underline dark:text-blue-300">↻ Repetir</button>` : ''}
     </div>`;
@@ -353,7 +353,7 @@ class PracticaPropiedades {
       st.fase = 1; return this.render(); }
     if (t){ const i = +t.closest('[data-expr]').dataset.expr; if (this.estado[i].fase === 1) return this.elegirLugar(i, +t.dataset.t); }
     if (op){ const [i, j] = op.dataset.op.split('|').map(Number), st = this.estado[i], ex = this.lista[i];
-      if (st.opciones[j] === st.correcto){ st.fase = 3; st.msg = {ok:true, t:`Bien: así funciona <b>${this.carta.name}</b>. ${this.carta.pista ?? ''}`}; this.onDone(this.key(i)); }
+      if (st.opciones[j] === st.correcto || st.opciones[j].ok){ st.fase = 3; st.msg = {ok:true, t:`Bien: así funciona <b>${this.carta.name}</b>. ${this.carta.pista ?? ''}`}; this.onDone(this.key(i)); }
       else { st.msg = {ok:false, t:'Ese resultado tiene un error. Revisa signos, coeficientes y exponentes y vuelve a intentarlo.'}; }
       return this.render(); }
     if (otra){ delete this.estado[+otra.dataset.otra]; return this.render(); }
@@ -361,8 +361,11 @@ class PracticaPropiedades {
   elegirLugar(i, j){
     const ex = this.lista[i], st = this.estado[i];
     const correcto = this.carta.apply(ex.raiz, ex.objetivos[j]);
-    const distr = this.dom.distractores(correcto, new Rng(semillaDe(this.key(i) + j)), 2);
-    st.correcto = correcto; st.opciones = new Rng(semillaDe('o' + i + j)).shuffle([correcto, ...distr]); st.fase = 2; st.msg = null;
+    st.correcto = correcto; st.fase = 2; st.msg = null; st.j = j;   // se sigue marcando el grupo elegido
+    if (this.carta.opcionesCortas){                                     // semejantes: solo el resultado del grupo
+      const o = this.carta.opcionesCortas(ex.raiz, ex.objetivos[j], new Rng(semillaDe(this.key(i) + j)), 2);
+      st.opciones = new Rng(semillaDe('o' + i + j)).shuffle([{vista:o.correcta, ok:true}, ...o.distractores.map(v => ({vista:v}))]);
+    } else st.opciones = new Rng(semillaDe('o' + i + j)).shuffle([correcto, ...this.dom.distractores(correcto, new Rng(semillaDe(this.key(i) + j)), 2)]);
     this.render();
   }
 }

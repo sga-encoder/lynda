@@ -175,9 +175,9 @@ function zoneHTML(key, zone, depth, sm=false){
   const id = ZREG[key].push(zone)-1;
   const isRoot = depth===0, active = st.active===zone || (!st.active && isRoot);
   const base = isRoot
-    ? 'min-h-28 w-full p-2.5 gap-1.5 rounded-xl border-2 border-dashed border-stone-300 bg-white bg-[radial-gradient(circle,#e7e5e4_1px,transparent_1px)] [background-size:18px_18px] dark:border-zinc-700 dark:bg-zinc-950 dark:bg-[radial-gradient(circle,#27272a_1px,transparent_1px)]'
-    : sm ? 'min-h-7 min-w-7 p-0.5 gap-0.5 rounded-md border-[1.5px] border-dashed border-stone-300 bg-white/80 dark:border-zinc-600 dark:bg-zinc-900/80'
-         : 'min-h-10 min-w-10 p-1 gap-1 rounded-lg border-2 border-dashed border-stone-300 bg-white/80 dark:border-zinc-600 dark:bg-zinc-900/80';
+    ? 'min-h-28 w-full p-1.5 gap-1 rounded-xl border-2 border-dashed border-stone-300 bg-white bg-[radial-gradient(circle,#e7e5e4_1px,transparent_1px)] [background-size:18px_18px] dark:border-zinc-700 dark:bg-zinc-950 dark:bg-[radial-gradient(circle,#27272a_1px,transparent_1px)]'
+    : sm ? 'min-h-6 min-w-6 p-px gap-px rounded-md border-[1.5px] border-dashed border-stone-300 bg-white/80 dark:border-zinc-600 dark:bg-zinc-900/80'
+         : 'min-h-9 min-w-9 p-0.5 gap-0.5 rounded-lg border-2 border-dashed border-stone-300 bg-white/80 dark:border-zinc-600 dark:bg-zinc-900/80';
   const ring = active ? ' ring-2 ring-blue-400 dark:ring-blue-500' : '';
   const empty = zone.length ? '' : (isRoot ? `<span class="pointer-events-none select-none text-sm text-stone-400 dark:text-zinc-500">Lienzo vacío: abre una categoría y arrastra o toca piezas…</span>` : '');
   return `<div data-z="${key}|${id}" class="flex ${isRoot ? 'relative min-w-0 max-w-full flex-wrap overflow-x-auto' : 'shrink-0 flex-nowrap'} items-center ${base}${ring}">${zone.map((n,i)=>nodeHTML(key,n,id,i,depth,sm)).join('')}${empty}</div>`;
@@ -189,7 +189,7 @@ function nodeHTML(key, n, zid, i, depth, sm){
   const brick = `${grab} rounded-md border ${sm?'border-b-2':'border-b-4'} shadow-sm`;
   const green = 'border-emerald-500 bg-emerald-50 dark:border-emerald-600 dark:bg-emerald-950/60';
   const violet = 'border-violet-500 bg-violet-50 text-violet-950 dark:border-violet-500 dark:bg-violet-950/60 dark:text-violet-100';
-  const pad = sm ? 'gap-0.5 p-0.5' : 'gap-1 px-1.5 py-1';
+  const pad = sm ? 'gap-px p-px' : 'gap-0.5 px-1 py-0.5';
   const lbl = t => `<span class="pointer-events-none font-serif ${sm?'text-sm':'text-lg'} italic leading-none">${t}</span>`;
   const sub = (zi, small=sm) => zoneHTML(key, n.z[zi], depth+1, small);
   if (n.t==='frac') return `<span ${attr} title="Fracción" class="${brick} ${green} inline-flex flex-col items-center ${pad}">${sub(0)}<span class="h-0.5 w-full rounded bg-emerald-700 dark:bg-emerald-300"></span>${sub(1)}</span>`;
@@ -211,7 +211,7 @@ function nodeHTML(key, n, zid, i, depth, sm){
       ${big('∫')}<span>${sub(0)}</span><span class="pointer-events-none font-serif italic">d</span>${sub(1, true)}</span>`;
   if (n.t==='intd') return `<span ${attr} title="Integral definida: límites, integrando y variable" class="${brick} ${violet} inline-flex shrink-0 items-center ${pad}">
       <span class="inline-flex shrink-0 flex-col items-center gap-0.5">${sub(1, true)}${big('∫')}${sub(0, true)}</span><span>${sub(2)}</span><span class="pointer-events-none font-serif italic">d</span>${sub(3, true)}</span>`;
-  const size = sm ? 'min-h-7 min-w-7 px-1 text-sm' : depth>0 ? 'min-h-9 min-w-9 px-1.5 text-base' : 'min-h-11 min-w-11 px-2.5 text-lg';
+  const size = sm ? 'min-h-6 min-w-6 px-0.5 text-sm' : depth>0 ? 'min-h-8 min-w-8 px-1 text-base' : 'min-h-10 min-w-10 px-2 text-lg';
   if (n.sub) return `<span ${attr} title="Valor sustituido" class="${brick} border-blue-600 bg-blue-100 text-blue-950 ring-2 ring-blue-300 dark:bg-blue-900/70 dark:text-blue-50 inline-flex ${size} items-center justify-center">${kx('('+tokTex(n.t)+')')}</span>`;
   return `<span ${attr} class="${brick} ${pieceColor(n.t)} inline-flex ${size} items-center justify-center">${kx(tokTex(n.t))}</span>`;
 }
@@ -315,7 +315,7 @@ function renderLego(key){
       ${herr}
       <div class="mb-2 flex flex-wrap items-baseline gap-2"><span class="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white dark:bg-blue-400 dark:text-zinc-950">Paso ${st.step+1} de ${steps.length}</span><b>${s.q}</b></div>
       ${editorNumeroHTML(st)}
-      <div style="zoom:${z}">${zoneHTML(key, st.root, 0)}</div>
+      <div data-ajuste style="zoom:${z}">${zoneHTML(key, st.root, 0)}</div>
       <p class="mt-1 text-[11px] text-stone-500 dark:text-zinc-400">Las cifras seguidas forman un solo número. <b>Mantén presionado</b> un número para ver sus cifras y cambiarlas.</p>
       ${allZones(st.root).length>1 ? `<div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-stone-500 dark:text-zinc-400"><span>Las piezas tocadas entran en el espacio <b class="text-blue-700 dark:text-blue-300">azul</b>.</span><span class="flex shrink-0 gap-1.5">${st.active && st.active!==st.root ? `<button class="${C.btn} !min-h-9 !py-1 !text-xs" data-lg="outzone" title="Volver al espacio de afuera">⤴ Salir</button>` : ''}<button class="${C.btn} !min-h-9 !py-1 !text-xs" data-lg="nextzone">⇥ Siguiente espacio</button></span></div>` : ''}
       ${s.reemplazar ? `<div class="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-900 dark:bg-rose-950/40 dark:text-rose-100">🔁 Esta es <b>tu fórmula</b> del paso anterior. Arrastra el <b>${s.reemplazar}</b> desde 🔢 Números y suéltalo <b>encima de cada x</b> (se marca en rojo).</div>` : ''}
@@ -337,6 +337,7 @@ function renderLego(key){
   const FULL = ['fixed','inset-0','z-[60]','!m-0','overflow-y-auto','!rounded-none','bg-stone-50','dark:bg-zinc-950','p-3'];
   card.classList.toggle('lego-full', !!st.full); FULL.forEach(c => card.classList.toggle(c, !!st.full));
   card.querySelector('[data-lego-body]').innerHTML = `<div class="mt-2 space-y-2">${st.full ? '' : logHTML}${cur}</div>`;
+  ajustarLienzo(card.querySelector('[data-ajuste]'), st.zoom ?? 1);
   renderMath(card.querySelector('[data-lego-body]'));
   card.querySelector('[data-badge]').textContent = done[key] ? '✅ Resuelto' : `${Math.min(st.step,steps.length)}/${steps.length} pasos`;
 }
@@ -430,6 +431,17 @@ function accionCifras(st, act){
   if (d.length){ ed.node.t = d.join(''); if (d.length === 1) st.editNum = null; }
   else { const z = allZones(st.root).find(z => z.includes(ed.node)); if (z) z.splice(z.indexOf(ed.node), 1); st.editNum = null; }
   st.msg = null;
+}
+/** Si las fichas no caben a lo ancho, se achican poco a poco (hasta 60 %); si aun así no caben,
+    los recuadros por fin bajan a otro renglón. */
+function ajustarLienzo(el, zoom){
+  if (!el) return;
+  const raiz = el.firstElementChild;
+  const cabe = () => raiz.scrollWidth <= raiz.clientWidth + 1;
+  let f = 1;
+  el.style.zoom = zoom; raiz.classList.remove('lego-envolver');
+  while (!cabe() && f > 0.6){ f = +(f - 0.08).toFixed(2); el.style.zoom = zoom * f; }
+  if (!cabe()) raiz.classList.add('lego-envolver');                // último recurso: se permite bajar de renglón
 }
 /** Pantalla completa del lienzo: usa la API del navegador si existe; si no, la tarjeta igual ocupa toda la ventana. */
 function pantallaCompleta(key, on){
@@ -674,3 +686,5 @@ document.addEventListener('click', e=>{
   if (st.cat===cat && st.pin){ st.cat=null; st.pin=false; } else { st.cat=cat; st.pin=true; }
   renderLego(key);
 });
+// Al girar el teléfono o cambiar el tamaño, se vuelve a ajustar el tamaño de las fichas
+addEventListener('resize', () => document.querySelectorAll('[data-lego] [data-ajuste]').forEach(el => { const key = el.closest('[data-lego]').dataset.lego; ajustarLienzo(el, (LEGO[key] && LEGO[key].zoom) || 1); }));

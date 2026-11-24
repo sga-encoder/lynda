@@ -413,10 +413,10 @@ function legoAction(key, act){
 function editorNumeroHTML(st){
   const ed = st.editNum; if (!ed) return '';
   const cifras = ed.node.t.split(''), b = 'inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border px-2 text-sm touch-manipulation active:scale-95';
-  return `<div class="mb-2 rounded-xl border-2 border-blue-400 bg-white p-2.5 shadow-lg dark:bg-zinc-900">
+  return `<div data-editor class="mb-2 rounded-xl border-2 border-blue-400 bg-white p-2.5 shadow-lg dark:bg-zinc-900">
     <div class="flex items-center justify-between text-sm"><span>✏️ Cifras del número <b>${ed.node.t}</b></span><button data-lg="dig-ok" class="${b} border-blue-600 bg-blue-600 font-semibold text-white">✓ Listo</button></div>
-    <div class="mt-2 flex flex-wrap justify-center gap-1.5">${cifras.map((c, i) => `<button data-lg="dig:${i}" class="${b} min-h-12 min-w-12 border-b-4 border-blue-500 bg-blue-50 font-serif text-xl text-blue-950 dark:bg-blue-950/60 dark:text-blue-100 ${ed.sel === i ? 'ring-4 ring-amber-400' : ''}">${c}</button>`).join('')}</div>
-    <p class="mt-1.5 text-center text-xs text-stone-500 dark:text-zinc-400">${ed.sel == null ? 'Toca una cifra para moverla o borrarla.' : `Cifra «${cifras[ed.sel]}» seleccionada:`}</p>
+    <div class="mt-2 flex flex-wrap justify-center gap-1.5">${cifras.map((c, i) => `<button data-lg="dig:${i}" data-dig="${i}" style="touch-action:none" class="${b} min-h-12 min-w-12 border-b-4 border-blue-500 bg-blue-50 font-serif text-xl text-blue-950 dark:bg-blue-950/60 dark:text-blue-100 ${ed.sel === i ? 'ring-4 ring-amber-400' : ''}">${c}</button>`).join('')}</div>
+    <p class="mt-1.5 text-center text-xs text-stone-500 dark:text-zinc-400">${ed.sel == null ? 'Toca una cifra para moverla o borrarla, o arrástrala al lienzo para sacarla del número.' : `Cifra «${cifras[ed.sel]}» seleccionada:`}</p>
     ${ed.sel == null ? '' : `<div class="mt-1 flex justify-center gap-1.5"><button data-lg="dig-izq" class="${b} border-stone-300 bg-white dark:border-zinc-600 dark:bg-zinc-800" ${ed.sel === 0 ? 'disabled' : ''}>◀ Mover</button><button data-lg="dig-der" class="${b} border-stone-300 bg-white dark:border-zinc-600 dark:bg-zinc-800" ${ed.sel === cifras.length - 1 ? 'disabled' : ''}>Mover ▶</button><button data-lg="dig-del" class="${b} border-rose-300 bg-rose-50 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200">🗑 Borrar</button></div>`}
   </div>`;
 }
@@ -554,6 +554,15 @@ function zoneAt(x, y, key){
   return z && z.dataset.z.startsWith(key+'|') ? z : null;
 }
 document.addEventListener('pointerdown', e=>{
+  const cardEl = e.target.closest('[data-lego]'), kEd = cardEl?.dataset.lego;
+  if (kEd && LEGO[kEd]?.editNum && !e.target.closest('[data-editor]') && !e.target.closest('[data-n]')){   // tocar fuera cierra el editor
+    LEGO[kEd].editNum = null; addEventListener('pointerup', () => renderLego(kEd), {once:true});
+  }
+  const dg = e.target.closest('[data-dig]');
+  if (dg && kEd){                                                    // arrastrar una cifra fuera del número
+    DRAG = {key:kEd, src:'cifra', i:+dg.dataset.dig, t:dg.textContent.trim(), el:dg, x0:e.clientX, y0:e.clientY, moved:false, lift:e.pointerType==='mouse'?0:48};
+    return;
+  }
   const tokEl = e.target.closest('[data-tok]');
   const nEl = e.target.closest('[data-n]');
   const zEl = e.target.closest('[data-z]');
@@ -607,6 +616,18 @@ document.addEventListener('pointerup', e=>{
   const d = DRAG; DRAG = null; hideCaret();
   const st = legoState(d.key);
   if (d.ghost) d.ghost.remove();
+  if (d.src==='cifra'){                                              // cifra sacada del número editado
+    if (!d.moved) return;                                            // un toque lo maneja el clic (seleccionar)
+    const zEl = zoneAt(e.clientX, e.clientY - d.lift, d.key), ed = st.editNum;
+    if (zEl && ed){ const {zone} = findZone(zEl.dataset.z), idx = dropIndex(zEl, e.clientX, e.clientY - d.lift);
+      snapshot(st); const cif = ed.node.t.split(''); const [c] = cif.splice(d.i, 1);
+      if (cif.length) ed.node.t = cif.join(''); else { const z = allZones(st.root).find(z => z.includes(ed.node)); z?.splice(z.indexOf(ed.node), 1); }
+      st.editNum = cif.length > 1 ? {node:ed.node, sel:null} : null;
+      zone.splice(Math.min(idx, zone.length), 0, {t:c});
+      st.msg = {ok:true, t:`Sacaste el ${c} del número. Recuerda: si queda pegado a otras cifras, se vuelven a juntar.`};
+    }
+    return renderLego(d.key);
+  }
   if (!d.moved){                                   // toque
     if (d.src==='bank') insertNode(d.key, st.active || st.root, null, newNode(d.t));
     else { snapshot(st); d.zone.splice(d.i,1); st.active=null; st.msg=null; }

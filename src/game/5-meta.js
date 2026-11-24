@@ -262,7 +262,7 @@ class MazoScene extends Scene {
       </div>
       <input data-nombre value="${a.nombre}" maxlength="24" class="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" placeholder="Nombre de la combinación">
       <div class="mt-2 grid grid-cols-2 gap-2"><button data-a="cancelar" class="${UI.btn}">Cancelar</button><button data-a="guardar" class="${UI.btnP}" ${a.cartas.length >= 2 ? '' : 'disabled'}>Guardar en el mazo</button></div></div>
-      <div class="mt-2 flex flex-wrap justify-center gap-2">${D.cartas.all().filter(c => !c.free).map(c => cartaHTML(c, D, {attr:`data-pick="${c.id}"`, chica:true})).join('')}</div>`;
+      <div class="mt-2 flex flex-wrap justify-center gap-2">${D.cartas.all().filter(c => !c.free && this.app.cartaDesbloqueada(c.id)).map(c => cartaHTML(c, D, {attr:`data-pick="${c.id}" style="touch-action:none"`, chica:true})).join('')}</div>`;
   }
   click(e){
     const a = e.target.closest('[data-a]')?.dataset.a;
@@ -284,7 +284,9 @@ class MazoScene extends Scene {
     root.onpointerdown = e => {
       const pick = e.target.closest('[data-pick]'); if (!pick) return;
       e.preventDefault(); this.arr = {id:pick.dataset.pick, el:pick, x0:e.clientX, y0:e.clientY, movido:false};
+      try { pick.releasePointerCapture?.(e.pointerId); } catch {}        // en táctil el puntero se queda «pegado» al botón
     };
+    root.onpointercancel = () => { this.arr = null; this.fantasma?.remove(); this.fantasma = null; };
     root.onpointermove = e => {
       const d = this.arr; if (!d) return;
       if (!d.movido && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < 6) return;
@@ -321,7 +323,7 @@ class PelotonScene extends Scene {
     d.peloton ??= {orden:ORDEN_RECLUTA.slice(0, SLOTS_PELOTON), equipo:{}};
     this.pintar();
   }
-  tipos(){ const P = this.app.progreso; return Object.keys(SOLDADOS).filter(t => t === 'fusilero' || P.data.todo || P.conocido('soldados', t)); }
+  tipos(){ return Object.keys(SOLDADOS).filter(t => t === 'fusilero' || this.app.soldadoDesbloqueado(t)); }
   pintar(msg = ''){
     const P = this.app.progreso, pl = P.data.peloton, tipos = this.tipos();
     const enemigos = Object.keys(DEBILIDAD).filter(id => P.data.todo || P.conocido('enemigos', id));

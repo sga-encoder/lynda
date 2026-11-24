@@ -159,7 +159,8 @@ class WaveDirector {
 class World {
   enemigos = []; soldados = []; balas = []; balasEnemigas = []; particulas = []; rayos = []; textos = [];
   #balas = new Pool(() => ({})); #parts = new Pool(() => ({}));
-  constructor({bus, loadout, energia, base, extraSoldados = 0, mej = () => 0, torreta = 0, peloton = null}){
+  constructor({bus, loadout, energia, base, extraSoldados = 0, mej = () => 0, torreta = 0, peloton = null, soldadosOk = () => true}){
+    this.soldadosOk = soldadosOk;                  // tipos de soldado desbloqueados en la Ruta
     this.peloton = peloton;                        // {orden:[tipos], equipo:{tipo:dano}} o null (orden por defecto)
     Object.assign(this, {bus, loadout, energia, base, extraSoldados, mej, torreta}); this.tiposSoldado = new Set();
     this.reclutarT = 0.8; this.reclutados = 0; this.vistos = {}; this.tiempoSinEnergia = 0; this.tiempo = 0; this.bajasPropias = 0; this.armas = []; this.clima = CLIMAS.despejado; this.rayoT = 6; this.flash = 0; this.shake = 0; this.anuncio = null;
@@ -188,7 +189,8 @@ class World {
       this.reclutarT = 3.5 * L.efecto('reclutar', 1);
       const libre = [...Array(this.capacidad).keys()].find(i => !this.soldados.some(s => s.i === i));
       const orden = this.peloton?.orden?.length ? this.peloton.orden : ORDEN_RECLUTA;
-      const tipo = orden[this.reclutados++ % orden.length];
+      let tipo = orden[this.reclutados++ % orden.length];
+      if (!this.soldadosOk(tipo)) tipo = 'fusilero';                // los tipos aún bloqueados se reemplazan por fusileros
       const nuevo = new Soldado(libre, tipo, L.efecto('vidaSoldado', 0)); nuevo.mult = 1 + 0.15 * this.mej('sold-' + tipo);   // mejora permanente del tipo
       nuevo.vidaMax *= nuevo.mult; nuevo.vida = nuevo.vidaMax; this.soldados.push(nuevo); this.tiposSoldado.add(tipo);
       this.texto(this.base.derecha + 8, MUNDO.suelo - 24, `+${SOLDADOS[tipo].icon}`, '#bbf7d0');

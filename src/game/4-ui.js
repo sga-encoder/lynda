@@ -44,6 +44,7 @@ class GameApp {
     const S = {inicio:MenuScene, catalogo:CatalogoScene, mazo:MazoScene, peloton:PelotonScene, mejoras:MejorasScene, ayuda:HelpScene, config:MasScene, mas:MasScene, partidas:MenuScene}[seccion] ?? MenuScene;
     this.root.classList.remove('hidden');
     if (this.scene instanceof BattleScene && !this.scene.terminado) return;      // no se interrumpe una batalla
+    if (!this.ruta.jugable) return this.go(new BloqueoScene(this));              // el juego se abre en el nivel mínimo de la Ruta
     if (!(this.scene instanceof S) || S === MenuScene) this.go(new S(this));
   }
   close(){ this.scene?.pause(); this.root.classList.add('hidden'); }
@@ -54,6 +55,7 @@ class GameApp {
     if (this.progreso.data.todo) return true;
     return Object.values(DOMINIOS).some(d => d.tipos.some(t => (CARTAS_DE_TIPO[t.id] ?? []).includes(id) && this.tipoDesbloqueado(t)));
   }
+  soldadoDesbloqueado(id){ return !!this.progreso.data.todo || this.ruta.soldados().has(id); }
   bonusDesbloqueado(id){ return !!this.progreso.data.todo || this.ruta.bonus().has(id); }
   /** El pelotón personalizado se desbloquea en la Ruta (misiones avanzadas) o en modo desarrollo. */
   pelotonDisponible(){ return !!this.progreso.data.todo || this.ruta.hitos().some(h => h.peloton && h.ok); }
@@ -164,7 +166,7 @@ class BattleScene extends Scene {
     Object.assign(this.cfg, {velocidad:this.cfg.velocidad * df.vel, vida:this.cfg.vida * df.vida, minimo:Math.round(this.cfg.minimo * df.cantidad), intervalo:this.cfg.intervalo / df.cantidad});
     this.director = new WaveDirector(this.cfg, this.app.rng);
     const P = this.app.progreso;
-    this.mundo ??= new World({bus:this.bus, loadout:r.loadout, energia:r.energia, base:r.base, extraSoldados:r.extraSoldados, mej:id => P.nivel(id), torreta:P.total('torreta'), peloton:this.app.pelotonActivo() ? P.data.peloton : null});
+    this.mundo ??= new World({bus:this.bus, loadout:r.loadout, energia:r.energia, base:r.base, extraSoldados:r.extraSoldados, mej:id => P.nivel(id), torreta:P.total('torreta'), soldadosOk:id => this.app.soldadoDesbloqueado(id), peloton:this.app.pelotonActivo() ? P.data.peloton : null});
     const clima = r.mision === 1 && r.oleada === 1 ? 'despejado' : this.app.rng.pick(CLIMAS_ROTACION);
     this.mundo.ponerClima(clima);
     r.combos.forEach(c => c.usado = false);                          // los combos se recargan cada ronda

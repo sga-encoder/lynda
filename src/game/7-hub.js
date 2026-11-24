@@ -200,3 +200,19 @@ class MasScene extends Scene {
     </div>`).onclick = e => { const s = e.target.closest('[data-ir]')?.dataset.ir; if (!s) return; if (s === 'config') return abrirAjustes(); location.hash = '#/jugar/' + s; };   // la configuración es la misma de toda la app
   }
 }
+
+/* ---------- Juego bloqueado hasta el nivel mínimo de la Ruta ---------- */
+class BloqueoScene extends Scene {
+  enter(){
+    const R = this.app.ruta, H = R.hitos(), min = R.nivelMinimo, faltan = H.slice(1, min + 1).filter(h => !R.cumplido(h));
+    this.app.html(`
+    <div class="mx-auto flex h-full max-w-md flex-col items-center justify-center gap-4 overflow-y-auto px-5 py-6 text-center">
+      <div class="text-6xl">🔒</div>
+      <h2 class="text-2xl font-black">El juego se abre en el nivel ${min + 1} de la Ruta</h2>
+      <p class="text-sm text-zinc-400">Primero aprende lo básico: al completar estos pasos se desbloquean el primer tipo de problema, los fusileros y las primeras armas.</p>
+      <ol class="w-full space-y-1.5 text-left text-sm">${H.slice(1, min + 1).map(h => `<li class="flex items-center gap-2 rounded-xl border px-3 py-2 ${R.cumplido(h) ? 'border-emerald-700 bg-emerald-950/40 text-emerald-200' : 'border-zinc-700 bg-zinc-900'}">${R.cumplido(h) ? '✅' : '⬜'} <span class="flex-1">${h.titulo}</span></li>`).join('')}</ol>
+      <a href="${faltan[0]?.href ?? '#/aprender'}" class="${UI.btnP} w-full">📚 ${faltan.length ? 'Seguir aprendiendo' : 'Ir a Aprender'}</a>
+      <p class="text-xs text-zinc-500">(Con el modo desarrollador de ⚙️ Configuración todo queda abierto.)</p>
+    </div>`);
+  }
+}

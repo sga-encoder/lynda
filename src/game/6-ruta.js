@@ -40,11 +40,12 @@ const CARTAS_DE_TIPO = {
    sus cartas, bonificadores, dificultades o 🔬). */
 /* Orden lógico de aprendizaje: cada nivel se alcanza solo si los anteriores están
    cumplidos (como un pase de batalla). Nadie empieza con derivadas ni integrales. */
-const BASE_RUTA = {titulo:'Inicio', icon:'🚩', difs:['recluta', 'soldado'], bonus:['rifle', 'amplificador', 'escudo']};
+const BASE_RUTA = {titulo:'Inicio', icon:'🚩'};
+const PRIMER_JUEGO = {difs:['recluta', 'soldado'], bonus:['rifle', 'amplificador', 'escudo'], soldados:['fusilero']};   // llega junto con el nivel mínimo
 const PREMIOS_TEMA = {
-  'f-signos':{bonus:['reclutas']}, 'f-multdiv':{puntos:10}, 'f-fracciones':{bonus:['lenta']},
-  'f-polinomios':{tipos:['simp1']}, 'f-lineales':{tipos:['lin1', 'lin2'], bonus:['laser']}, 'f-factorizacion':{tipos:['simp2', 'dist']},
-  'f-potencias':{tipos:['apot0', 'apot1', 'apot2', 'apot3', 'araiz1', 'araiz2']}, 'f-cuadraticas':{bonus:['municion']}, 'f-racionales':{bonus:['concentracion']},
+  // Antes de «Suma y resta de polinomios» (nivel mínimo para jugar) no se entrega nada del juego
+  'f-polinomios':{tipos:['simp1'], ...PRIMER_JUEGO}, 'f-lineales':{tipos:['lin1', 'lin2'], bonus:['laser', 'reclutas'], soldados:['pesado']}, 'f-factorizacion':{tipos:['simp2', 'dist'], bonus:['lenta'], soldados:['granadero']},
+  'f-potencias':{tipos:['apot0', 'apot1', 'apot2', 'apot3', 'araiz1', 'araiz2'], soldados:['medico']}, 'f-cuadraticas':{bonus:['municion'], soldados:['ingeniero']}, 'f-racionales':{bonus:['concentracion'], puntos:10},
   'f-radicales':{puntos:15}, 'f-polinomicas':{bonus:['misil']}, 'f-exponenciales':{tipos:['alog3'], bonus:['mortero']}, 'f-logaritmicas':{tipos:['alog1', 'alog2']},
   'f-trigonometricas':{tipos:['atrig1', 'atrig2', 'atrig3', 'atrig4'], bonus:['botiquin']}, 'f-inecuaciones':{puntos:20},
   'd-limites':{puntos:10}, 'd-reglas':{tipos:['dpoli', 'dsqrt', 'dneg']}, 'd-producto':{tipos:['dprod']}, 'd-cadena':{tipos:['dcad', 'dexp2']}, 'd-trascendentes':{tipos:['dtrig', 'dtan', 'dln'], bonus:['tesla']},
@@ -119,6 +120,11 @@ class Ruta {
   tipos(){ return new Set(this.alcanzados().flatMap(t => t.tipos ?? [])); }
   difs(){ return new Set(this.alcanzados().flatMap(t => t.difs ?? [])); }
   bonus(){ return new Set(this.alcanzados().flatMap(t => t.bonus ?? [])); }
+  soldados(){ return new Set(this.alcanzados().flatMap(t => t.soldados ?? [])); }
+  /** ¿Ya se puede jugar? (hay al menos un tipo de problema). */
+  get jugable(){ return this.dev || this.tipos().size > 0; }
+  /** Primer nivel que desbloquea el juego (para el aviso de bloqueo). */
+  get nivelMinimo(){ return RUTA_HITOS().findIndex(h => h.tipos?.length); }
   ganar(n){ this.progreso.data.rutaXP = (this.progreso.data.rutaXP ?? 0) + n; this.progreso.guardar(); }
   /** Logros del juego que cuentan en la ruta. */
   contar(campo){ this.progreso.data[campo] = (this.progreso.data[campo] ?? 0) + 1; this.progreso.guardar(); }
@@ -141,6 +147,7 @@ class Ruta {
             ...cartas.map(id => ({tipo:'carta', icon:cartaInfo[id]?.icon ?? '🃏', nombre:cartaInfo[id]?.name ?? id})),
             ...(h.difs ?? []).map(id => ({tipo:'dificultad', icon:dificultad(id).icon, nombre:`Dificultad ${dificultad(id).nombre}`})),
             ...(h.bonus ?? []).map(id => ({tipo:'bonus', icon:BONUS_DEFS[id].icon, nombre:BONUS_DEFS[id].name})),
+            ...(h.soldados ?? []).map(id => ({tipo:'bonus', icon:SOLDADOS[id].icon, nombre:`Soldado: ${SOLDADOS[id].name}`})),
             ...(h.peloton ? [{tipo:'bonus', icon:'🪖', nombre:'Estrategia de pelotón (tipos de soldado y munición)'}] : []),
             ...(h.puntos ? [{tipo:'puntos', icon:'🔬', nombre:`+${h.puntos} puntos de investigación`, reclamable:h.ok && !rec.includes(h.i), reclamado:rec.includes(h.i)}] : []),
           ]};

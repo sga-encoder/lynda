@@ -81,10 +81,10 @@ function perfilSoldado(P, uid){
   const ns = nivelTropa(P, s[0]), fs = 1 + 0.12 * (ns - 1);
   const arma = ARMAS_TROPA[tipo].find(a => a[0] === T.equipo[tipo].arma) ?? ARMAS_TROPA[tipo][0], na = nivelTropa(P, arma[0]), fa = 1 + 0.15 * (na - 1), A = arma[3];
   const bl = BLINDAJES_TROPA[tipo].find(b => b[0] === T.equipo[tipo].blindaje), nb = bl ? nivelTropa(P, bl[0]) : 0, B = bl ? bl[3] : {}, fb = 1 + 0.2 * Math.max(0, nb - 1);
-  const ataqueBase = base.ataque ?? {dmg:1, cd:0.9, costo:0.5, rango:130, dano:'fisico'};
+  const ataqueBase = base.ataque ? {...base.ataque, costo:base.ataque.costo * 1.8} : {dmg:1, cd:0.9, costo:1.2, rango:130, dano:'fisico'};   // disparar gasta más energía
   const perfil = {uid:s[0], tipo, name:s[1], icon:s[2], vida:base.vida * (m.vida ?? 1) * fs + (B.vida ?? 0) * fb, reduccion:Math.min(0.6, (B.reduccion ?? 0) * fb), regen:(B.regen ?? 0) * fb,
     arma:arma[1], armaId:arma[0], blindaje:bl?.[1] ?? null};
-  if (base.apoyo) perfil.apoyo = {...base.apoyo, curar:base.apoyo.curar && base.apoyo.curar * (A.cura ?? 1) * (m.dmg ?? 1) * fs * fa, reparar:base.apoyo.reparar && base.apoyo.reparar * (A.repara ?? 1) * (m.dmg ?? 1) * fs * fa, cd:base.apoyo.cd * (A.cd ?? 1) * (m.cd ?? 1)};
+  if (base.apoyo) perfil.apoyo = {...base.apoyo, costo:base.apoyo.costo * 1.5, curar:base.apoyo.curar && base.apoyo.curar * (A.cura ?? 1) * (m.dmg ?? 1) * fs * fa, reparar:base.apoyo.reparar && base.apoyo.reparar * (A.repara ?? 1) * (m.dmg ?? 1) * fs * fa, cd:base.apoyo.cd * (A.cd ?? 1) * (m.cd ?? 1)};
   else perfil.ataque = {...ataqueBase, dano:A.dano ?? ataqueBase.dano, dmg:ataqueBase.dmg * (A.dmg ?? 1) * (m.dmg ?? 1) * fs * fa, cd:ataqueBase.cd * (A.cd ?? 1) * (m.cd ?? 1),
     rango:(A.rango ?? ataqueBase.rango) * (m.rango ?? 1), area:A.area ?? ataqueBase.area ?? 0, parabola:A.parabola ?? !!ataqueBase.parabola};
   return perfil;

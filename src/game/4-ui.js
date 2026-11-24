@@ -119,6 +119,7 @@ class BattleScene extends Scene {
   constructor(app, run){ super(app); this.run = run; this.bus = new EventBus(); this.puntuador = new Puntuador([new ReglaVelocidad(), new ReglaCombo(), new ReglaCadena(), new ReglaCreatividad()]); }
   enter(){
     const r = this.run;
+    this.app.progreso.nuevos = [];                                   // novedades de esta partida
     this.app.html(`
     <div class="relative flex h-full flex-col bg-zinc-950 text-zinc-100">
       <div class="flex items-center gap-2 px-3 pb-1.5 pt-[max(0.5rem,env(safe-area-inset-top))] text-xs">
@@ -390,7 +391,7 @@ class BattleScene extends Scene {
     if (avance > 0){
       this.combo++;
       const pts = this.puntuador.puntuar({avance, segundos, combo:this.combo - 1, libre, cadena, ventana:r.loadout.efecto('ventana', 0) + r.ventanaExtra});
-      const energia = pts.energia * r.loadout.energiaMult * r.energiaPaso;
+      const energia = 0.6 * pts.energia * r.loadout.energiaMult * r.energiaPaso;   // cada paso da menos energía: hay que resolver más
       r.energia.agregar(energia); this.ganarXP(pts.xp * r.xpMult * NIVELES_AYUDA[this.ayuda].xp);
       const extras = pts.detalle.map(d => `${d.nombre} ×${d.mult.toFixed(1)}`).join(' · ');
       this.mensaje(`+${Math.round(energia)} ⚡ ${extras ? `<span class="text-sky-300">(${extras})</span>` : ''}`, 'emerald');
@@ -543,12 +544,14 @@ class BattleScene extends Scene {
   fin(victoria, abandono = false){
     if (this.terminado) return; this.terminado = true;
     this.sincronizarCatalogo();
+    this.finArgs = [victoria, abandono];
     if (victoria) this.app.ruta.contar('victorias');
     // ⚙️ Chatarra: se gana en TODAS las partidas (también al perder) para mejorar soldados, armas y blindajes
     const rr = this.run, chat = 4 + Math.floor(rr.problemas * 1.5) + Math.floor(rr.bajas / 4) + (victoria ? 10 : 0);
     this.app.progreso.data.chatarra = (this.app.progreso.data.chatarra ?? 0) + chat; this.chatarraGanada = chat;
     const r = this.run, pts = this.app.progreso.registrarPartida(r.xpTotal);
-    this.abrirCapa(`<div class="m-auto flex w-full max-w-sm flex-col gap-3 text-center">
+    const novedades = (this.app.progreso.nuevos ?? []).splice(0);       // lo descubierto en esta partida
+    const resumen = () => this.abrirCapa(`<div class="m-auto flex w-full max-w-sm flex-col gap-3 text-center">
       <div class="text-6xl">${victoria ? '🏆' : '💥'}</div><h2 class="text-2xl font-black">${victoria ? (this.victoriaTexto ?? '¡La Tierra está a salvo!') : abandono ? 'Partida abandonada' : 'La base cayó'}</h2>
       <div class="${UI.card} grid grid-cols-2 gap-2 text-left text-sm">
         <span>Misión alcanzada</span><b class="text-right">${r.mision} · oleada ${r.oleada}</b>
@@ -568,6 +571,30 @@ class BattleScene extends Scene {
       if (a === 'mejoras') this.app.go(new MejorasScene(this.app));
       if (a === 'menu') this.app.go(new MenuScene(this.app));
     });
+    if (novedades.length) this.mostrarNovedades(novedades, resumen); else resumen();
+  }
+  /** Una ventana por cada cosa nueva (descubierta, desbloqueada o usada por primera vez) antes del resumen. */
+  mostrarNovedades(lista, despues){
+    const CAT = {armas:'Arma', tacticos:'Táctico', enemigos:'Alienígena', soldados:'Soldado', cartas:'Carta', fusiones:'Fusión', potenciadores:'Potenciador'};
+    const info = ({cat, id}) => {
+      if (cat === 'enemigos'){ const e = INFO_ENEMIGO[id]; return {icon:'👽', name:e?.name ?? id, desc:e?.desc ?? ''}; }
+      if (cat === 'soldados') return {icon:SOLDADOS[id].icon, name:SOLDADOS[id].name, desc:SOLDADOS[id].desc};
+      if (cat === 'cartas'){ const c = Object.values(DOMINIOS).map(d => d.cartas.get(id)).find(Boolean); return {icon:c?.icon ?? '🃏', name:c?.name ?? id, desc:c?.desc ?? ''}; }
+      if (cat === 'potenciadores'){ const x = POTENCIADORES[id] ?? SUPERPOTENCIADORES[id]; return {icon:x.icon, name:x.nombre, desc:x.desc}; }
+      const d = BONUS_DEFS[id]; return {icon:d?.icon ?? '✨', name:d?.name ?? id, desc:d?.desc ?? ''};
+    };
+    let i = 0;
+    const paso = () => {
+      if (i >= lista.length) return despues();
+      const n = lista[i], x = info(n);
+      this.abrirCapa(`<div class="m-auto flex w-full max-w-sm flex-col items-center gap-3 text-center">
+        <span class="rounded-full bg-amber-400 px-3 py-0.5 text-xs font-black text-zinc-950">🆕 NUEVO · ${CAT[n.cat] ?? ''} · ${i + 1}/${lista.length}</span>
+        <div class="text-7xl [animation:flotar_2s_ease-in-out_infinite]">${x.icon}</div><h2 class="text-2xl font-black">${x.name}</h2>
+        <p class="text-sm text-zinc-300">${x.desc}</p><p class="text-xs text-sky-300">+3 ⚙️ chatarra por descubrirlo · míralo en 📚 Catálogo</p>
+        <button data-a="sig" class="${UI.btnP} w-full">${i < lista.length - 1 ? 'Siguiente ▸' : 'Ver resumen ▸'}</button></div>`,
+        e => { if (e.target.closest('[data-a="sig"]')){ i++; paso(); } });
+    };
+    paso();
   }
 }
 

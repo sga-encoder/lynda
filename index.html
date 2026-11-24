@@ -4346,7 +4346,7 @@ class Progreso {
   }
   /** Registra algo encontrado por primera vez (para el catálogo). Devuelve true si es nuevo. */
   /** Registra algo nuevo para el catálogo. Descubrir o usar algo por primera vez da ⚙️ chatarra de premio. */
-  descubrir(cat, id){ const l = this.data.desc[cat]; if (l.includes(id)) return false; l.push(id); this.data.chatarra = (this.data.chatarra ?? 0) + 3; this.guardar(); return true; }
+  descubrir(cat, id){ const l = this.data.desc[cat]; if (l.includes(id)) return false; l.push(id); this.data.chatarra = (this.data.chatarra ?? 0) + 3; (this.nuevos ??= []).push({cat, id}); this.guardar(); return true; }
   conocido(cat, id){ return this.data.desc[cat].includes(id); }
   disponible(id){ const r = MEJORAS[id].requiere; return !r || this.conocido(...r); }
   ganarPuntos(n){ this.data.puntos += n; this.guardar(); }
@@ -4534,6 +4534,8 @@ class WaveDirector {
     const aire = esAire(id), grupo = Math.min(24 - m.enemigos.length, 1 + this.rng.int(0, 1 + Math.floor(t / 3)));   // llegan en grupos
     for (let g = 0; g < grupo; g++){
       const e = ENEMIGOS[id](aire ? 24 + this.rng.int(0, 50) : this.rng.int(200, MUNDO.W - 12), this.cfg);
+      if (!e.armas.length && !e.jefe && this.rng.next() < 0.65)       // los alienígenas comunes también disparan
+        e.armas = [{t:1.5 + this.rng.next() * 2, tipo:'acido', rango:e.vuela ? 170 : 130, cd:2.6 + this.rng.next(), dmg:+(0.9 * Math.sqrt(this.cfg.vida)).toFixed(2), objetivo:this.rng.next() < 0.5 ? 'base' : 'soldados'}];
       e.x += g * 9; m.enemigos.push(e); if (g) this.generados++;
     }
   }
@@ -4628,7 +4630,8 @@ class World {
       const d = s.def;
       const ep = (s.perfil && this.potencia(s.perfil.armaId)) || {dmg:0, cd:0, rango:0, area:0, perf:0, crit:0, extra:0, costo:0};   // potenciadores
       if (d.ataque && (s.apoyoT -= dt) <= 0){
-        const o = this.elegir({alcance:'tierra', prioridad:'cercano', desde:{x:s.x, y:s.cy}});
+        const alc = d.ataque.parabola ? 'tierra' : 'ambos';             // las armas de disparo recto también derriban naves
+        const o = this.elegir({alcance:alc, prioridad:d.ataque.parabola ? 'cercano' : 'aire', desde:{x:s.x, y:s.cy}});
         if (!o || o.x - s.x > d.ataque.rango * (1 + ep.rango) * (this.clima.rango ?? 1)){ s.apoyoT = 0.3; continue; }
         if (!this.energia.gastar(d.ataque.costo * Math.max(0.2, 1 + ep.costo))){ s.apoyoT = 0.4; this.sinEnergia = true; continue; }
         s.apoyoT = d.ataque.cd * Math.max(0.35, 1 + ep.cd);
@@ -4637,7 +4640,7 @@ class World {
         for (let k = 0; k <= ep.extra; k++)                              // Ráfaga Fibonacci: balas extra
           { const fx = s.perfil ? this.fx(s.perfil.armaId) : null;          // partículas propias del arma (cambian con sus potenciadores)
           if (k === 0 && fx) this.chispas(s.x + 6, s.cy - 3, fx.color, 2);   // fogonazo
-          this.disparar({x:s.x + 4, y:s.cy - 3 - k * 2, obj:o, golpe:{dmg, dano:eq, area:Math.max(d.ataque.area ?? 0, Q.area ?? 0) + ep.area, alcance:'tierra', perf:ep.perf, efecto:ep.congela ? 'congelar' : undefined}, parabola:!!d.ataque.parabola,
+          this.disparar({x:s.x + 4, y:s.cy - 3 - k * 2, obj:o, golpe:{dmg, dano:eq, area:Math.max(d.ataque.area ?? 0, Q.area ?? 0) + ep.area, alcance:alc, perf:ep.perf, efecto:ep.congela ? 'congelar' : undefined}, parabola:!!d.ataque.parabola,
             vel:(d.ataque.parabola ? 120 : 260) * (1 - k * 0.08), fx, hist:fx?.estela ? [] : null, color:critico ? '#fde047' : fx?.color ?? (d.ataque.area ? '#fb923c' : '#e5e7eb'), r:(critico ? 1.6 : 1) * (fx?.r ?? 1) * (d.ataque.area ? 1.8 : 1.1)}); }
       }
       if (d.apoyo && (s.apoyoT -= dt) <= 0){
@@ -5129,10 +5132,10 @@ function perfilSoldado(P, uid){
   const ns = nivelTropa(P, s[0]), fs = 1 + 0.12 * (ns - 1);
   const arma = ARMAS_TROPA[tipo].find(a => a[0] === T.equipo[tipo].arma) ?? ARMAS_TROPA[tipo][0], na = nivelTropa(P, arma[0]), fa = 1 + 0.15 * (na - 1), A = arma[3];
   const bl = BLINDAJES_TROPA[tipo].find(b => b[0] === T.equipo[tipo].blindaje), nb = bl ? nivelTropa(P, bl[0]) : 0, B = bl ? bl[3] : {}, fb = 1 + 0.2 * Math.max(0, nb - 1);
-  const ataqueBase = base.ataque ?? {dmg:1, cd:0.9, costo:0.5, rango:130, dano:'fisico'};
+  const ataqueBase = base.ataque ? {...base.ataque, costo:base.ataque.costo * 1.8} : {dmg:1, cd:0.9, costo:1.2, rango:130, dano:'fisico'};   // disparar gasta más energía
   const perfil = {uid:s[0], tipo, name:s[1], icon:s[2], vida:base.vida * (m.vida ?? 1) * fs + (B.vida ?? 0) * fb, reduccion:Math.min(0.6, (B.reduccion ?? 0) * fb), regen:(B.regen ?? 0) * fb,
     arma:arma[1], armaId:arma[0], blindaje:bl?.[1] ?? null};
-  if (base.apoyo) perfil.apoyo = {...base.apoyo, curar:base.apoyo.curar && base.apoyo.curar * (A.cura ?? 1) * (m.dmg ?? 1) * fs * fa, reparar:base.apoyo.reparar && base.apoyo.reparar * (A.repara ?? 1) * (m.dmg ?? 1) * fs * fa, cd:base.apoyo.cd * (A.cd ?? 1) * (m.cd ?? 1)};
+  if (base.apoyo) perfil.apoyo = {...base.apoyo, costo:base.apoyo.costo * 1.5, curar:base.apoyo.curar && base.apoyo.curar * (A.cura ?? 1) * (m.dmg ?? 1) * fs * fa, reparar:base.apoyo.reparar && base.apoyo.reparar * (A.repara ?? 1) * (m.dmg ?? 1) * fs * fa, cd:base.apoyo.cd * (A.cd ?? 1) * (m.cd ?? 1)};
   else perfil.ataque = {...ataqueBase, dano:A.dano ?? ataqueBase.dano, dmg:ataqueBase.dmg * (A.dmg ?? 1) * (m.dmg ?? 1) * fs * fa, cd:ataqueBase.cd * (A.cd ?? 1) * (m.cd ?? 1),
     rango:(A.rango ?? ataqueBase.rango) * (m.rango ?? 1), area:A.area ?? ataqueBase.area ?? 0, parabola:A.parabola ?? !!ataqueBase.parabola};
   return perfil;
@@ -5338,6 +5341,7 @@ class BattleScene extends Scene {
   constructor(app, run){ super(app); this.run = run; this.bus = new EventBus(); this.puntuador = new Puntuador([new ReglaVelocidad(), new ReglaCombo(), new ReglaCadena(), new ReglaCreatividad()]); }
   enter(){
     const r = this.run;
+    this.app.progreso.nuevos = [];                                   // novedades de esta partida
     this.app.html(`
     <div class="relative flex h-full flex-col bg-zinc-950 text-zinc-100">
       <div class="flex items-center gap-2 px-3 pb-1.5 pt-[max(0.5rem,env(safe-area-inset-top))] text-xs">
@@ -5609,7 +5613,7 @@ class BattleScene extends Scene {
     if (avance > 0){
       this.combo++;
       const pts = this.puntuador.puntuar({avance, segundos, combo:this.combo - 1, libre, cadena, ventana:r.loadout.efecto('ventana', 0) + r.ventanaExtra});
-      const energia = pts.energia * r.loadout.energiaMult * r.energiaPaso;
+      const energia = 0.6 * pts.energia * r.loadout.energiaMult * r.energiaPaso;   // cada paso da menos energía: hay que resolver más
       r.energia.agregar(energia); this.ganarXP(pts.xp * r.xpMult * NIVELES_AYUDA[this.ayuda].xp);
       const extras = pts.detalle.map(d => `${d.nombre} ×${d.mult.toFixed(1)}`).join(' · ');
       this.mensaje(`+${Math.round(energia)} ⚡ ${extras ? `<span class="text-sky-300">(${extras})</span>` : ''}`, 'emerald');
@@ -5762,12 +5766,14 @@ class BattleScene extends Scene {
   fin(victoria, abandono = false){
     if (this.terminado) return; this.terminado = true;
     this.sincronizarCatalogo();
+    this.finArgs = [victoria, abandono];
     if (victoria) this.app.ruta.contar('victorias');
     // ⚙️ Chatarra: se gana en TODAS las partidas (también al perder) para mejorar soldados, armas y blindajes
     const rr = this.run, chat = 4 + Math.floor(rr.problemas * 1.5) + Math.floor(rr.bajas / 4) + (victoria ? 10 : 0);
     this.app.progreso.data.chatarra = (this.app.progreso.data.chatarra ?? 0) + chat; this.chatarraGanada = chat;
     const r = this.run, pts = this.app.progreso.registrarPartida(r.xpTotal);
-    this.abrirCapa(`<div class="m-auto flex w-full max-w-sm flex-col gap-3 text-center">
+    const novedades = (this.app.progreso.nuevos ?? []).splice(0);       // lo descubierto en esta partida
+    const resumen = () => this.abrirCapa(`<div class="m-auto flex w-full max-w-sm flex-col gap-3 text-center">
       <div class="text-6xl">${victoria ? '🏆' : '💥'}</div><h2 class="text-2xl font-black">${victoria ? (this.victoriaTexto ?? '¡La Tierra está a salvo!') : abandono ? 'Partida abandonada' : 'La base cayó'}</h2>
       <div class="${UI.card} grid grid-cols-2 gap-2 text-left text-sm">
         <span>Misión alcanzada</span><b class="text-right">${r.mision} · oleada ${r.oleada}</b>
@@ -5787,6 +5793,30 @@ class BattleScene extends Scene {
       if (a === 'mejoras') this.app.go(new MejorasScene(this.app));
       if (a === 'menu') this.app.go(new MenuScene(this.app));
     });
+    if (novedades.length) this.mostrarNovedades(novedades, resumen); else resumen();
+  }
+  /** Una ventana por cada cosa nueva (descubierta, desbloqueada o usada por primera vez) antes del resumen. */
+  mostrarNovedades(lista, despues){
+    const CAT = {armas:'Arma', tacticos:'Táctico', enemigos:'Alienígena', soldados:'Soldado', cartas:'Carta', fusiones:'Fusión', potenciadores:'Potenciador'};
+    const info = ({cat, id}) => {
+      if (cat === 'enemigos'){ const e = INFO_ENEMIGO[id]; return {icon:'👽', name:e?.name ?? id, desc:e?.desc ?? ''}; }
+      if (cat === 'soldados') return {icon:SOLDADOS[id].icon, name:SOLDADOS[id].name, desc:SOLDADOS[id].desc};
+      if (cat === 'cartas'){ const c = Object.values(DOMINIOS).map(d => d.cartas.get(id)).find(Boolean); return {icon:c?.icon ?? '🃏', name:c?.name ?? id, desc:c?.desc ?? ''}; }
+      if (cat === 'potenciadores'){ const x = POTENCIADORES[id] ?? SUPERPOTENCIADORES[id]; return {icon:x.icon, name:x.nombre, desc:x.desc}; }
+      const d = BONUS_DEFS[id]; return {icon:d?.icon ?? '✨', name:d?.name ?? id, desc:d?.desc ?? ''};
+    };
+    let i = 0;
+    const paso = () => {
+      if (i >= lista.length) return despues();
+      const n = lista[i], x = info(n);
+      this.abrirCapa(`<div class="m-auto flex w-full max-w-sm flex-col items-center gap-3 text-center">
+        <span class="rounded-full bg-amber-400 px-3 py-0.5 text-xs font-black text-zinc-950">🆕 NUEVO · ${CAT[n.cat] ?? ''} · ${i + 1}/${lista.length}</span>
+        <div class="text-7xl [animation:flotar_2s_ease-in-out_infinite]">${x.icon}</div><h2 class="text-2xl font-black">${x.name}</h2>
+        <p class="text-sm text-zinc-300">${x.desc}</p><p class="text-xs text-sky-300">+3 ⚙️ chatarra por descubrirlo · míralo en 📚 Catálogo</p>
+        <button data-a="sig" class="${UI.btnP} w-full">${i < lista.length - 1 ? 'Siguiente ▸' : 'Ver resumen ▸'}</button></div>`,
+        e => { if (e.target.closest('[data-a="sig"]')){ i++; paso(); } });
+    };
+    paso();
   }
 }
 

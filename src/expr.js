@@ -64,6 +64,7 @@ const Calc = (() => {
   const baseExp = f => f.k === '^' && isNum(f.e) ? [f.b, f.e.q] : [f, Q.of(1)];
   function simp(e){
     const h = hijos(e).map(simp); e = conHijos(e, h);
+    if (e.k === 'f' && e.f === 'sqrt') return simp(pow(e.a, new Q(1, 2)));
     if (e.k === '^'){
       if (isNum(e.e) && e.e.q.isZero) return n(1);
       if (isNum(e.e) && e.e.q.isOne) return e.b;
@@ -124,6 +125,8 @@ const Calc = (() => {
       case 'I': return w(`\\int ${['+'].includes(e.a.k) ? `\\left(${sub(e.a, 0)}\\right)` : sub(e.a, 0)}\\,dx`);
       case '^': {
         if (isNum(e.e) && e.e.q.sign < 0 && !marcas) return w(`\\frac{1}{${tex(simp(pow(e.b, e.e.q.neg())))}}`);
+        if (isNum(e.e) && e.e.q.equals(new Q(1, 2))) return w(`\\sqrt{${sub(e.b, 0)}}`);
+        if (e.b.k === 'f' && e.b.f !== 'exp' && e.b.f !== 'sqrt' && isNum(e.e) && e.e.q.isInt && e.e.q.sign > 0 && isX(e.b.a)) return w(`\\${e.b.f}^{${e.e.q.n}} x`);
         const b = sub(e.b, 0), needs = !['v', 'c'].includes(e.b.k) && !(isNum(e.b) && e.b.q.sign >= 0 && e.b.q.isInt);
         return w(`${needs ? `\\left(${b}\\right)` : b}^{${sub(e.e, 1)}}`);
       }
@@ -174,7 +177,7 @@ const Calc = (() => {
       case '^': return Math.pow(evaluar(e.b, env), evaluar(e.e, env));
       case '/': return evaluar(e.n, env) / evaluar(e.d, env);
       case 'f': { const v = evaluar(e.a, env);
-        return {sin:Math.sin, cos:Math.cos, tan:Math.tan, ln:Math.log, lnabs:x => Math.log(Math.abs(x)), log:Math.log10, exp:Math.exp, sqrt:Math.sqrt}[e.f](v); }
+        return {sin:Math.sin, cos:Math.cos, tan:Math.tan, ln:x => Math.log(Math.abs(x)), lnabs:x => Math.log(Math.abs(x)), log:Math.log10, exp:Math.exp, sqrt:Math.sqrt}[e.f](v); }
     }
     return NaN;
   }

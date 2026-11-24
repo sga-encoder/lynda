@@ -51,6 +51,7 @@ class MenuScene extends Scene {
         <p class="mt-2 text-xs text-zinc-400">${disp.length ? `${disp.length} tipo(s) de problema disponibles` : 'Aún no hay problemas: completa ejercicios en Aprender'}${disp.length < total ? ' · más se desbloquean avanzando en Aprender' : ''}.</p></div>
       <button data-a="jugar" class="${UI.btnP} !min-h-14 text-lg" ${disp.length ? '' : 'disabled'}>▶ Jugar</button>
       <div class="grid grid-cols-2 gap-3"><button data-a="mejoras" class="${UI.btn}">🛠 Mejoras <span class="text-amber-300">${d.puntos} 🔬</span></button><button data-a="ayuda" class="${UI.btn}">❓ Cómo jugar</button></div>
+      <label class="${UI.card} flex items-center gap-3 text-sm"><input type="checkbox" data-a="semi" class="h-5 w-5 accent-emerald-400" ${d.semi ? 'checked' : ''}><span><b>🃏 Cartas semiautomáticas</b> <span class="text-zinc-400">(eliges el resultado correcto al aplicar cada carta)</span></span></label>
       <label class="${UI.card} flex items-center gap-3 text-sm"><input type="checkbox" data-a="todo" class="h-5 w-5 accent-amber-400" ${d.todo ? 'checked' : ''}><span><b>🧪 Todo desbloqueado</b> <span class="text-zinc-400">(modo desarrollo: ignora el avance en Aprender)</span></span></label>
       <p class="text-center text-xs text-zinc-500">Récord: ${d.record} XP · Partidas: ${d.partidas}</p>
     </div>`).onclick = e => {
@@ -58,6 +59,7 @@ class MenuScene extends Scene {
       if (modo){ d.modo = modo; p.guardar(); return this.enter(); }
       const a = e.target.closest('[data-a]')?.dataset.a;
       if (a === 'todo'){ d.todo = e.target.checked; p.guardar(); return this.enter(); }
+      if (a === 'semi'){ d.semi = e.target.checked; p.guardar(); return this.enter(); }
       if (a === 'jugar') this.app.go(new BattleScene(this.app, new Run(this.app)));
       if (a === 'mejoras') this.app.go(new ShopScene(this.app));
       if (a === 'ayuda') this.app.go(new HelpScene(this.app));
@@ -74,14 +76,18 @@ class HelpScene extends Scene {
       <h2 class="mt-4 text-2xl font-black">Cómo jugar</h2>
       <ul>
         <li>Arriba está el campo de batalla; abajo, el <b>problema</b> y tu <b>mano de cartas</b>.</li>
-        <li>Cada carta es una <b>propiedad matemática</b>. Tócala: si se puede aplicar en un solo lugar, se aplica; si hay varios, toca en la expresión la parte (resaltada) donde quieres usarla.</li>
-        <li><b>✍️ Paso libre</b>: escribe tú el siguiente paso con piezas. Si es correcto y te acerca mucho, la energía vale doble (creatividad).</li>
+        <li>Cada carta es una <b>propiedad matemática</b>. Tócala; si sirve en varios lugares, toca en la expresión dónde usarla. En modo <b>semiautomático</b> después eliges cuál es el resultado correcto entre 3 opciones (las otras tienen errores típicos).</li>
+        <li><b>🔗 Combos</b>: una secuencia de cartas que se aplica sola en ese orden. Hay combos ya montados y puedes crear hasta 3 en el taller. Cada combo se usa una vez por ronda y da bono ×1.25.</li>
+        <li><b>✍️ Paso libre</b>: se abre debajo del campo con tu expresión ya convertida en piezas; edítala y mira la vista previa. Si es correcto y te acerca mucho, la energía vale doble (creatividad).</li>
+        <li><b>Soldados</b>: 🔫 Fusilero (usa tus armas de pelotón), 🛡️ Pesado, 💣 Granadero, ⛑️ Médico (cura) e 🔧 Ingeniero (repara la base). Sus habilidades también gastan energía.</li>
+        <li><b>Clima</b>: cambia cada oleada (lluvia, niebla, nieve, tormenta, viento) y afecta la batalla.</li>
+        <li><b>Jefes</b>: al final de cada misión llega uno (Coloso, Reina del enjambre, Acorazado orbital y Mente maestra). La Mente maestra solo es vulnerable unos segundos después de que resuelves un problema.</li>
         <li>Cada paso que te <b>acerca</b> a la solución da ⚡ energía y XP. Bonos: <b>rápido</b> (menos de 6 s), <b>combo</b> (pasos buenos seguidos) y <b>creativo</b>. Terminar con los pasos mínimos da bono de <b>eficiencia</b>.</li>
         <li>Los soldados y las armas gastan energía al disparar. Sin soldados, la base dispara sola (débil). La base recluta soldados cuando hay espacio.</li>
         <li>Elige qué practicar: <b>Fundamentos</b> (ecuaciones y simplificar), <b>Diferencial</b> (derivadas), <b>Integral</b> (integrales) o <b>Todo junto</b>.</li>
         <li>Cada oleada pide resolver 1 o más problemas. Al subir de nivel eliges <b>1 arma y 1 táctico</b> (3 espacios de cada tipo, nivel máximo 3).</li>
         <li>Los bonificadores tienen <b>propiedades</b> (objetivo, alcance, tipo de daño, movimiento…) que cambian al mejorar. Algunas parejas en nivel 3 se <b>fusionan</b> (nivel 4) y liberan un espacio: 🌟 Láser + Amplificador, 🎖️ Rifle + Reclutamiento, ❄️ Misiles + Cámara lenta.</li>
-        <li>El <b>alien blindado</b> resiste el daño físico; los <b>drones</b> vuelan directo a la base: no todas las armas alcanzan voladores.</li>
+        <li>Enemigos con propiedades y armas: el <b>blindado</b> resiste lo físico, el <b>escudero</b> resiste la energía, el <b>saltador</b> brinca sobre tus soldados, el <b>excavador</b> va bajo tierra, el <b>escupeácido</b> dispara de lejos, y en el aire hay naves, drones, bombarderos, cazas y portadrones.</li>
         <li>Al terminar la partida, tu XP se convierte en 🔬 puntos para <b>mejoras permanentes</b>.</li>
         <li>Los tipos de problema se desbloquean avanzando en <b>Aprender</b>.</li>
       </ul></div>`).onclick = e => { if (e.target.closest('[data-a="volver"]')) this.app.go(new MenuScene(this.app)); };
@@ -106,6 +112,7 @@ class ShopScene extends Scene {
   }
 }
 
+
 /* ---------- Estado de una partida ---------- */
 class Run {
   constructor(app){
@@ -113,44 +120,76 @@ class Run {
     this.loadout = new Loadout();
     this.vidaBase = 100 + p.total('vida');
     this.base = new Base(this.vidaBase);
-    this.energia = new Energia(20 + p.total('energia'));
+    this.energia = new Energia(30 + p.total('energia'));
     this.extraSoldados = p.total('soldados');
     this.xpMult = 1 + p.total('xp');
-    Object.assign(this, {mision:1, oleada:1, nivel:1, xp:0, xpTotal:0, problemas:0, eficientes:0, bajas:0});
+    // Combos: los ya montados de cada área + hasta 3 propios; se recargan en cada ronda
+    this.combos = Object.entries(COMBOS_HECHOS).flatMap(([dominio, l]) => l.map(c => new Combo({...c, dominio, hecho:true})));
+    Object.assign(this, {mision:1, oleada:1, nivel:1, xp:0, xpTotal:0, problemas:0, eficientes:0, bajas:0, jefes:0, combosUsados:0});
   }
   get xpSiguiente(){ return xpParaNivel(this.nivel); }
+  combosDe(dom){ return this.combos.filter(c => c.dominio === dom); }
+}
+
+/* ---------- Cartas (diseño) ---------- */
+const GRAD = {fund:'from-sky-400 to-indigo-500', dif:'from-emerald-400 to-teal-600', int:'from-fuchsia-400 to-violet-600', libre:'from-amber-300 to-orange-500', combo:'from-rose-400 to-amber-400', nuevo:'from-zinc-500 to-zinc-700'};
+const ktMini = tex => window.katex ? katex.renderToString(tex, {throwOnError:false, strict:false}) : tex;
+function cartaHTML(c, dom, {sel = false, attr = `data-carta="${c.id}"`, chica = false} = {}){
+  const g = c.free ? GRAD.libre : GRAD[dom.id];
+  return `<button ${attr} class="relative ${chica ? 'h-[7.5rem] w-[5.4rem]' : 'h-[9.6rem] w-[6.7rem]'} shrink-0 rounded-2xl bg-gradient-to-br ${g} p-[2px] text-left shadow-lg shadow-black/50 touch-manipulation select-none transition-transform active:scale-95 ${sel ? '-translate-y-2 ring-2 ring-amber-300' : ''}">
+    <span class="flex h-full flex-col rounded-[14px] bg-zinc-950/95 p-1.5">
+      <span class="${chica ? 'text-[8px]' : 'text-[9.5px]'} font-black uppercase leading-tight tracking-wide text-white">${c.name}</span>
+      <span class="mx-auto mt-1 flex ${chica ? 'h-8 w-8 text-lg' : 'h-11 w-11 text-2xl'} items-center justify-center rounded-full bg-gradient-to-br ${g} shadow-inner shadow-black/40">${c.icon}</span>
+      <span class="mt-1 flex min-h-6 items-center justify-center overflow-hidden text-center ${chica ? 'text-[8px]' : 'text-[9.5px]'} text-zinc-100">${ktMini(c.formula ?? '')}</span>
+      ${chica ? '' : `<span class="mt-auto text-center text-[8px] leading-tight text-zinc-400">${c.desc}</span>`}
+    </span></button>`;
+}
+function comboHTML(cb, dom){
+  const iconos = cb.cartas.map(id => dom.cartas.get(id)?.icon ?? '?').join('<span class="text-zinc-500">›</span>');
+  return `<button data-combo="${cb.id}" class="relative h-[9.6rem] w-[6.7rem] shrink-0 rounded-2xl bg-gradient-to-br ${GRAD.combo} p-[2px] text-left shadow-lg shadow-black/50 touch-manipulation select-none transition-transform active:scale-95 ${cb.usado ? 'grayscale opacity-50' : ''}">
+    <span class="flex h-full flex-col rounded-[14px] bg-zinc-950/95 p-1.5">
+      <span class="text-[9.5px] font-black uppercase leading-tight tracking-wide text-amber-200">🔗 ${cb.nombre}</span>
+      <span class="mt-1 flex flex-wrap items-center justify-center gap-0.5 text-base leading-none">${iconos}</span>
+      <span class="mt-auto text-center text-[8px] leading-tight text-zinc-400">${cb.usado ? '↻ se recarga la próxima ronda' : cb.hecho ? 'Combo ya montado · 1 vez por ronda' : 'Tu combo · 1 vez por ronda'}</span>
+    </span></button>`;
 }
 
 /* ---------- Batalla ---------- */
 class BattleScene extends Scene {
-  constructor(app, run){ super(app); this.run = run; this.bus = new EventBus(); this.puntuador = new Puntuador([new ReglaVelocidad(), new ReglaCombo(), new ReglaCreatividad()]); }
+  constructor(app, run){ super(app); this.run = run; this.bus = new EventBus(); this.puntuador = new Puntuador([new ReglaVelocidad(), new ReglaCombo(), new ReglaCadena(), new ReglaCreatividad()]); }
   enter(){
     const r = this.run;
     this.app.html(`
     <div class="relative flex h-full flex-col bg-zinc-950 text-zinc-100">
       <div class="flex items-center gap-2 px-3 pb-1.5 pt-[max(0.5rem,env(safe-area-inset-top))] text-xs">
         <button data-a="pausa" class="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-700 text-base" aria-label="Pausa">⏸</button>
-        <div class="flex-1"><div class="flex justify-between"><b data-h="oleada"></b><span data-h="probs"></span></div>
-          <div class="mt-1 flex items-center gap-1.5"><span>Nv <b data-h="nivel"></b></span><div class="h-1.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="xp" class="h-full bg-sky-400"></div></div></div></div>
+        <div class="flex-1"><div class="flex justify-between gap-2"><b data-h="oleada"></b><span data-h="probs"></span></div>
+          <div class="mt-1 flex items-center gap-1.5"><span>Nv <b data-h="nivel"></b></span><div class="h-1.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="xp" class="h-full bg-sky-400"></div></div><span data-h="clima" class="rounded-full bg-zinc-800 px-2 py-0.5"></span></div></div>
       </div>
-      <div class="relative mx-auto w-full max-w-3xl"><canvas data-h="cv" class="block aspect-[360/200] max-h-[40vh] w-full"></canvas>
-        <div data-h="aviso" class="pointer-events-none absolute inset-x-0 top-1/3 text-center text-xl font-black text-white drop-shadow"></div></div>
-      <div class="grid grid-cols-2 gap-2 px-3 pt-2 text-xs">
+      <div class="relative mx-auto w-full max-w-3xl"><canvas data-h="cv" class="block aspect-[360/200] max-h-[38vh] w-full"></canvas>
+        <div data-h="jefe" class="pointer-events-none absolute inset-x-3 top-1.5 hidden"><div class="flex justify-between text-[10px] font-bold text-rose-200"><span data-h="jefeN"></span><span data-h="jefeE"></span></div><div class="h-1.5 overflow-hidden rounded bg-black/60"><div data-h="jefeV" class="h-full bg-rose-500"></div></div></div>
+        <div data-h="aviso" class="pointer-events-none absolute inset-x-0 top-1/3 px-2 text-center text-lg font-black text-white drop-shadow"></div></div>
+      <div class="grid grid-cols-2 gap-2 px-3 pt-1.5 text-xs">
         <div class="flex items-center gap-1.5">❤<div class="h-2.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="vida" class="h-full bg-emerald-500"></div></div></div>
         <div class="flex items-center gap-1.5">⚡<div class="h-2.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="energia" class="h-full bg-amber-400"></div></div><b data-h="energiaN" class="w-6 text-right"></b></div>
       </div>
-      <div class="flex min-h-0 flex-1 flex-col px-3 pt-2">
-        <div class="flex items-center justify-between text-xs text-zinc-400"><span data-h="tipo"></span><span data-h="pasos"></span></div>
-        <div data-h="expr" class="mt-1 flex min-h-20 items-center justify-center overflow-x-auto rounded-2xl bg-zinc-900 px-2 text-xl text-white [&_[data-t]]:cursor-pointer [&_[data-t]]:rounded-md [&_[data-t]]:bg-amber-400/30 [&_[data-t]]:outline [&_[data-t]]:outline-2 [&_[data-t]]:outline-amber-300"></div>
-        <div data-h="msg" class="min-h-10 py-1.5 text-center text-sm"></div>
+      <div data-h="zona" class="relative flex min-h-0 flex-1 flex-col">
+        <div class="flex min-h-0 flex-1 flex-col px-3 pt-1.5">
+          <div class="flex items-center justify-between text-xs text-zinc-400"><span data-h="tipo"></span><span data-h="pasos"></span></div>
+          <div data-h="expr" class="mt-1 flex min-h-16 items-center justify-center overflow-x-auto rounded-2xl bg-zinc-900 px-2 text-xl text-white [&_[data-t]]:cursor-pointer [&_[data-t]]:rounded-md [&_[data-t]]:bg-amber-400/30 [&_[data-t]]:outline [&_[data-t]]:outline-2 [&_[data-t]]:outline-amber-300"></div>
+          <div data-h="msg" class="min-h-9 py-1 text-center text-sm"></div>
+        </div>
+        <div data-h="quiz" class="hidden px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"></div>
+        <div data-h="mano" class="flex gap-2 overflow-x-auto px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 [scrollbar-width:none]"></div>
+        <div data-h="libre" class="absolute inset-0 z-10 hidden"></div>
       </div>
-      <div data-h="mano" class="flex gap-2 overflow-x-auto px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-1 [scrollbar-width:none]"></div>
       <div data-h="capa" class="absolute inset-0 z-20 hidden"></div>
     </div>`);
     this.$ = n => this.app.root.querySelector(`[data-h="${n}"]`);
+    this.app.piezas.host = () => this.$('libre');                  // el paso libre vive dentro de la batalla
     this.renderer = new Renderer(this.$('cv'));
     this.onResize = () => this.renderer.resize(); window.addEventListener('resize', this.onResize);
-    this.bus.on('enemigo-muerto', ({xp}) => { r.bajas++; this.ganarXP(xp); });
+    this.bus.on('enemigo-muerto', ({xp, jefe}) => { r.bajas++; if (jefe) r.jefes++; this.ganarXP(xp); });
     this.bus.on('base-destruida', () => this.fin(false));
     this.app.root.onclick = e => this.click(e);
     this.iniciarOleada();
@@ -165,13 +204,17 @@ class BattleScene extends Scene {
     this.cfg = configOleada(r.mision, r.oleada);
     this.director = new WaveDirector(this.cfg, this.app.rng);
     this.mundo ??= new World({bus:this.bus, loadout:r.loadout, energia:r.energia, base:r.base, extraSoldados:r.extraSoldados});
-    this.aviso(`Misión ${r.mision} · Oleada ${r.oleada}`);
-    this.nuevoProblema();
+    const clima = r.mision === 1 && r.oleada === 1 ? 'despejado' : this.app.rng.pick(CLIMAS_ROTACION);
+    this.mundo.ponerClima(clima);
+    r.combos.forEach(c => c.usado = false);                          // los combos se recargan cada ronda
+    const C = CLIMAS[clima];
+    this.aviso(`Misión ${r.mision} · Oleada ${r.oleada}${this.cfg.jefe ? ' · 👹 JEFE' : ''}\n${C.icon} ${C.name}: ${C.desc}`);
+    if (this.raiz) this.dibujarMano(); else this.nuevoProblema();
   }
   nuevoProblema(){
     const d = this.app.progreso.data;
-    const {type, dom, root, par, solucion} = this.app.problemas.create({doneKeys:this.app.doneKeys(), mision:this.run.mision, modo:d.modo, todo:d.todo});
-    Object.assign(this, {tipo:type, dom, solucion, raiz:root, par, dist:par, pasos:0, combo:this.combo ?? 0, carta:null, historial:new Set([dom.key(root)]), tPaso:performance.now()});
+    const {type, dom, root, par, solucion} = this.app.problemas.create({doneKeys:this.app.doneKeys(), mision:Math.min(3, this.run.mision), modo:d.modo, todo:d.todo});
+    Object.assign(this, {tipo:type, dom, solucion, raiz:root, par, dist:par, pasos:0, combo:this.combo ?? 0, carta:null, quiz:null, historial:new Set([dom.key(root)]), tPaso:performance.now()});
     this.dibujarProblema(); this.dibujarMano();
   }
 
@@ -181,23 +224,29 @@ class BattleScene extends Scene {
     if (!this.pausado && !this.terminado){
       const lento = this.app.piezas.abierto ? 0.5 : 1;            // el mundo va más lento mientras escribes un paso libre
       this.t += dt; this.mundo.update(dt * lento, this.director);
+      if (this.mundo.anuncio){ this.aviso(this.mundo.anuncio); this.mundo.anuncio = null; }
       if (this.director.terminada(this.mundo)) this.oleadaTerminada();
     }
     this.renderer.draw(this.mundo, this.t); this.hud();
     this.raf = requestAnimationFrame(this.loop);
   }
   hud(){
-    const r = this.run, b = r.base;
+    const r = this.run, b = r.base, j = this.mundo.jefe;
     this.$('oleada').textContent = `Misión ${r.mision}/${MISIONES} · Oleada ${r.oleada}/${OLEADAS}`;
     this.$('probs').textContent = `🧮 ${Math.min(this.director.problemasResueltos, this.cfg.problemas)}/${this.cfg.problemas}`;
     this.$('nivel').textContent = r.nivel;
+    this.$('clima').textContent = `${this.mundo.clima.icon} ${this.mundo.clima.name}`;
     this.$('xp').style.width = `${100 * r.xp / r.xpSiguiente}%`;
     this.$('vida').style.width = `${100 * b.vida / b.vidaMax}%`;
     this.$('energia').style.width = `${r.energia.valor}%`;
     this.$('energiaN').textContent = Math.floor(r.energia.valor);
     this.$('energia').classList.toggle('animate-pulse', this.mundo.sinEnergia);
+    this.$('jefe').classList.toggle('hidden', !j);
+    if (j){ this.$('jefeN').textContent = `👹 ${j.name}`; this.$('jefeV').style.width = `${100 * Math.max(0, j.vida) / j.vidaMax}%`;
+      this.$('jefeE').textContent = j.escudoMental ? (j.escudoT > 0 ? `🧠 escudo abierto ${Math.ceil(j.escudoT)} s` : '🛡 resuelve un problema para abrir su escudo') : ''; }
   }
-  aviso(txt){ const el = this.$('aviso'); el.textContent = txt; clearTimeout(this.tAviso); this.tAviso = setTimeout(() => el.textContent = '', 1800); }
+  aviso(txt){ const el = this.$('aviso'); el.innerHTML = txt.replace('\n', '<br><span class="text-xs font-semibold">') + (txt.includes('\n') ? '</span>' : ''); clearTimeout(this.tAviso); this.tAviso = setTimeout(() => el.textContent = '', 2600); }
+
 
   /* ---- Problema y cartas ---- */
   dibujarProblema(){
@@ -207,39 +256,108 @@ class BattleScene extends Scene {
     this.$('pasos').textContent = `Pasos ${this.pasos} · mínimo ${this.par}`;
   }
   dibujarMano(){
-    const mano = this.dom.mano(this.raiz);
-    this.$('mano').innerHTML = mano.map(c => {
-      const sel = this.carta === c;          // todas las cartas se ven igual: no se revela cuáles sirven
-      return `<button data-carta="${c.id}" class="flex h-32 w-[6.75rem] shrink-0 flex-col items-center justify-between rounded-2xl border-2 p-2 text-center touch-manipulation select-none transition-transform active:scale-95
-        ${sel ? 'border-amber-300 bg-amber-400/20 -translate-y-1.5' : 'border-zinc-600 bg-gradient-to-b from-zinc-800 to-zinc-900'}">
-        <span class="text-3xl leading-none">${c.icon}</span><b class="text-[13px] leading-tight">${c.name}</b><span class="text-[10px] leading-tight text-zinc-400">${c.desc}</span></button>`;
-    }).join('');
+    const quiz = !!this.quiz;
+    this.$('quiz').classList.toggle('hidden', !quiz); this.$('mano').classList.toggle('hidden', quiz);
+    if (quiz) return this.dibujarQuiz();
+    const r = this.run, propios = r.combos.filter(c => !c.hecho).length;
+    this.$('mano').innerHTML =
+      this.dom.mano(this.raiz).map(c => cartaHTML(c, this.dom, {sel:this.carta === c})).join('') +   // todas se ven igual: no se revela cuáles sirven
+      r.combosDe(this.dom.id).map(cb => comboHTML(cb, this.dom)).join('') +
+      (propios < MAX_COMBOS_PROPIOS ? `<button data-a="taller" class="flex h-[9.6rem] w-[6.7rem] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-zinc-600 text-center text-xs text-zinc-300 touch-manipulation active:scale-95"><span class="text-3xl">🔗</span><b>Crear combo</b><span class="text-[10px] text-zinc-500">${propios}/${MAX_COMBOS_PROPIOS} propios</span></button>` : '');
   }
   mensaje(html, tono = 'zinc'){
     const color = {zinc:'text-zinc-300', rose:'text-rose-300', amber:'text-amber-300', emerald:'text-emerald-300'}[tono];
-    const el = this.$('msg'); el.innerHTML = html; el.className = `min-h-10 py-1.5 text-center text-sm ${color}`;
+    const el = this.$('msg'); el.innerHTML = html; el.className = `min-h-9 py-1 text-center text-sm ${color}`;
   }
 
   click(e){
     const a = e.target.closest('[data-a]')?.dataset.a;
     if (a === 'pausa') return this.mostrarPausa();
+    if (a === 'taller') return this.abrirTaller();
+    if (a === 'quiz-no'){ this.quiz = null; this.carta = null; this.dibujarProblema(); this.dibujarMano(); return this.mensaje(''); }
+    const op = e.target.closest('[data-opcion]')?.dataset.opcion;
+    if (op != null && this.quiz) return this.elegirOpcion(+op);
+    const cb = e.target.closest('[data-combo]')?.dataset.combo;
+    if (cb) return this.usarCombo(this.run.combos.find(c => c.id === cb));
     const cid = e.target.closest('[data-carta]')?.dataset.carta;
     if (cid) return this.jugarCarta(this.dom.cartas.get(cid));
     const t = e.target.closest('[data-t]');
-    if (t && this.carta){ const path = this.objetivos[+t.dataset.t]; const c = this.carta; this.carta = null; return this.aplicar(c.apply(this.raiz, path), {carta:c}); }
+    if (t && this.carta){ const path = this.objetivos[+t.dataset.t], c = this.carta; this.carta = null; return this.resultadoDe(c, path); }
   }
   jugarCarta(c){
     if (this.carta === c){ this.carta = null; this.dibujarProblema(); this.dibujarMano(); return this.mensaje(''); }
-    if (c.free) return this.app.piezas.abrir({
-      expr: this.dom.tex(this.raiz), piezas: this.dom.piezas(this.raiz), ayuda: this.dom.ayudaLibre(this.raiz),
-      confirmar: src => this.pasoLibre(src), cancelar: () => {},
-    });
+    if (c.free) return this.abrirLibre();
     const objs = c.targets(this.raiz);
     if (!objs.length){ this.combo = 0; return this.mensaje(`${c.icon} <b>${c.name}</b> no se puede aplicar aquí.`, 'rose'); }
-    if (objs.length === 1) return this.aplicar(c.apply(this.raiz, objs[0]), {carta:c});
+    if (objs.length === 1) return this.resultadoDe(c, objs[0]);
     this.carta = c; this.objetivos = objs;
     this.dibujarProblema(); this.dibujarMano();
-    this.mensaje(`Toca en la expresión dónde aplicar <b>${c.name}</b> (resaltado).`, 'amber');
+    this.mensaje(`Toca en la expresión dónde aplicar <b>${c.name}</b>.`, 'amber');
+  }
+  /** Semiautomático: el jugador elige cuál es el resultado correcto de aplicar la carta. */
+  resultadoDe(c, path){
+    const correcto = c.apply(this.raiz, path);
+    const distr = this.app.progreso.data.semi ? this.dom.distractores(correcto, this.app.rng, 2) : [];
+    if (!distr.length) return this.aplicar(correcto, {carta:c});
+    this.quiz = {carta:c, correcto, opciones:this.app.rng.shuffle([correcto, ...distr])};
+    this.dibujarProblema(); this.dibujarMano();
+    this.mensaje(`¿Qué queda al aplicar <b>${c.icon} ${c.name}</b>?`, 'amber');
+  }
+  dibujarQuiz(){
+    const q = this.quiz;
+    this.$('quiz').innerHTML = `<div class="grid gap-2">${q.opciones.map((o, i) => `
+      <button data-opcion="${i}" class="flex min-h-14 items-center justify-center overflow-x-auto rounded-2xl border-2 border-zinc-700 bg-zinc-900 px-3 text-lg touch-manipulation active:scale-[0.98] transition-transform">${texJuego(this.dom.tex(o), false)}</button>`).join('')}
+      <button data-a="quiz-no" class="${UI.btn} !min-h-10 text-sm">Cancelar</button></div>`;
+  }
+  elegirOpcion(i){
+    const q = this.quiz; this.quiz = null;
+    if (q.opciones[i] === q.correcto) return this.aplicar(q.correcto, {carta:q.carta});
+    this.combo = 0; this.pasos++;
+    this.dibujarProblema(); this.dibujarMano();
+    this.mensaje(`❌ Ese resultado tiene un error (revisa signos, exponentes y coeficientes). Sin energía.`, 'rose');
+  }
+
+  /* ---- Combos ---- */
+  usarCombo(cb){
+    if (cb.usado) return this.mensaje('Ese combo ya se usó en esta ronda.', 'zinc');
+    const estados = cb.ejecutar(this.raiz, this.dom);
+    if (!estados.length){ this.combo = 0; return this.mensaje(`🔗 <b>${cb.nombre}</b> no se pudo aplicar aquí (ni se gastó).`, 'rose'); }
+    cb.usado = true; this.run.combosUsados++;
+    estados.slice(0, -1).forEach(s => this.historial.add(this.dom.key(s)));
+    this.pasos += estados.length - 1;
+    this.aplicar(estados[estados.length - 1], {cadena:true});
+  }
+  abrirTaller(){
+    const dom = this.dom, cartas = dom.cartas.all().filter(c => !c.free), seq = [];
+    const pintar = () => this.abrirCapa(`
+      <h2 class="text-center text-2xl font-black">🔗 Taller de combos</h2>
+      <p class="text-center text-sm text-zinc-400">${dom.icon} ${dom.nombre} · toca cartas en el orden en que quieres aplicarlas (máx. ${MAX_CARTAS_COMBO}). Cada carta se aplica a todos sus lugares antes de pasar a la siguiente. Se usa 1 vez por ronda.</p>
+      <div class="mt-3 flex min-h-16 flex-wrap items-center gap-1.5 rounded-2xl border-2 border-dashed border-zinc-700 p-2">${seq.length ? seq.map((id, i) => `<button data-quitar="${i}" class="flex items-center gap-1 rounded-xl bg-zinc-800 px-2 py-1.5 text-sm"><b class="text-amber-300">${i + 1}</b> ${dom.cartas.get(id).icon} ${dom.cartas.get(id).name} ✕</button>`).join('') : '<span class="text-sm text-zinc-500">Tu secuencia aparecerá aquí</span>'}</div>
+      <div class="mt-3 flex flex-wrap justify-center gap-2">${cartas.map(c => cartaHTML(c, dom, {attr:`data-pick="${c.id}"`, chica:true})).join('')}</div>
+      <div class="mt-4 grid grid-cols-2 gap-2"><button data-a="cancelar" class="${UI.btn}">Cancelar</button><button data-a="guardar" class="${UI.btnP}" ${seq.length >= 2 ? '' : 'disabled'}>Guardar combo</button></div>`,
+    e => {
+      const pick = e.target.closest('[data-pick]')?.dataset.pick;
+      if (pick && seq.length < MAX_CARTAS_COMBO){ seq.push(pick); return pintar(); }
+      const q = e.target.closest('[data-quitar]')?.dataset.quitar;
+      if (q != null){ seq.splice(+q, 1); return pintar(); }
+      const a = e.target.closest('[data-a]')?.dataset.a;
+      if (a === 'cancelar') this.cerrarCapa();
+      if (a === 'guardar'){
+        const n = this.run.combos.filter(c => !c.hecho).length + 1;
+        this.run.combos.push(new Combo({nombre:`Mi combo ${n}`, dominio:dom.id, cartas:[...seq]}));
+        this.cerrarCapa(); this.dibujarMano(); this.mensaje('🔗 Combo guardado para esta partida.', 'emerald');
+      }
+    });
+    pintar();
+  }
+
+  /* ---- Paso libre (dentro de la batalla, con la expresión cargada en piezas) ---- */
+  abrirLibre(){
+    this.app.piezas.abrir({
+      expr: this.dom.tex(this.raiz), piezas: this.dom.piezas(this.raiz), ayuda: this.dom.ayudaLibre(this.raiz),
+      prellenar: this.dom.prellenar(this.raiz), vista: src => this.dom.vista(src),
+      confirmar: src => this.pasoLibre(src), cancelar: () => {},
+    });
   }
   /** Devuelve un mensaje de error o null si el paso libre fue aceptado. */
   pasoLibre(src){
@@ -249,14 +367,14 @@ class BattleScene extends Scene {
     this.aplicar(r.raiz, {libre:true});
     return null;
   }
-  aplicar(nueva, {carta = null, libre = false} = {}){
+  aplicar(nueva, {carta = null, libre = false, cadena = false} = {}){
     const r = this.run, k = this.dom.key(nueva), d = this.dom.solver.distance(nueva);
     const repetido = this.historial.has(k), avance = repetido ? 0 : Math.max(0, this.dist - d);
     const segundos = (performance.now() - this.tPaso) / 1000;
-    this.raiz = nueva; this.dist = d; this.pasos++; this.historial.add(k); this.tPaso = performance.now(); this.carta = null;
+    this.raiz = nueva; this.dist = d; this.pasos++; this.historial.add(k); this.tPaso = performance.now(); this.carta = null; this.quiz = null;
     if (avance > 0){
       this.combo++;
-      const pts = this.puntuador.puntuar({avance, segundos, combo:this.combo - 1, libre, ventana:r.loadout.efecto('ventana', 0)});
+      const pts = this.puntuador.puntuar({avance, segundos, combo:this.combo - 1, libre, cadena, ventana:r.loadout.efecto('ventana', 0)});
       const energia = pts.energia * r.loadout.energiaMult;
       r.energia.agregar(energia); this.ganarXP(pts.xp * r.xpMult);
       const extras = pts.detalle.map(d => `${d.nombre} ×${d.mult.toFixed(1)}`).join(' · ');
@@ -274,7 +392,8 @@ class BattleScene extends Scene {
     r.problemas++; if (bono.eficiente) r.eficientes++;
     r.energia.agregar(bono.energia * r.loadout.energiaMult); this.ganarXP(bono.xp * r.xpMult);
     this.director.problemasResueltos++;
-    this.dibujarProblema(); this.$('mano').innerHTML = '';
+    this.mundo.debilitarJefes();
+    this.dibujarProblema(); this.$('mano').innerHTML = ''; this.$('quiz').classList.add('hidden');
     this.mensaje(`✅ ¡Resuelto en ${this.pasos} pasos!${bono.eficiente ? ' <b class="text-sky-300">Eficiencia máxima</b>' : ''} +${bono.xp} XP`, 'emerald');
     setTimeout(() => { if (!this.terminado) this.nuevoProblema(); }, 1100);
   }
@@ -283,7 +402,7 @@ class BattleScene extends Scene {
     if (r.xp >= r.xpSiguiente && !this.capaAbierta){ r.xp -= r.xpSiguiente; r.nivel++; this.elegirBonificadores(); }
   }
 
-  /* ---- Capas: subir de nivel, pausa ---- */
+  /* ---- Capas: subir de nivel, taller, pausa ---- */
   abrirCapa(html, onclick){
     this.capaAbierta = true; this.pausado = true; this.app.piezas.cerrar();
     const capa = this.$('capa'); capa.classList.remove('hidden');
@@ -291,6 +410,7 @@ class BattleScene extends Scene {
     capa.onclick = e => { e.stopPropagation(); onclick(e); };
   }
   cerrarCapa(){ this.capaAbierta = false; this.pausado = false; this.$('capa').classList.add('hidden'); this.ultimo = performance.now(); }
+
   elegirBonificadores(){
     const l = this.run.loadout, rng = this.app.rng, elegido = {};
     const ops = {arma: l.opciones('arma', rng), tactico: l.opciones('tactico', rng)};
@@ -333,11 +453,12 @@ class BattleScene extends Scene {
     });
   }
 
+
   /* ---- Progresión ---- */
   oleadaTerminada(){
     const r = this.run;
     if (r.oleada < OLEADAS){ r.oleada++; }
-    else if (r.mision < MISIONES){ r.mision++; r.oleada = 1; r.base.vida = Math.min(r.base.vidaMax, r.base.vida + 25); this.aviso('¡Misión cumplida! +25 ❤'); }
+    else if (r.mision < MISIONES){ r.mision++; r.oleada = 1; r.base.vida = Math.min(r.base.vidaMax, r.base.vida + 25); }
     else return this.fin(true);
     this.iniciarOleada();
   }
@@ -350,7 +471,9 @@ class BattleScene extends Scene {
         <span>Misión alcanzada</span><b class="text-right">${r.mision} · oleada ${r.oleada}</b>
         <span>Problemas resueltos</span><b class="text-right">${r.problemas}</b>
         <span>Con pasos mínimos</span><b class="text-right">${r.eficientes}</b>
-        <span>Aliens y naves</span><b class="text-right">${r.bajas}</b>
+        <span>Combos usados</span><b class="text-right">${r.combosUsados}</b>
+        <span>Enemigos derrotados</span><b class="text-right">${r.bajas}</b>
+        <span>Jefes derrotados</span><b class="text-right">${r.jefes}/${MISIONES}</b>
         <span>XP total</span><b class="text-right">${Math.round(r.xpTotal)}</b>
         <span>Puntos de investigación</span><b class="text-right text-amber-300">+${pts} 🔬</b></div>
       <button data-a="otra" class="${UI.btnP}">↻ Jugar otra vez</button><button data-a="mejoras" class="${UI.btn}">🛠 Mejoras</button><button data-a="menu" class="${UI.btn}">Menú</button></div>`,
@@ -363,35 +486,42 @@ class BattleScene extends Scene {
   }
 }
 
-/* ---------- Adaptador de la paleta de piezas de "Aprender" (patrón Adapter) ---------- */
+/* ---------- Adaptador de la paleta de piezas de "Aprender" (patrón Adapter) ----------
+   El paso libre se abre dentro de la batalla (debajo del campo), con la expresión
+   actual ya convertida en piezas para editarla, y una vista previa en vivo. */
 class TableroPiezas {
   static KEY = 'g-libre';
   constructor(host){ this.host = host; this.abierto = false; LEGO_HOOKS[TableroPiezas.KEY] = () => this.render(); }
-  abrir({expr, piezas, ayuda, confirmar, cancelar}){
-    Object.assign(this, {expr, piezas, ayuda, confirmar, cancelar, error:''});
-    LEGO[TableroPiezas.KEY] = undefined;                      // lienzo limpio
+  abrir({expr, piezas, ayuda, prellenar = [], vista = null, confirmar, cancelar}){
+    Object.assign(this, {expr, piezas, ayuda, prellenar, vista, confirmar, cancelar, error:''});
+    this.cargar();
     this.abierto = true; this.host().classList.remove('hidden'); this.render();
   }
+  cargar(){ LEGO[TableroPiezas.KEY] = undefined; legoState(TableroPiezas.KEY).root = JSON.parse(JSON.stringify(this.prellenar)); }
   cerrar(){ if (!this.abierto) return; this.abierto = false; const h = this.host(); h.classList.add('hidden'); h.innerHTML = ''; }
   render(){
     if (!this.abierto) return;
     const key = TableroPiezas.KEY, st = legoState(key); ZREG[key] = [];
-    const piezas = this.piezas;
+    const src = ser(st.root);
+    let prev = '<span class="text-zinc-500">…</span>';
+    if (src && this.vista){ try { prev = texJuego(this.vista(src), false); } catch { prev = '<span class="text-xs text-amber-300">incompleto</span>'; } }
     const h = this.host();
-    h.innerHTML = `<div data-lego="${key}" class="absolute inset-x-0 bottom-0 max-h-[85%] overflow-y-auto rounded-t-3xl border-t border-zinc-700 bg-zinc-100 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] text-zinc-900 shadow-2xl">
-      <div class="flex items-center justify-between"><b>✍️ Paso libre</b><button data-pl="cancelar" class="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-300 bg-white">✕</button></div>
-      <div class="mt-1 text-xs text-zinc-500">Tienes:</div><div class="overflow-x-auto text-center text-lg">${texJuego(this.expr)}</div>
-      <div class="mb-1 text-xs text-zinc-500">${this.ayuda}</div>
-      ${zoneHTML(key, st.root, 0)}
-      ${allZones(st.root).length > 1 ? `<div class="mt-2 text-right"><button class="${C.btn} !min-h-9 !py-1 !text-xs" data-lg="nextzone">⇥ Siguiente espacio</button></div>` : ''}
-      ${paletteHTML(key, {k:piezas, orden:true}, st)}
-      ${this.error ? `<div class="mt-2 rounded-xl bg-rose-100 px-3 py-2 text-sm font-medium text-rose-800">${this.error}</div>` : ''}
-      <div class="mt-3 grid grid-cols-[1fr_auto_auto] gap-2">
+    h.innerHTML = `<div data-lego="${key}" class="dark flex h-full flex-col overflow-y-auto border-t-2 border-amber-400/70 bg-zinc-950 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 text-zinc-100">
+      <div class="flex items-center gap-2"><b class="flex-1 text-sm">✍️ Paso libre <span class="font-normal text-zinc-400">· ${this.ayuda}</span></b>
+        <button data-pl="recargar" class="${C.btn} !min-h-9 !px-2 !text-xs" title="Volver a cargar la expresión">↺</button>
+        <button data-pl="cancelar" class="${C.btn} !min-h-9 !px-2.5 !text-xs" aria-label="Cerrar">✕</button></div>
+      <div class="mt-1.5">${zoneHTML(key, st.root, 0)}</div>
+      <div class="mt-1 flex min-h-8 items-center gap-2 overflow-x-auto rounded-xl bg-zinc-900 px-2 text-sm"><span class="shrink-0 text-[10px] uppercase text-zinc-500">Se lee</span>${prev}</div>
+      ${allZones(st.root).length > 1 ? `<div class="mt-1 text-right"><button class="${C.btn} !min-h-8 !py-0.5 !text-xs" data-lg="nextzone">⇥ Siguiente espacio</button></div>` : ''}
+      ${paletteHTML(key, {k:this.piezas, orden:true}, st)}
+      ${this.error ? `<div class="mt-2 rounded-xl bg-rose-950/60 px-3 py-2 text-sm font-medium text-rose-200">${this.error}</div>` : ''}
+      <div class="mt-2 grid grid-cols-[1fr_auto_auto] gap-2">
         <button data-pl="ok" class="${UI.btnP}">✔ Usar este paso</button>
         <button data-lg="undo" class="${C.btn}" aria-label="Deshacer">↶</button><button data-lg="clear" class="${C.btn}" aria-label="Limpiar">🗑</button></div></div>`;
     h.onclick = e => {
       const a = e.target.closest('[data-pl]')?.dataset.pl;
       if (a === 'cancelar'){ this.cerrar(); this.cancelar(); }
+      if (a === 'recargar'){ this.cargar(); this.error = ''; this.render(); }
       if (a === 'ok'){ const err = this.confirmar(ser(st.root)); if (err){ this.error = err; this.render(); } else this.cerrar(); }
     };
   }

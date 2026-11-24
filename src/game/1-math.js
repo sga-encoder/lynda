@@ -97,6 +97,8 @@ function normalize(n){
   }
   if (n instanceof Add){
     const flat = n.terms.map(normalize).flatMap(t => t instanceof Add ? t.terms : [t]);
+    const sinCeros = flat.filter(t => !(t instanceof Num && t.q.isZero));
+    if (sinCeros.length && sinCeros.length < flat.length) flat.splice(0, flat.length, ...sinCeros);
     if (!flat.length) return new Num(0);
     return flat.length === 1 ? flat[0] : new Add(flat);
   }
@@ -218,12 +220,12 @@ class Card {
   /** Devuelve el nuevo árbol (normalizado). */ apply(root, path){ return root; }
 }
 class DistributivaCard extends Card {
-  constructor(){ super({id:'dist', name:'Distributiva', icon:'✳️', desc:'k(a+b) = ka + kb'}); }
+  constructor(){ super({id:'dist', name:'Distributiva', icon:'✳️', desc:'Reparte el número del paréntesis', formula:String.raw`k(a+b)=ka+kb`}); }
   targets(root){ return [...walk(root)].filter(([n]) => n instanceof Mul && n.f instanceof Add).map(([, p]) => p); }
   apply(root, path){ const m = nodeAt(root, path); return normalize(replaceAt(root, path, new Add(m.f.terms.map(t => scale(t, m.k))))); }
 }
 class SemejantesCard extends Card {
-  constructor(){ super({id:'seme', name:'Términos semejantes', icon:'🧲', desc:'3x + 2x = 5x · 4 − 1 = 3'}); }
+  constructor(){ super({id:'seme', name:'Términos semejantes', icon:'🧲', desc:'Junta los términos iguales', formula:String.raw`3x+2x=5x`}); }
   targets(root){
     return [...walk(root)].filter(([n]) => n instanceof Add && ['x', 'c'].some(k => n.terms.filter(t => likeKey(t) === k).length > 1)).map(([, p]) => p);
   }
@@ -240,7 +242,7 @@ class SemejantesCard extends Card {
   }
 }
 class MoverCard extends Card {
-  constructor(){ super({id:'mover', name:'Pasar al otro lado', icon:'↔️', desc:'Lo que suma pasa restando (y viceversa)', modes:['eq']}); }
+  constructor(){ super({id:'mover', name:'Pasar al otro lado', icon:'↔️', desc:'Lo que suma pasa restando', formula:String.raw`a+b=c\Rightarrow a=c-b`, modes:['eq']}); }
   targets(root){
     if (!(root instanceof Eq)) return [];
     return [0, 1].flatMap(s => root.children[s] instanceof Add ? root.children[s].terms.map((_, i) => [s, i]) : []);
@@ -253,7 +255,7 @@ class MoverCard extends Card {
   }
 }
 class DividirCard extends Card {
-  constructor(){ super({id:'div', name:'Dividir ambos lados', icon:'➗', desc:'ax = b  →  x = b / a', modes:['eq']}); }
+  constructor(){ super({id:'div', name:'Dividir ambos lados', icon:'➗', desc:'Despeja el coeficiente de x', formula:String.raw`ax=b\Rightarrow x=\tfrac{b}{a}`, modes:['eq']}); }
   targets(root){
     if (!(root instanceof Eq)) return [];
     return [0, 1].filter(s => { const n = root.children[s]; return n instanceof Mul && n.f instanceof X && !n.k.isOne; }).map(s => [s]);
@@ -264,12 +266,12 @@ class DividirCard extends Card {
   }
 }
 class OperarCard extends Card {
-  constructor(){ super({id:'oper', name:'Operar números', icon:'🧮', desc:'Calcula divisiones entre números'}); }
+  constructor(){ super({id:'oper', name:'Operar números', icon:'🧮', desc:'Calcula divisiones', formula:String.raw`\tfrac{8}{2}=4`}); }
   targets(root){ return [...walk(root)].filter(([n]) => n instanceof Div && n.num instanceof Num).map(([, p]) => p); }
   apply(root, path){ const d = nodeAt(root, path); return normalize(replaceAt(root, path, new Num(d.num.q.div(d.den)))); }
 }
 class PasoLibreCard extends Card {
-  constructor(){ super({id:'libre', name:'Paso libre', icon:'✍️', desc:'Escribe tú el paso con piezas', free:true}); }
+  constructor(){ super({id:'libre', name:'Paso libre', icon:'✍️', desc:'Escribe tú el paso con piezas', formula:String.raw`\text{tu idea}`, free:true}); }
 }
 
 /** Registro de cartas (Open/Closed: añadir una carta = registrar una clase nueva). */

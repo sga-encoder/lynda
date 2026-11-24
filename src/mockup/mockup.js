@@ -160,7 +160,7 @@ function alien(x, opts = {}){ const a = (opts.blindado ? ENEMIGOS.blindado : ENE
 function nave(x, y, opts = {}){ const n = (opts.dron ? ENEMIGOS.dron : ENEMIGOS.nave)(y, CFG); n.x = x; n.y = y; return n; }
 function escena(tipo){
   const base = new Base(100); base.vida = 78;
-  const sold = [0, 1, 2].map(i => new Soldado(i, 6));
+  const sold = ['fusilero', 'pesado', 'medico'].map((t, i) => new Soldado(i, t));
   const m = {base, soldados:sold, enemigos:[], balas:[], particulas:[], rayos:[], textos:[]};
   if (tipo === 'calma'){ m.enemigos = [alien(250), alien(300, {cae:true, y:90}), nave(280, 40)]; return m; }
   m.enemigos = [alien(150, {v:2}), alien(205), alien(118, {blindado:true, v:4}), alien(300, {cae:true, y:80}), nave(265, 38), nave(190, 70, {dron:true})];
@@ -172,7 +172,7 @@ function escena(tipo){
 }
 const OBJETOS = [
   ['Base', 'Vida con barra · recluta soldados cuando hay espacio · dispara sola (gratis, débil) si no quedan soldados', c => R.base(c, Object.assign(new Base(100), {vida:70})), 31, MUNDO.suelo, ['❤ 100 + mejoras', '🪖 Recluta cada 5 s', '🔫 Torreta de emergencia']],
-  ['Soldado', 'Dispara con el arma de pelotón; pelea cuerpo a cuerpo si un alien lo alcanza', c => R.soldado(c, {x:60, vida:6, vidaMax:6}), 62, MUNDO.suelo, ['❤ 6', '📍 Frente de la base']],
+  ['Soldado', 'Dispara con el arma de pelotón; pelea cuerpo a cuerpo si un alien lo alcanza', c => R.soldado(c, Object.assign(new Soldado(0, 'fusilero'), {x:60})), 62, MUNDO.suelo, ['❤ 6', '📍 Frente de la base']],
   ['Alien explorador', 'Cae en cápsula y camina hacia la base', c => R.alien(c, alien(60)), 60, MUNDO.suelo, ['🟫 Tierra', '❤ 3', '🏃 Media'], true],
   ['Alien en cápsula', 'Estado de caída antes de aterrizar', c => R.alien(c, alien(60, {cae:true, y:MUNDO.suelo - 14})), 60, MUNDO.suelo, ['🪂 Cayendo', 'No ataca']],
   ['Alien blindado', 'Resiste el daño físico: conviene energía o explosivo', c => R.alien(c, alien(60, {blindado:true, v:4})), 60, MUNDO.suelo, ['🟫 Tierra', '❤ 6', '🛡 Físico −50 %'], false],

@@ -24,32 +24,32 @@ const BONUS_DEFS = {
   // ---- Armas ----
   rifle:   {tipo:'arma', icon:'🔫', name:'Rifle de pelotón', desc:'Cada soldado dispara al enemigo más cercano.',
             props:{origen:'soldados', objetivo:'unico', alcance:'ambos', dano:'fisico', movimiento:'bala', prioridad:'cercano'},
-            niveles:[{dmg:1, cd:0.9, costo:1}, {dmg:1.5, cd:0.75, costo:1}, {dmg:2, cd:0.6, costo:1}]},
+            niveles:[{dmg:1, cd:0.9, costo:1.5}, {dmg:1.5, cd:0.75, costo:1.5}, {dmg:2, cd:0.6, costo:1.5}]},
   laser:   {tipo:'arma', icon:'🔴', name:'Láser de la base', desc:'Rayo instantáneo al enemigo con más vida.',
             props:{origen:'base', objetivo:'unico', alcance:'ambos', dano:'energia', movimiento:'rayo', prioridad:'fuerte'},
-            niveles:[{dmg:4, cd:2.0, costo:4}, {dmg:6, cd:1.7, costo:4}, {dmg:8, cd:1.4, costo:4}]},
+            niveles:[{dmg:4, cd:2.0, costo:6}, {dmg:6, cd:1.7, costo:6}, {dmg:8, cd:1.4, costo:6}]},
   misil:   {tipo:'arma', icon:'🚀', name:'Misiles', desc:'Persiguen a los voladores y explotan en área.',
             props:{origen:'base', objetivo:'area', alcance:'ambos', dano:'explosivo', movimiento:'guiado', prioridad:'aire'},
-            niveles:[{dmg:5, cd:2.6, costo:5, area:26}, {dmg:7, cd:2.2, costo:5, area:30}, {dmg:9, cd:1.9, costo:5, area:34}]},
+            niveles:[{dmg:5, cd:2.6, costo:7.5, area:26}, {dmg:7, cd:2.2, costo:7.5, area:30}, {dmg:9, cd:1.9, costo:7.5, area:34}]},
   mortero: {tipo:'arma', icon:'💣', name:'Mortero', desc:'Proyectil en parábola; gran área, solo enemigos en tierra.',
             props:{origen:'base', objetivo:'area', alcance:'tierra', dano:'explosivo', movimiento:'parabola', prioridad:'cercano'},
-            niveles:[{dmg:6, cd:3.0, costo:4, area:30}, {dmg:8, cd:2.6, costo:4, area:34}, {dmg:10, cd:2.2, costo:4, area:40}]},
+            niveles:[{dmg:6, cd:3.0, costo:6, area:30}, {dmg:8, cd:2.6, costo:6, area:34}, {dmg:10, cd:2.2, costo:6, area:40}]},
   tesla:   {tipo:'arma', icon:'⚡', name:'Bobina Tesla', desc:'Descarga que salta entre enemigos cercanos.',
             props:{origen:'base', objetivo:'cadena', alcance:'ambos', dano:'energia', movimiento:'rayo', prioridad:'cercano'},
-            niveles:[{dmg:2, cd:1.8, costo:3, saltos:3}, {dmg:3, cd:1.5, costo:3, saltos:4}, {dmg:4, cd:1.2, costo:3, saltos:5}]},
+            niveles:[{dmg:2, cd:1.8, costo:4.5, saltos:3}, {dmg:3, cd:1.5, costo:4.5, saltos:4}, {dmg:4, cd:1.2, costo:4.5, saltos:5}]},
   franco:  {tipo:'arma', icon:'🎯', name:'Francotirador', desc:'Disparo lento y potente; ignora parte de la armadura.',
             props:{origen:'base', objetivo:'unico', alcance:'ambos', dano:'fisico', movimiento:'bala', prioridad:'fuerte', efecto:'perforar'},
-            niveles:[{dmg:10, cd:3.5, costo:5, vel:420}, {dmg:14, cd:3.0, costo:5, vel:420}, {dmg:18, cd:2.5, costo:5, vel:420}]},
+            niveles:[{dmg:10, cd:3.5, costo:7.5, vel:420}, {dmg:14, cd:3.0, costo:7.5, vel:420}, {dmg:18, cd:2.5, costo:7.5, vel:420}]},
   // ---- Fusiones (nivel 4) ----
   foton:   {tipo:'arma', fusion:true, icon:'🌟', name:'Rayo de fotones', desc:'Láser + Amplificador: cadena de 3, poca energía, más energía por paso.',
             props:{origen:'base', objetivo:'cadena', alcance:'ambos', dano:'energia', movimiento:'rayo', prioridad:'fuerte'},
-            niveles:[null, null, null, {dmg:12, cd:1.0, costo:2, saltos:3, energia:1.6}]},
+            niveles:[null, null, null, {dmg:12, cd:1.0, costo:3, saltos:3, energia:1.6}]},
   escuadron:{tipo:'arma', fusion:true, icon:'🎖️', name:'Escuadrón élite', desc:'Rifle + Reclutamiento: +3 soldados que disparan muy rápido.',
             props:{origen:'soldados', objetivo:'unico', alcance:'ambos', dano:'fisico', movimiento:'bala', prioridad:'cercano'},
-            niveles:[null, null, null, {dmg:3, cd:0.45, costo:1, soldados:3, reclutar:0.5}]},
+            niveles:[null, null, null, {dmg:3, cd:0.45, costo:1.5, soldados:3, reclutar:0.5}]},
   crio:    {tipo:'arma', fusion:true, icon:'❄️', name:'Misiles criogénicos', desc:'Misiles + Cámara lenta: área enorme que congela.',
             props:{origen:'base', objetivo:'area', alcance:'ambos', dano:'explosivo', movimiento:'guiado', prioridad:'aire', efecto:'congelar'},
-            niveles:[null, null, null, {dmg:10, cd:1.8, costo:5, area:44, lentitud:0.8}]},
+            niveles:[null, null, null, {dmg:10, cd:1.8, costo:7.5, area:44, lentitud:0.8}]},
   // ---- Tácticos ----
   amplificador: {tipo:'tactico', icon:'🔋', name:'Amplificador', desc:'Más energía por cada paso matemático.', props:{afecta:'energia', modo:'pasivo'},
             niveles:[{energia:1.2}, {energia:1.4}, {energia:1.6}]},
@@ -128,9 +128,36 @@ class Loadout {
   get energiaMult(){ return this.efecto('energia', 1); }
 }
 
+/* ---------- Combos de cartas ----------
+   Un combo aplica varias cartas en un orden fijo. Cada carta se aplica a todos sus
+   objetivos (en orden) antes de pasar a la siguiente. Se puede usar una vez por ronda. */
+class Combo {
+  constructor({nombre, dominio, cartas, hecho = false}){ Object.assign(this, {nombre, dominio, cartas, hecho, usado:false, id:'cb' + Math.random().toString(36).slice(2, 8)}); }
+  /** Ejecuta el combo; devuelve la lista de estados intermedios. */
+  ejecutar(raiz, dom){
+    const estados = []; let actual = raiz;
+    for (const id of this.cartas){
+      const carta = dom.cartas.get(id); if (!carta) continue;
+      for (let n = 0; n < 8; n++){
+        const objs = carta.targets(actual); if (!objs.length) break;
+        actual = carta.apply(actual, objs[0]); estados.push(actual);
+        if (dom.resuelto(actual)) return estados;
+      }
+    }
+    return estados;
+  }
+}
+const COMBOS_HECHOS = {
+  fund: [{nombre:'Despejar x', cartas:['dist', 'mover', 'seme', 'div', 'oper']}, {nombre:'Limpiar expresión', cartas:['dist', 'seme']}],
+  dif:  [{nombre:'Polinomio', cartas:['d-suma', 'd-kf', 'd-pot', 'd-cte']}, {nombre:'Cadena completa', cartas:['d-kf', 'd-cad', 'd-suma', 'd-kf', 'd-pot', 'd-tabla', 'd-cte']}],
+  int:  [{nombre:'Polinomio', cartas:['i-suma', 'i-kf', 'i-pot', 'i-cte', 'i-c']}, {nombre:'Sustitución', cartas:['i-kf', 'i-sust', 'i-c']}],
+};
+const MAX_COMBOS_PROPIOS = 3, MAX_CARTAS_COMBO = 5;
+
 /* ---------- Puntuación de cada paso (Strategy compuesta) ---------- */
 class ReglaVelocidad   { nombre = 'rápido';    mult(c){ const v = c.ventana ?? 0; return c.segundos < 6 + v ? 1.5 : c.segundos < 12 + v ? 1.25 : 1; } }
 class ReglaCombo       { nombre = 'combo';     mult(c){ return 1 + Math.min(c.combo, 5) * 0.1; } }
+class ReglaCadena      { nombre = 'combo de cartas'; mult(c){ return c.cadena ? 1.25 : 1; } }
 class ReglaCreatividad { nombre = 'creativo';  mult(c){ return c.libre ? (c.avance >= 2 ? 2 : 1.3) : 1; } }
 class Puntuador {
   /** @param {{nombre:string, mult:(ctx)=>number}[]} reglas */
@@ -159,7 +186,7 @@ class SaveRepository {                               // patrón Repository: el r
   save(data){ try { localStorage.setItem(this.#key, JSON.stringify(data)); } catch {} }
 }
 class Progreso {
-  constructor(repo){ this.repo = repo; this.data = {puntos:0, mejoras:{}, record:0, partidas:0, modo:'fund', todo:true, ...repo.load()}; }
+  constructor(repo){ this.repo = repo; this.data = {puntos:0, mejoras:{}, record:0, partidas:0, modo:'fund', todo:true, semi:true, ...repo.load()}; }
   nivel(id){ return this.data.mejoras[id] ?? 0; }
   costo(id){ return MEJORAS[id].costo(this.nivel(id)); }
   puedeComprar(id){ return this.nivel(id) < MEJORAS[id].max && this.data.puntos >= this.costo(id); }
@@ -169,19 +196,19 @@ class Progreso {
   guardar(){ this.repo.save(this.data); }
 }
 
-/* ---------- Oleadas y misiones (dificultad por velocidad) ---------- */
-const MISIONES = 3, OLEADAS = 3;
+/* ---------- Oleadas y misiones (dificultad por velocidad y cantidad) ---------- */
+const MISIONES = 4, OLEADAS = 3;
+const CLIMAS_ROTACION = ['despejado', 'lluvia', 'niebla', 'nieve', 'tormenta', 'viento'];
 function configOleada(mision, oleada){
-  const t = (mision - 1) * OLEADAS + (oleada - 1);     // 0..8
+  const t = (mision - 1) * OLEADAS + (oleada - 1);     // 0..11
   return {
-    problemas: 1 + Math.floor(t / 3) + (oleada === OLEADAS ? 1 : 0),
-    minimo: 4 + t,                                       // enemigos mínimos: resolver rápido da energía, no salta la batalla
-    intervalo: Math.max(2.2, 5.5 - t * 0.35),          // segundos entre apariciones
-    velocidad: 1 + t * 0.08,
-    vida: 1 + t * 0.15,
-    probNave: Math.min(0.4, 0.1 + t * 0.04),
-    probBlindado: t >= 2 ? Math.min(0.35, 0.1 + (t - 2) * 0.05) : 0,
-    probDron: t >= 4 ? Math.min(0.3, 0.1 + (t - 4) * 0.05) : 0,
+    t,
+    problemas: 1 + Math.floor(t / 4) + (oleada === OLEADAS ? 1 : 0),
+    minimo: 7 + t,                                       // más enemigos por oleada
+    intervalo: Math.max(1.3, 3.4 - t * 0.18),           // segundos entre apariciones
+    velocidad: 1 + t * 0.07,
+    vida: 1 + t * 0.14,
+    jefe: oleada === OLEADAS ? JEFES[mision - 1] : null, // un jefe al final de cada misión
   };
 }
 const xpParaNivel = n => 60 + n * 45;

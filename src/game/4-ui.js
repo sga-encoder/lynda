@@ -30,8 +30,22 @@ class GameApp {
     this.ruta = new Ruta(this.progreso, () => this.doneKeys());
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.scene?.pause(); });
   }
-  go(scene){ this.scene?.exit(); this.scene = scene; scene.enter(); }
+  go(scene){
+    this.scene?.exit(); this.scene = scene;
+    // La batalla ocupa toda la pantalla; los menús dejan ver la barra superior y la inferior de la app
+    this.root.classList.toggle('juego-menu', !(scene instanceof BattleScene));
+    scene.enter();
+  }
   open(){ this.root.classList.remove('hidden'); if (!this.scene) this.go(new MenuScene(this)); }
+  /** Empieza una partida normal en la modalidad indicada (o la última usada). */
+  nuevaPartida(modo = this.progreso.data.modo){ this.progreso.data.modo = modo; this.progreso.guardar(); this.go(new BattleScene(this, new Run(this))); }
+  /** Abre una sección del menú del juego (la elige la barra de navegación de la app). */
+  mostrar(seccion){
+    const S = {inicio:MenuScene, catalogo:CatalogoScene, mazo:MazoScene, peloton:PelotonScene, mejoras:MejorasScene, ayuda:HelpScene, config:ConfigScene, mas:MasScene, partidas:MenuScene}[seccion] ?? MenuScene;
+    this.root.classList.remove('hidden');
+    if (this.scene instanceof BattleScene && !this.scene.terminado) return;      // no se interrumpe una batalla
+    if (!(this.scene instanceof S) || S === MenuScene) this.go(new S(this));
+  }
   close(){ this.scene?.pause(); this.root.classList.add('hidden'); }
   html(s){ this.root.innerHTML = s; return this.root; }
   /* Desbloqueos: modo desarrollo, Ruta o avance en Aprender */
@@ -47,105 +61,9 @@ class GameApp {
   dificultadDesbloqueada(id){ return !!this.progreso.data.todo || this.ruta.difs().has(id); }
 }
 
-/* ---------- Menú ---------- */
+/* ---------- Menú: ver 7-hub.js ---------- */
 const MODOS = [['fund', '🧱', 'Fundamentos'], ['alg', '🔺', 'Potencias, log y trig'], ['dif', '📈', 'Diferencial'], ['int', '∫', 'Integral'], ['todo', '🌐', 'Todo junto']];
-class MenuScene extends Scene {
-  enter(){
-    const p = this.app.progreso, d = p.data, hechos = this.app.doneKeys();
-    const disp = this.app.problemas.disponibles(d.modo, hechos, d.todo, t => this.app.tipoDesbloqueado(t)), total = this.app.problemas.tipos(d.modo).length;
-    if (!this.app.dificultadDesbloqueada(d.dificultad ?? 'soldado')) d.dificultad = 'soldado';
-    const ruta = this.app.ruta, guardadas = new GestorPartidas().lista().length;
-    this.app.html(`
-    <div class="mx-auto flex h-full max-w-xl flex-col gap-4 overflow-y-auto px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
-      <div class="flex items-center justify-between"><span class="text-sm text-zinc-400">🎮 Practicar</span><button data-a="salir" class="${UI.btn} !min-h-10 !px-3">✕ Salir</button></div>
-      <div class="text-center"><div class="text-6xl">👽🛸</div><h2 class="mt-2 text-3xl font-black tracking-tight">Defensa Algebraica</h2>
-        <p class="mt-2 text-zinc-300">Los soldados solo disparan con la <b class="text-amber-300">energía</b> que generan los científicos… y los científicos eres tú. Cada paso que te acerca a la solución carga energía: más rápido, más creativo y con menos pasos = más XP.</p></div>
-      <div><b class="text-sm">¿Qué quieres practicar?</b>
-        <div class="mt-2 grid grid-cols-2 gap-2">${MODOS.map(([id, ic, n]) => `<button data-modo="${id}" class="${id === 'todo' ? 'col-span-2 ' : ''}flex min-h-14 items-center justify-center gap-2 rounded-2xl border-2 px-3 font-semibold touch-manipulation ${d.modo === id ? 'border-emerald-400 bg-emerald-400/15 text-emerald-200' : 'border-zinc-700 bg-zinc-900'}"><span class="text-xl">${ic}</span>${n}</button>`).join('')}</div>
-        <p class="mt-2 text-xs text-zinc-400">${disp.length ? `${disp.length}/${total} tipo(s) de problema disponibles` : 'Aún no hay problemas disponibles'}${disp.length < total ? ' · más se desbloquean en la 🗺️ Ruta' : ''}.</p></div>
-      <div><b class="text-sm">Dificultad</b>
-        <div class="mt-2 grid grid-cols-4 gap-1.5">${DIFICULTADES.map(df => { const ok = this.app.dificultadDesbloqueada(df.id), on = (d.dificultad ?? 'soldado') === df.id;
-          return `<button data-dif="${df.id}" ${ok ? '' : 'disabled'} class="flex min-h-14 flex-col items-center justify-center rounded-2xl border-2 px-1 text-xs font-semibold touch-manipulation disabled:opacity-40 ${on ? 'border-rose-400 bg-rose-400/15 text-rose-200' : 'border-zinc-700 bg-zinc-900'}"><span class="text-lg">${ok ? df.icon : '🔒'}</span>${df.nombre}</button>`; }).join('')}</div>
-        <p class="mt-1.5 text-xs text-zinc-400">${dificultad(d.dificultad).desc}</p></div>
-      <button data-a="jugar" class="${UI.btnP} !min-h-14 text-lg" ${disp.length ? '' : 'disabled'}>▶ Jugar</button>
-      <div class="${UI.card} flex items-center gap-3 text-sm"><span class="text-2xl">🗺️</span><span class="flex-1"><b>Ruta · nivel ${ruta.nivelReal + 1}/${ruta.total}</b>${d.todo ? ' <span class="text-amber-300">(desarrollo: todo abierto)</span>' : ''}<div class="mt-1 h-1.5 overflow-hidden rounded bg-zinc-800"><div class="h-full bg-amber-400" style="width:${100 * (ruta.nivelReal + 1) / ruta.total}%"></div></div></span><span class="text-xs text-zinc-400">${ruta.xp} XP</span></div>
-      <div class="grid grid-cols-2 gap-3"><button data-a="catalogo" class="${UI.btn}">📚 Catálogo</button><button data-a="mejoras" class="${UI.btn}">🛠 Mejoras <span class="text-amber-300">${d.puntos} 🔬</span></button><button data-a="mazo" class="${UI.btn}">🃏 Mazo</button><button data-a="peloton" class="${UI.btn}" ${this.app.pelotonDisponible() ? '' : 'disabled'}>🪖 Pelotón${this.app.pelotonDisponible() ? '' : ' 🔒'}</button><button data-a="partidas" class="${UI.btn}">💾 Partidas${guardadas ? ` <span class="text-sky-300">${guardadas}</span>` : ''}</button><button data-a="ayuda" class="${UI.btn}">❓ Cómo jugar</button></div>
-      <div><b class="text-sm">Modo asistido</b>
-        <div class="mt-2 grid grid-cols-4 gap-1.5">${NIVELES_AYUDA.map((n, i) => `<button data-ayuda="${i}" class="flex min-h-14 flex-col items-center justify-center rounded-2xl border-2 px-1 text-xs font-semibold touch-manipulation ${(d.asistido ?? 0) === i ? 'border-sky-400 bg-sky-400/15 text-sky-200' : 'border-zinc-700 bg-zinc-900'}"><span class="text-lg">${n.icon}</span>${n.nombre}</button>`).join('')}</div>
-        <p class="mt-1.5 text-xs text-zinc-400">${NIVELES_AYUDA[d.asistido ?? 0].desc}${(d.asistido ?? 0) ? ` XP ×${NIVELES_AYUDA[d.asistido].xp}.` : ''}</p></div>
-      <label class="${UI.card} flex items-center gap-3 text-sm"><input type="checkbox" data-a="semi" class="h-5 w-5 accent-emerald-400" ${d.semi ? 'checked' : ''}><span><b>🃏 Cartas semiautomáticas</b> <span class="text-zinc-400">(eliges el resultado correcto al aplicar cada carta)</span></span></label>
-      <label class="${UI.card} flex items-center gap-3 text-sm"><input type="checkbox" data-a="todo" class="h-5 w-5 accent-amber-400" ${d.todo ? 'checked' : ''}><span><b>🧪 Todo desbloqueado</b> <span class="text-zinc-400">(modo desarrollo: ignora la Ruta y el avance; abre también el catálogo)</span></span></label>
-      <p class="text-center text-xs text-zinc-500">Récord: ${d.record} XP · Partidas: ${d.partidas}</p>
-    </div>`).onclick = e => {
-      const ay = e.target.closest('[data-ayuda]')?.dataset.ayuda;
-      if (ay != null){ d.asistido = +ay; p.guardar(); return this.enter(); }
-      const df = e.target.closest('[data-dif]')?.dataset.dif;
-      if (df){ d.dificultad = df; p.guardar(); return this.enter(); }
-      const modo = e.target.closest('[data-modo]')?.dataset.modo;
-      if (modo){ d.modo = modo; p.guardar(); return this.enter(); }
-      const a = e.target.closest('[data-a]')?.dataset.a;
-      if (a === 'todo'){ d.todo = e.target.checked; p.guardar(); return this.enter(); }
-      if (a === 'semi'){ d.semi = e.target.checked; p.guardar(); return this.enter(); }
-      if (a === 'jugar') this.app.go(new BattleScene(this.app, new Run(this.app)));
-      if (a === 'mejoras') this.app.go(new MejorasScene(this.app));
-      if (a === 'catalogo') this.app.go(new CatalogoScene(this.app));
-      if (a === 'mazo') this.app.go(new MazoScene(this.app));
-      if (a === 'partidas') this.app.go(new PartidasScene(this.app));
-      if (a === 'peloton') this.app.go(new PelotonScene(this.app));
-      if (a === 'ayuda') this.app.go(new HelpScene(this.app));
-      if (a === 'salir') this.app.onExit();
-    };
-  }
-}
 
-class HelpScene extends Scene {
-  enter(){
-    this.app.html(`
-    <div class="mx-auto h-full max-w-xl overflow-y-auto px-4 pb-10 pt-[max(1rem,env(safe-area-inset-top))] text-zinc-200 [&_li]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5">
-      <button data-a="volver" class="${UI.btn} !min-h-10">◂ Volver</button>
-      <h2 class="mt-4 text-2xl font-black">Cómo jugar</h2>
-      <ul>
-        <li>Arriba está el campo de batalla; abajo, el <b>problema</b> y tu <b>mano de cartas</b>.</li>
-        <li>Cada carta es una <b>propiedad matemática</b>. Tócala; si sirve en varios lugares, toca en la expresión dónde usarla. En modo <b>semiautomático</b> después eliges cuál es el resultado correcto entre 3 opciones (las otras tienen errores típicos).</li>
-        <li><b>🔗 Combos</b>: una secuencia de cartas que se aplica sola en ese orden. Hay combos ya montados y puedes crear hasta 3 en el taller. Cada combo se usa una vez por ronda y da bono ×1.25.</li>
-        <li><b>✍️ Paso libre</b>: se abre debajo del campo con tu expresión ya convertida en piezas; edítala y mira la vista previa. Si es correcto y te acerca mucho, la energía vale doble (creatividad).</li>
-        <li><b>Soldados</b>: 🔫 Fusilero (usa tus armas de pelotón), 🛡️ Pesado, 💣 Granadero, ⛑️ Médico (cura) e 🔧 Ingeniero (repara la base). Sus habilidades también gastan energía.</li>
-        <li><b>Clima</b>: cambia cada oleada (lluvia, niebla, nieve, tormenta, viento) y afecta la batalla.</li>
-        <li><b>Jefes</b>: al final de cada misión llega uno (Coloso, Reina del enjambre, Acorazado orbital y Mente maestra). La Mente maestra solo es vulnerable unos segundos después de que resuelves un problema.</li>
-        <li>Cada paso que te <b>acerca</b> a la solución da ⚡ energía y XP. Bonos: <b>rápido</b> (menos de 6 s), <b>combo</b> (pasos buenos seguidos) y <b>creativo</b>. Terminar con los pasos mínimos da bono de <b>eficiencia</b>.</li>
-        <li>Los soldados y las armas gastan energía al disparar. Sin soldados, la base dispara sola (débil). La base recluta soldados cuando hay espacio.</li>
-        <li>Elige qué practicar: <b>Fundamentos</b> (ecuaciones y simplificar), <b>Diferencial</b> (derivadas), <b>Integral</b> (integrales) o <b>Todo junto</b>.</li>
-        <li>Cada oleada pide resolver 1 o más problemas. Al subir de nivel eliges <b>1 arma y 1 táctico</b> (3 espacios de cada tipo, nivel máximo 3).</li>
-        <li>Los bonificadores tienen <b>propiedades</b> (objetivo, alcance, tipo de daño, movimiento…) que cambian al mejorar. Algunas parejas en nivel 3 se <b>fusionan</b> (nivel 4) y liberan un espacio: hay fusiones entre armas, entre tácticos y entre un arma y un táctico. ¡Descúbrelas jugando!</li>
-        <li>Enemigos con propiedades y armas: el <b>blindado</b> resiste lo físico, el <b>escudero</b> resiste la energía, el <b>saltador</b> brinca sobre tus soldados, el <b>excavador</b> va bajo tierra, el <b>escupeácido</b> dispara de lejos, y en el aire hay naves, drones, bombarderos, cazas y portadrones.</li>
-        <li>🔬 <b>Puntos de investigación</b>: ganas al completar cada misión y con tu XP. Gástalos en <b>🛠 Mejoras</b> (científicos, base, soldados, armas y tácticos).</li>
-        <li><b>📚 Catálogo</b>: cartas, armas, tácticos y entidades con vista previa y estadísticas; lo que no has encontrado aparece como «Desconocido».</li>
-        <li><b>🃏 Mazo</b>: guarda combinaciones de propiedades (una lista por área) que te acompañan en todas las partidas.</li>
-        <li>Los tipos de problema se desbloquean avanzando en <b>Aprender</b>.</li>
-      </ul></div>`).onclick = e => { if (e.target.closest('[data-a="volver"]')) this.app.go(new MenuScene(this.app)); };
-  }
-}
-
-class ShopScene extends Scene {
-  enter(){
-    const p = this.app.progreso;
-    this.app.html(`
-    <div class="mx-auto h-full max-w-xl overflow-y-auto px-4 pb-10 pt-[max(1rem,env(safe-area-inset-top))]">
-      <div class="flex items-center justify-between"><button data-a="volver" class="${UI.btn} !min-h-10">◂ Volver</button><span class="text-lg font-bold text-amber-300">${p.data.puntos} 🔬</span></div>
-      <h2 class="mt-4 text-2xl font-black">Mejoras permanentes</h2><p class="text-sm text-zinc-400">Se mantienen entre partidas.</p>
-      <div class="mt-3 space-y-2">${Object.entries(MEJORAS).map(([id, m]) => `
-        <div class="${UI.card} flex items-center gap-3"><span class="text-3xl">${m.icon}</span>
-          <div class="flex-1"><b>${m.name}</b> <small class="text-zinc-400">${p.nivel(id)}/${m.max}</small><div class="text-sm text-zinc-400">${m.desc}</div></div>
-          <button data-buy="${id}" class="${UI.btnP} !min-h-11 !px-3 text-sm" ${p.puedeComprar(id) ? '' : 'disabled'}>${p.nivel(id) >= m.max ? 'Máx.' : `${p.costo(id)} 🔬`}</button></div>`).join('')}
-      </div></div>`).onclick = e => {
-      if (e.target.closest('[data-a="volver"]')) return this.app.go(new MenuScene(this.app));
-      const id = e.target.closest('[data-buy]')?.dataset.buy; if (id && p.comprar(id)) this.enter();
-    };
-  }
-}
-
-
-/* ---------- Estado de una partida ---------- */
 class Run {
   constructor(app){
     const p = app.progreso;
@@ -258,7 +176,8 @@ class BattleScene extends Scene {
   nuevoProblema(){
     const d = this.app.progreso.data;
     const extra = {recluta:-1, soldado:0, veterano:1, leyenda:2}[d.dificultad ?? 'soldado'] ?? 0;   // la dificultad adelanta los tipos difíciles
-    const {type, dom, root, par, solucion} = this.app.problemas.create({doneKeys:this.app.doneKeys(), mision:Math.max(1, Math.min(3, this.run.mision + extra)), modo:d.modo, todo:d.todo, ok:t => this.app.tipoDesbloqueado(t)});
+    const inf = this.run.infinito, ok = inf ? t => this.run.tipos.has(t.id) : t => this.app.tipoDesbloqueado(t);   // modo infinito: solo las operaciones elegidas
+    const {type, dom, root, par, solucion} = this.app.problemas.create({doneKeys:this.app.doneKeys(), mision:Math.max(1, Math.min(3, this.run.mision + extra)), modo:inf ? 'todo' : d.modo, todo:d.todo, ok});
     this.prepararProblema({type, dom, root, par, solucion, pasos:0});
   }
   /** Retoma el problema de una partida guardada. */
@@ -291,7 +210,7 @@ class BattleScene extends Scene {
   }
   hud(){
     const r = this.run, b = r.base, j = this.mundo.jefe;
-    this.$('oleada').textContent = `Misión ${r.mision}/${MISIONES} · Oleada ${r.oleada}/${OLEADAS}`;
+    this.$('oleada').textContent = `${r.infinito ? '♾️ ' : ''}Misión ${r.mision}${r.infinito ? '' : '/' + MISIONES} · Oleada ${r.oleada}/${OLEADAS}`;
     this.$('probs').textContent = `🧮 ${Math.min(this.director.problemasResueltos, this.cfg.problemas)}/${this.cfg.problemas}`;
     this.$('nivel').textContent = r.nivel;
     this.$('clima').textContent = `${this.mundo.clima.icon} ${this.mundo.clima.name}`;
@@ -570,10 +489,23 @@ class BattleScene extends Scene {
     if (r.oleada === OLEADAS) this.app.ruta.contar('misiones');
     if (r.oleada === OLEADAS){ const pts = puntosMision(r.mision); this.app.progreso.ganarPuntos(pts); r.puntosMisiones += pts; const m = r.mision; setTimeout(() => this.aviso(`🏅 ¡Misión ${m} cumplida! +${pts} 🔬`), 2700); }
     if (nuevos.length) setTimeout(() => this.aviso(`📚 Nuevo en el catálogo (${nuevos.length})`), 5300);
-    if (r.oleada < OLEADAS){ r.oleada++; }
-    else if (r.mision < MISIONES){ r.mision++; r.oleada = 1; r.base.vida = Math.min(r.base.vidaMax, r.base.vida + 25); }
-    else return this.fin(true);
-    this.iniciarOleada();
+    if (r.oleada < OLEADAS){ r.oleada++; return this.iniciarOleada(); }
+    if (r.mision < MISIONES || r.infinito){ r.mision++; r.oleada = 1; r.base.vida = Math.min(r.base.vidaMax, r.base.vida + 25); return this.pausaMision(r.mision - 1); }
+    return this.fin(true);
+  }
+  /** Al terminar cada misión el juego se detiene: seguir o guardar el avance para después. */
+  pausaMision(m){
+    const g = new GestorPartidas(); g.guardar(fotoPartida(this, `${this.run.infinito ? '♾️ ' : ''}Misión ${m} cumplida`));   // guardado automático
+    this.abrirCapa(`<div class="m-auto flex w-full max-w-sm flex-col gap-3 text-center"><div class="text-6xl">🏅</div>
+      <h2 class="text-2xl font-black">¡Misión ${m} cumplida!</h2>
+      <p class="text-sm text-zinc-400">El avance quedó guardado en 💾 Partidas. ¿Sigues con la misión ${m + 1} o la dejas para después?</p>
+      <button data-a="seguir" class="${UI.btnP} !min-h-14 text-lg">▶ Continuar</button>
+      <button data-a="guardar" class="${UI.btn}">💾 Guardar y salir</button></div>`,
+    e => {
+      const a = e.target.closest('[data-a]')?.dataset.a;
+      if (a === 'seguir'){ this.cerrarCapa(); this.iniciarOleada(); }
+      if (a === 'guardar'){ this.terminado = true; this.app.go(new MenuScene(this.app, '✅ Partida guardada: búscala abajo en «Partidas guardadas».')); }
+    });
   }
   fin(victoria, abandono = false){
     if (this.terminado) return; this.terminado = true;
@@ -588,7 +520,7 @@ class BattleScene extends Scene {
         <span>Con pasos mínimos</span><b class="text-right">${r.eficientes}</b>
         <span>Combos usados</span><b class="text-right">${r.combosUsados}</b>
         <span>Enemigos derrotados</span><b class="text-right">${r.bajas}</b>
-        <span>Jefes derrotados</span><b class="text-right">${r.jefes}/${MISIONES}</b>
+        <span>Jefes derrotados</span><b class="text-right">${r.jefes}${r.infinito ? '' : '/' + MISIONES}</b>
         <span>XP total</span><b class="text-right">${Math.round(r.xpTotal)}</b>
         <span>🔬 por misiones</span><b class="text-right text-amber-300">+${r.puntosMisiones}</b>
         <span>🔬 por XP</span><b class="text-right text-amber-300">+${pts}</b></div>

@@ -256,7 +256,8 @@ class SaveRepository {                               // patrón Repository: el r
 class Progreso {
   constructor(repo){
     this.repo = repo;
-    this.data = {puntos:0, mejoras:{}, record:0, partidas:0, modo:'fund', todo:true, semi:true, asistido:0, dificultad:'soldado', rutaXP:0, ...repo.load()};
+    this.data = {puntos:0, mejoras:{}, record:0, partidas:0, modo:'fund', todo:false, devDesbloqueado:false, mazoInfinito:[], semi:true, asistido:0, dificultad:'soldado', rutaXP:0, ...repo.load()};
+    if (!this.data.devDesbloqueado) this.data.todo = false;          // el modo desarrollador exige la contraseña
     this.data.desc = {armas:['rifle'], tacticos:[], enemigos:[], soldados:[], cartas:[], fusiones:[], ...(this.data.desc ?? {})};
     this.data.mazo = {fund:[], alg:[], dif:[], int:[], ...(this.data.mazo ?? {})};
   }
@@ -284,10 +285,10 @@ function configOleada(mision, oleada){
     t,
     problemas: 1 + Math.floor(t / 4) + (oleada === OLEADAS ? 1 : 0),
     minimo: 7 + t,                                       // más enemigos por oleada
-    intervalo: Math.max(1.3, 3.4 - t * 0.18),           // segundos entre apariciones
+    intervalo: Math.max(0.9, 3.4 - t * 0.18),           // segundos entre apariciones
     velocidad: 1 + t * 0.07,
     vida: 1 + t * 0.14,
-    jefe: oleada === OLEADAS ? JEFES[mision - 1] : null, // un jefe al final de cada misión
+    jefe: oleada === OLEADAS ? JEFES[(mision - 1) % JEFES.length] : null, // un jefe al final de cada misión (en modo infinito se repiten)
   };
 }
 const xpParaNivel = n => 60 + n * 45;

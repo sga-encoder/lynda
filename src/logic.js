@@ -80,7 +80,7 @@ function pageIntegral(){
   const all = LESSONS.reduce((a,L)=>a+L.exercises.length,0);
   const ok = LESSONS.reduce((a,L)=>a+lessonProgress(L).n,0);
   return `
-  <div class="text-sm text-stone-500 dark:text-zinc-400"><a href="#/" class="underline">Inicio</a> › Sección 3</div>
+  <div class="text-sm text-stone-500 dark:text-zinc-400"><a href="#/aprender" class="underline">Inicio</a> › Sección 3</div>
   <h2 class="${C.h2}">∫ Cálculo integral</h2>
   <p class="${C.lead}">Una guía interactiva: cada tema empieza por lo más básico, luego ejemplos de nivel medio y difícil resueltos paso a paso (qué se hace y por qué), y termina con ejercicios para ti.</p>
   <div class="${C.card}"><b>Tu progreso:</b> ${ok} de ${all} ejercicios marcados como resueltos
@@ -222,6 +222,16 @@ function propsBloque(domId, titulo){
   const pp = propsProgreso(domId);
   return `<h3 class="${C.h3}">🃏 Cartas de propiedades · ${titulo}</h3><p class="${C.src}">Las mismas cartas del juego, con 3 ejercicios cada una: toca la carta, elige dónde aplicarla y escoge el resultado (${pp.n}/${pp.tot} hechos).</p>${propsGrid(domId)}`;
 }
+/** Portada de toda la aplicación: logo y dos caminos. */
+function pageLanding(){
+  return `<div class="flex min-h-[calc(100dvh-9rem)] flex-col items-center justify-center gap-6 text-center">
+    <div class="flex h-28 w-28 items-center justify-center rounded-[2rem] bg-gradient-to-br from-blue-600 via-violet-600 to-fuchsia-500 text-6xl font-black text-white shadow-2xl [animation:flotar_3s_ease-in-out_infinite]">∫</div>
+    <div><h2 class="text-3xl font-black tracking-tight">Cálculo paso a paso</h2><p class="mt-1 text-stone-600 dark:text-zinc-400">Aprende con fichas y ponlo a prueba defendiendo la Tierra.</p></div>
+    <div class="grid w-full max-w-sm gap-3">
+      <a href="#/jugar" class="flex min-h-16 items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-indigo-900 to-violet-700 text-xl font-black text-white shadow-lg active:scale-[0.98] transition-transform">🎮 Jugar</a>
+      <a href="#/aprender" class="flex min-h-16 items-center justify-center gap-3 rounded-2xl border-2 border-blue-600 bg-white text-xl font-black text-blue-700 shadow active:scale-[0.98] transition-transform dark:bg-zinc-900 dark:text-blue-300">📚 Aprender</a>
+    </div></div>`;
+}
 function pageHome(){
   const fAll = FUND.reduce((a,T)=>a+T.lego.length,0), fOk = FUND.reduce((a,T)=>a+fundProgress(T).n,0);
   const iAll = LESSONS.reduce((a,L)=>a+L.exercises.length,0), iOk = LESSONS.reduce((a,L)=>a+lessonProgress(L).n,0);
@@ -318,7 +328,7 @@ function pageTutorial(){
   if (!done['t-visto']){ done['t-visto'] = true; store.set('done', done); }
   const tarjeta = (cab, cuerpo) => `<div class="${C.card} overflow-hidden">${cab}${cuerpo}</div>`;
   const demos = DEMOS(), indice = demos.map((d,i)=>`<a href="#/tutorial" data-ir="demo-${i}" class="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-900">${d.icon} ${d.titulo}</a>`).join(' ');
-  return `<div class="text-sm text-stone-500 dark:text-zinc-400"><a href="#/" class="underline">Inicio</a> › Tutorial</div>
+  return `<div class="text-sm text-stone-500 dark:text-zinc-400"><a href="#/aprender" class="underline">Inicio</a> › Tutorial</div>
   <h2 class="${C.h2}">🧩 Tutorial: cómo se usa cada ficha</h2>
   <p class="${C.lead}">Aquí no hay ejercicios: solo mira cómo funciona cada ficha. Las animaciones se repiten solas. Después practica en <a href="#/f" class="underline">Fundamentos</a>.</p>
   ${DEMO_FICHAS}
@@ -343,7 +353,7 @@ function pageTutorial(){
 const DOM_NOMBRE = {fund:['🧱','Fundamentos'], alg:['🔺','Potencias, raíces, logaritmos y trigonometría'], dif:['📈','Cálculo diferencial'], int:['∫','Cálculo integral']};
 function pagePropsIndex(domId){
   const [ic, n] = DOM_NOMBRE[domId], pp = propsProgreso(domId);
-  return `<div class="text-sm text-stone-500 dark:text-zinc-400"><a href="#/" class="underline">Inicio</a> › Propiedades</div>
+  return `<div class="text-sm text-stone-500 dark:text-zinc-400"><a href="#/aprender" class="underline">Inicio</a> › Propiedades</div>
   <h2 class="${C.h2}">🃏 Propiedades · ${ic} ${n}</h2>
   <p class="${C.lead}">Cada propiedad es una carta del juego. Hay 3 ejercicios por carta (${pp.n}/${pp.tot} hechos). Cada ejercicio resuelto suma XP en la 🗺️ Ruta.</p>
   ${propsGrid(domId)}
@@ -380,7 +390,7 @@ function pageRuta(){
   const hechos = R.nivelReal + 1;
   return `<h2 class="${C.h2}">🗺️ Ruta de progreso</h2>
   <p class="${C.lead}">Un nivel por cada paso de tu aprendizaje: el tutorial, cada tema de Fundamentos, Diferencial e Integral, las cartas de propiedades y logros del juego. Cada nivel cumplido desbloquea contenido del juego. Puedes avanzar en el orden que quieras.</p>
-  ${R.dev ? `<div class="${C.card} border-amber-400 bg-amber-50 dark:bg-amber-950/30">🧪 <b>Modo desarrollo activo</b>: en el juego todo está desbloqueado (también el catálogo). Desactívalo en el menú del juego para seguir la Ruta. Abajo ves tu avance real.</div>` : ''}
+  ${R.dev ? `<div class="${C.card} border-amber-400 bg-amber-50 dark:bg-amber-950/30">🧪 <b>Modo desarrollo activo</b>: en el juego todo está desbloqueado (también el catálogo). Se cambia en 🎮 Jugar › ☰ Más › ⚙️ Configuración. Abajo ves tu avance real.</div>` : ''}
   <div class="${C.card} flex items-center gap-4">
     <div class="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-orange-500 font-black text-white shadow"><span class="text-[10px] uppercase">Nivel</span><span class="text-2xl leading-none">${hechos}</span></div>
     <div class="min-w-0 flex-1"><b>${hechos} de ${R.total} niveles</b> <span class="text-sm text-stone-500 dark:text-zinc-400">· ${R.xp} XP</span>
@@ -394,7 +404,7 @@ function pageRuta(){
         ${t.req.map(r=>`<div class="mt-1.5 flex items-center gap-2 text-xs text-stone-600 dark:text-zinc-400"><span class="h-1.5 w-24 overflow-hidden rounded-full bg-stone-200 dark:bg-zinc-800"><span class="block h-full bg-emerald-500" style="width:${100*r.a/r.b}%"></span></span>${r.a}/${r.b} ${r.txt}</div>`).join('')}
         ${t.premios.length ? `<div class="mt-2 flex flex-wrap gap-1.5">${t.premios.map(p=>`<span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${TONO[p.tipo]}"><span>${p.icon}</span><span class="opacity-70">${ETQ[p.tipo]}:</span> ${p.nombre}${p.reclamable?` <button data-reclamar="${t.i}" class="ml-1 rounded-full bg-emerald-600 px-2 text-white">Reclamar</button>`:p.reclamado?' ✓':''}</span>`).join('')}</div>` : ''}</div></li>`).join('')}
   </ol>
-  <div class="mt-2 flex flex-wrap gap-2"><a class="${C.btnP}" href="#/jugar">🎮 Ir al juego</a><a class="${C.btn}" href="#/">🏠 Inicio</a></div>`;
+  <div class="mt-2 flex flex-wrap gap-2"><a class="${C.btnP}" href="#/jugar">🎮 Ir al juego</a><a class="${C.btn}" href="#/aprender">🏠 Inicio</a></div>`;
 }
 
 function pageSecIndex(sec){
@@ -492,7 +502,8 @@ document.addEventListener('keydown', e=>{
    ===================================================================== */
 function currentId(){
   const [r, sub, sub2] = location.hash.replace(/^#\/?/,'').split('/');
-  if (!r || r==='inicio') return 'home';
+  if (!r) return 'landing';
+  if (r==='aprender' || r==='inicio') return 'home';
   if (r==='p') return 'p/' + (sub||'') + (sub2 ? '/'+sub2 : '');
   if (r==='f' || r==='d') return sub ? r+'/'+sub : r;
   if (r==='diferencial') return 'd';
@@ -503,7 +514,7 @@ function buildNav(cur){
   const a = (href,label,id,extra='') => `<a href="${href}" class="flex justify-between gap-1.5 rounded-lg px-2.5 py-1.5 text-[0.93rem] hover:bg-blue-50 dark:hover:bg-blue-950/50 ${cur===id?'bg-blue-50 font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300':''}">${label}${extra}</a>`;
   const cnt = (n,t) => `<span class="text-xs font-normal text-stone-500 dark:text-zinc-400">${n}/${t}</span>`;
   const sec = cur==='home' ? 'home' : cur==='jugar' ? 'P' : cur==='ruta' ? 'ruta' : cur.startsWith('p/') ? 'props' : cur.startsWith('f') ? 'F' : cur.startsWith('d') ? 'D' : 'I';
-  let h = a('#/','🏠 Inicio','home') + a('#/ruta','🗺️ Ruta','ruta') + a('#/jugar','🎮 Juego: Defensa Algebraica','jugar') + `<button data-dict-open class="mt-1 flex w-full rounded-lg px-2.5 py-1.5 text-left text-[0.93rem] hover:bg-blue-50 dark:hover:bg-blue-950/50">📖 Diccionario</button>`;
+  let h = a('#/aprender','🏠 Inicio','home') + a('#/ruta','🗺️ Ruta','ruta') + a('#/jugar','🎮 Juego: Defensa Algebraica','jugar') + `<button data-dict-open class="mt-1 flex w-full rounded-lg px-2.5 py-1.5 text-left text-[0.93rem] hover:bg-blue-50 dark:hover:bg-blue-950/50">📖 Diccionario</button>`;
   h += grp('🃏 Propiedades (cartas)', '#/p/fund', sec==='props');
   if (sec==='props') h += Object.keys(DOM_NOMBRE).map(d => { const pp = propsProgreso(d); return a('#/p/'+d, `${DOM_NOMBRE[d][0]} ${DOM_NOMBRE[d][1]}`, 'p/'+d, cnt(pp.n, pp.tot)); }).join('');
   h += grp('🧱 Fundamentos', '#/f', sec==='F'||sec==='home');
@@ -518,7 +529,7 @@ function buildNav(cur){
   // Barra inferior y superior: Inicio · Ruta · Juego · Diccionario (los temas cuentan como Inicio)
   const nav = sec==='ruta' ? 'ruta' : sec==='P' ? 'P' : 'home';
   const ON = ['text-blue-700','dark:text-blue-300','font-semibold'];
-  document.querySelectorAll('[data-bn]').forEach(el=>{
+  document.querySelectorAll('[data-navset="aprender"] [data-bn]').forEach(el=>{
     const on = el.dataset.bn===nav; el.classList.remove(...ON); if (on) el.classList.add(...ON);
     el.querySelector('span')?.classList.toggle('bg-blue-100', on); el.querySelector('span')?.classList.toggle('dark:bg-blue-950', on);
   });
@@ -543,7 +554,8 @@ function route(){
   let html, title;
   if (T){ html = pageSecTopic(SEC, T); title = T.short; }
   else if (SECCIONES_AP[SEC]){ html = pageSecIndex(SEC); title = SECCIONES_AP[SEC].nombre; }
-  else if (r==='jugar'){ html = pageHome(); title = 'Juego'; }
+  else if (r==='jugar'){ html = ''; title = 'Juego'; }
+  else if (!r){ html = pageLanding(); title = 'Cálculo'; }
   else if (r==='ruta'){ html = pageRuta(); title = 'Ruta'; }
   else if (r==='tutorial'){ html = pageTutorial(); title = 'Tutorial'; }
   else if (r==='p' && DOM_NOMBRE[sub]){ html = sub2 ? pageProp(sub, sub2) : pagePropsIndex(sub); title = 'Propiedades'; }
@@ -554,7 +566,8 @@ function route(){
   else if (r==='estrategia'){ html = pageEstrategia(); title = '¿Qué técnica uso?'; }
   else { html = pageHome(); title = 'Inicio'; }
   view.innerHTML = html;
-  if (r==='jugar') abrirJuego(); else cerrarJuego();
+  if (r==='jugar') abrirJuego(sub || 'inicio'); else cerrarJuego();
+  ponerModo(!r ? 'landing' : r==='jugar' ? 'juego' : 'aprender', r==='jugar' ? 'j-' + (sub || 'inicio') : null);
   buildNavFromHash();
   renderMath(view);
   if (T) T.lego.forEach((_,k)=>renderLego(`${SEC}-${T.id}-${k}`));
@@ -633,13 +646,23 @@ document.addEventListener('click', e=>{
   if (rc){ const pts = rutaApp().reclamar(+rc.dataset.reclamar); return route(); }
 });
 let JUEGO = null;
-function abrirJuego(){
+/** Modo de la app (portada, aprender o juego): cambia la barra superior y la inferior. */
+function ponerModo(modo, navJuego){
+  const B = document.body.classList; ['modo-landing','modo-aprender','modo-juego'].forEach(c => B.remove(c)); B.add('modo-' + modo);
+  document.querySelectorAll('[data-navset]').forEach(n => n.classList.toggle('hidden', n.dataset.navset !== (modo === 'juego' ? 'juego' : 'aprender')));
+  document.querySelectorAll('[data-modo-app]').forEach(a => { const on = a.dataset.modoApp === modo;
+    a.classList.toggle('bg-white', on); a.classList.toggle('shadow', on); a.classList.toggle('text-blue-700', on); a.classList.toggle('dark:bg-zinc-950', on); a.classList.toggle('dark:text-blue-300', on); });
+  if (navJuego){ const ON = ['text-blue-700','dark:text-blue-300','font-semibold'];
+    document.querySelectorAll('[data-navset="juego"] [data-bn]').forEach(el => { const on = el.dataset.bn === navJuego; ON.forEach(c => el.classList.toggle(c, on)); el.querySelector('span').classList.toggle('bg-blue-100', on); el.querySelector('span').classList.toggle('dark:bg-blue-950', on); }); }
+  document.documentElement.style.setProperty('--alto-cab', document.getElementById('cabecera').offsetHeight + 'px');
+}
+function abrirJuego(seccion = 'inicio'){
   JUEGO ??= new DefensaAlgebraica.GameApp(document.getElementById('juego'), {
     doneKeys: () => Object.keys(done).filter(k => done[k]),
     onExit: () => { location.hash = '#/'; },
     piezas: new DefensaAlgebraica.TableroPiezas(() => document.getElementById('juegoPiezas')),
   });
   JUEGO.progreso.data = new DefensaAlgebraica.Progreso(new DefensaAlgebraica.SaveRepository()).data;   // por si la Ruta cambió algo fuera del juego
-  JUEGO.open(); document.body.classList.add('overflow-hidden');
+  JUEGO.mostrar(seccion); document.body.classList.add('overflow-hidden');
 }
 function cerrarJuego(){ if (JUEGO){ JUEGO.close(); document.body.classList.remove('overflow-hidden'); } }

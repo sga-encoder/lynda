@@ -185,10 +185,10 @@ class GestorPartidas {
     p.id = 'p' + Date.now().toString(36); p.importada = true;
     this.guardar(p); return p;
   }
-  static descargar(p){
+  static descargar(p, nombre = null){
     const blob = new Blob([JSON.stringify(p, null, 2)], {type:'application/json'});
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = `partida-${p.modo}-m${p.run.mision}o${p.run.oleada}-${(p.fecha ?? '').slice(0, 10)}.json`;
+    a.download = nombre ?? `partida-${p.modo}-m${p.run.mision}o${p.run.oleada}-${(p.fecha ?? '').slice(0, 10)}.json`;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
 }
@@ -198,7 +198,7 @@ function fotoPartida(escena, nombre){
   return {
     app:'defensa-algebraica', version:VERSION_PARTIDA, id:r.idPartida ??= 'p' + Date.now().toString(36),
     nombre: nombre || `Misión ${r.mision} · oleada ${r.oleada}`, fecha:new Date().toISOString(), modo:d.modo, dificultad:d.dificultad ?? 'soldado',
-    run:{mision:r.mision, oleada:r.oleada, nivel:r.nivel, xp:r.xp, xpTotal:r.xpTotal, problemas:r.problemas, eficientes:r.eficientes, bajas:r.bajas, jefes:r.jefes,
+    run:{infinito:!!r.infinito, tipos:r.tipos ? [...r.tipos] : null, mision:r.mision, oleada:r.oleada, nivel:r.nivel, xp:r.xp, xpTotal:r.xpTotal, problemas:r.problemas, eficientes:r.eficientes, bajas:r.bajas, jefes:r.jefes,
       combosUsados:r.combosUsados, puntosMisiones:r.puntosMisiones, vida:r.base.vida, vidaMax:r.base.vidaMax, energia:r.energia.valor,
       armas:l.armas.map(b => [b.id, b.nivel]), tacticos:l.tacticos.map(b => [b.id, b.nivel]),
       combos:r.combos.filter(c => !c.hecho && !c.mazo).map(c => ({nombre:c.nombre, dominio:c.dominio, cartas:c.cartas}))},
@@ -209,6 +209,7 @@ function fotoPartida(escena, nombre){
 /** Reconstruye un Run a partir de una foto guardada. */
 function runDesdeFoto(app, p){
   const r = new Run(app), s = p.run;
+  if (s.infinito){ r.infinito = true; r.tipos = new Set(s.tipos ?? []); }
   Object.assign(r, {mision:s.mision, oleada:s.oleada, nivel:s.nivel, xp:s.xp, xpTotal:s.xpTotal, problemas:s.problemas, eficientes:s.eficientes, bajas:s.bajas, jefes:s.jefes,
     combosUsados:s.combosUsados, puntosMisiones:s.puntosMisiones, proceso:[...p.proceso], idPartida:p.id});
   r.loadout.armas = s.armas.filter(([id]) => BONUS_DEFS[id]).map(([id, n]) => new Bonus(id, n));

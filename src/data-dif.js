@@ -142,6 +142,9 @@ const DIF = [
      [R`\(\frac{1}{2\sqrt x}-\frac{6}{x^3}\)`, R`Volver a raíces y fracciones.`]], r:R`\frac{1}{2\sqrt x}-\frac{6}{x^3}`},
   ],
   lego:[
+   {src:'Ejercicio de práctica', p:R`\frac{d}{dx}\left(4x^3-2x\right)`, steps:[
+     {q:'Escribe primero lo que se pide con la ficha ƒ d/d□[□]: la variable x y, dentro de los corchetes, la función.', k:['der','x','4','pot','3','-','2'], a:['deriv{x}{4x^{3}-2x}','deriv{x}{-2x+4x^{3}}'], exact:true, w:'Plantear la derivada deja claro qué función se deriva y respecto a qué variable.', h:'En el espacio pequeño x; entre corchetes 4x³ − 2x.'},
+     {q:'Resuelve la derivada.', k:['12','x','pot','2','-','6','3'], a:['12x^{2}-2'], w:R`\((4x^3)'=12x^2\) y \((2x)'=2\).`, h:'Baja el exponente y réstale 1.'}]},
    {src:'Ejercicio de práctica', p:R`f(x)=5x^4-3x^2+2x`, steps:[
      {q:'Deriva 5x⁴.', k:['20x','5x','4','3','pot','x','20','5'], a:['20x^{3}'], w:R`\(5\cdot4x^{3}\).`, h:'Baja el 4 y resta 1 al exponente.'},
      {q:'Deriva −3x².', k:['-6x','-3x','6','x','-'], a:['-6x'], w:R`\(-3\cdot2x^{1}\).`, h:'Baja el 2.'},

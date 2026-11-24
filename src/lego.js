@@ -7,7 +7,10 @@
    ===================================================================== */
 /* Piezas contenedoras: nombre → número de espacios internos.
    Todas las funciones son RECUADROS que contienen a otras piezas (no flotan al lado). */
-const STRUCT = {frac:2, pot:2, exp:1, sqrt:1, sin:1, cos:1, tan:1, ln:1, log:1, log_3:1, lim:3};
+const STRUCT = {frac:2, pot:2, exp:1, sqrt:1, sin:1, cos:1, tan:1, ln:1, log:1, log_3:1, lim:3,
+  der:2,    // d/d▢ [ ▢ ]        espacios: variable, expresión
+  int:2,    // ∫ ▢ d▢            espacios: integrando, variable
+  intd:4};  // ∫_▢^▢ ▢ d▢        espacios: límite inferior, superior, integrando, variable
 const FUNC1 = ['sin','cos','tan','ln','log','log_3'];
 const TOKTEX = {'·':'\\cdot','÷':'\\div','≤':'\\le','≥':'\\ge','≠':'\\ne','±':'\\pm','ln':'\\ln','log':'\\log','log_3':'\\log_3',
   'y′':"y'",'sin':'\\sin','cos':'\\cos','tan':'\\tan',',':',','(':'(',')':')','[':'[',']':']'};
@@ -15,11 +18,41 @@ const tokTex = t => TOKTEX[t] ?? t.replace(/π/g,'\\pi ').replace(/∞/g,'\\inft
 const kx = (tex, display=false) => window.katex ? katex.renderToString(tex,{throwOnError:false, displayMode:display}) : tex;
 
 /* Convierte una respuesta serializada (frac{a}{b}, sqrt{x}, ^{n}) en LaTeX */
+/** Lee los argumentos {…}{…} balanceados que empiezan en i. */
+function leerArgs(s, i, n){
+  const args = [];
+  for (let k = 0; k < n; k++){
+    if (s[i] !== '{') return null;
+    let d = 0, j = i;
+    for (; j < s.length; j++){ if (s[j]==='{') d++; if (s[j]==='}' && !--d) break; }
+    args.push(s.slice(i+1, j)); i = j + 1;
+  }
+  return {args, fin:i};
+}
+/** deriv{v}{E} → d/dv[E] · integ{v}{E} → ∫E dv · integ_{a}^{b}{v}{E} → ∫_a^b E dv (con marcadores que se cambian al final). */
+function macrosTex(s){
+  for (let guard = 0; guard < 40; guard++){
+    let i = s.indexOf('deriv{');
+    if (i >= 0){ const r = leerArgs(s, i+5, 2); if (!r) break; s = s.slice(0, i) + `§D§${r.args[0]}§\\left[${macrosTex(r.args[1])}\\right]` + s.slice(r.fin); continue; }
+    i = s.indexOf('integ_{');
+    if (i >= 0){ const a = leerArgs(s, i+6, 1); if (!a || s[a.fin] !== '^') break; const r = leerArgs(s, a.fin+1, 3); if (!r) break;
+      s = s.slice(0, i) + `\\int_{${a.args[0]}}^{${r.args[0]}} ${macrosTex(r.args[2])}\\;d${r.args[1]}` + s.slice(r.fin); continue; }
+    i = s.indexOf('integ{');
+    if (i >= 0){ const r = leerArgs(s, i+5, 2); if (!r) break; s = s.slice(0, i) + `\\int ${macrosTex(r.args[1])}\\;d${r.args[0]}` + s.slice(r.fin); continue; }
+    break;
+  }
+  return s;
+}
 function ansTex(s){
+  s = macrosTex(s);
   s = s.replace(/lim_\{(.*?)→(.*?)\}/g, '\\lim\\limits_{$1\\to $2}');
+  return finTex(s);
+}
+function finTex(s){
   return s.replace(/frac\{/g,'\\frac{').replace(/sqrt\{/g,'\\sqrt{').replace(/log_3/g,'\\log_3 ')
     .replace(/\b(ln|log|sin|cos|tan)/g,'\\$1 ').replace(/·/g,'\\cdot ').replace(/±/g,'\\pm ').replace(/≤/g,'\\le ')
-    .replace(/′/g,"'").replace(/≥/g,'\\ge ').replace(/≠/g,'\\ne ').replace(/π/g,'\\pi ').replace(/∞/g,'\\infty ').replace(/,/g,',\\ ');
+    .replace(/′/g,"'").replace(/≥/g,'\\ge ').replace(/≠/g,'\\ne ').replace(/π/g,'\\pi ').replace(/∞/g,'\\infty ').replace(/,/g,',\\ ')
+    .replace(/§D§(.*?)§/g, '\\frac{d}{d$1}');
 }
 
 /* ---------- Modelo ---------- */
@@ -44,6 +77,9 @@ function ser(zone){
                     : n.t==='pot'  ? `${serBase(n.z[0])}^{${ser(n.z[1])}}`
                     : n.t==='exp'  ? `e^{${ser(n.z[0])}}`
                     : n.t==='lim'  ? `lim_{${ser(n.z[0])}→${ser(n.z[1])}}(${ser(n.z[2])})`
+                    : n.t==='der'  ? `deriv{${ser(n.z[0])}}{${ser(n.z[1])}}`
+                    : n.t==='int'  ? `integ{${ser(n.z[1])}}{${ser(n.z[0])}}`
+                    : n.t==='intd' ? `integ_{${ser(n.z[0])}}^{${ser(n.z[1])}}{${ser(n.z[3])}}{${ser(n.z[2])}}`
                     : FUNC1.includes(n.t) ? `${n.t}(${ser(n.z[0])})`
                     : n.sub ? `(${n.t})`                 // número que sustituyó a una x
                     : n.t).join('');
@@ -55,7 +91,10 @@ function splitTop(s){                      // separa por comas fuera de {} y ()
   out.push(cur); return out;
 }
 /** Las piezas con signo se separan: el número va en 🔢 y el signo en ± (−8 → «−» + «8»). */
-const piezasDe = k => [...new Set(k.flatMap(t => /^[-+]./.test(t) ? [t[0], t.slice(1)] : [t]))];
+/** Una variable es UNA letra (x, y, z, A…; mayúsculas y minúsculas son distintas): «7x» se separa en el número 7 y la letra x. */
+const separarCoef = t => { const m = /^(\d+(?:\.\d+)?)([a-zA-Zπ])$/.exec(t); return m ? [m[1], m[2]] : [t]; };
+const piezasDe = k => [...new Set(k.flatMap(t => /^[-+]./.test(t) ? [t[0], t.slice(1)] : [t]).flatMap(separarCoef))];
+const ABC = [...'abcdefghijklmnopqrstuvwxyz', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
 const LIM_RE = /^lim_\{(.+?)→(.+?)\}\((.*)\)$/;
 function checkAnswer(step, built, numerico = false){
   const b = norm(built);
@@ -94,6 +133,9 @@ function treeOf(src){
       if (eat('frac{')){ const a = seq('}'); eat('}'); eat('{'); const b = seq('}'); eat('}'); out.push({t:'frac', z:[a, b]}); continue; }
       if (eat('sqrt{')){ const a = seq('}'); eat('}'); out.push({t:'sqrt', z:[a]}); continue; }
       if (eat('e^{')){ const a = seq('}'); eat('}'); out.push({t:'exp', z:[a]}); continue; }
+      if (eat('deriv{')){ const v = seq('}'); eat('}'); eat('{'); const e = seq('}'); eat('}'); out.push({t:'der', z:[v, e]}); continue; }
+      if (eat('integ_{')){ const a = seq('}'); eat('}'); eat('^{'); const b = seq('}'); eat('}'); eat('{'); const v = seq('}'); eat('}'); eat('{'); const e = seq('}'); eat('}'); out.push({t:'intd', z:[a, b, e, v]}); continue; }
+      if (eat('integ{')){ const v = seq('}'); eat('}'); eat('{'); const e = seq('}'); eat('}'); out.push({t:'int', z:[e, v]}); continue; }
       if (eat('lim_{')){ const v = seq('→'); eat('→'); const a = seq('}'); eat('}'); eat('('); const e = seq(')'); eat(')'); out.push({t:'lim', z:[v, a, e]}); continue; }
       const f = FUNC1.find(f => s.startsWith(f+'(', i));
       if (f){ i += f.length + 1; const a = seq(')'); eat(')'); out.push({t:f, z:[a]}); continue; }
@@ -151,6 +193,15 @@ function nodeHTML(key, n, zid, i, depth, sm){
       <span class="inline-flex shrink-0 flex-col items-center gap-0.5">${lbl('lim')}<span class="inline-flex items-center gap-0.5">${sub(0, true)}<span class="text-xs">→</span>${sub(1, true)}</span></span>
       <span class="text-2xl leading-none opacity-70">(</span><span class="min-w-0">${sub(2)}</span><span class="text-2xl leading-none opacity-70">)</span></span>`;
   // Tamaños: lienzo principal grande, dentro de un recuadro mediano, exponentes pequeños
+  // Derivada e integrales: también son recuadros con sus espacios adentro
+  const big = t => `<span class="pointer-events-none font-serif ${sm?'text-base':'text-2xl'} leading-none">${t}</span>`;
+  if (n.t==='der') return `<span ${attr} title="Derivada: variable y expresión" class="${brick} ${violet} inline-flex max-w-full min-w-0 items-center ${pad}">
+      <span class="inline-flex shrink-0 flex-col items-center"><span class="pointer-events-none font-serif text-sm italic leading-none">d</span><span class="my-0.5 h-px w-full bg-current"></span><span class="inline-flex items-center gap-0.5"><span class="pointer-events-none font-serif text-sm italic">d</span>${sub(0, true)}</span></span>
+      ${big('[')}<span class="min-w-0">${sub(1)}</span>${big(']')}</span>`;
+  if (n.t==='int') return `<span ${attr} title="Integral: integrando y variable" class="${brick} ${violet} inline-flex max-w-full min-w-0 items-center ${pad}">
+      ${big('∫')}<span class="min-w-0">${sub(0)}</span><span class="pointer-events-none font-serif italic">d</span>${sub(1, true)}</span>`;
+  if (n.t==='intd') return `<span ${attr} title="Integral definida: límites, integrando y variable" class="${brick} ${violet} inline-flex max-w-full min-w-0 items-center ${pad}">
+      <span class="inline-flex shrink-0 flex-col items-center gap-0.5">${sub(1, true)}${big('∫')}${sub(0, true)}</span><span class="min-w-0">${sub(2)}</span><span class="pointer-events-none font-serif italic">d</span>${sub(3, true)}</span>`;
   const size = sm ? 'min-h-7 min-w-7 px-1 text-sm' : depth>0 ? 'min-h-9 min-w-9 px-1.5 text-base' : 'min-h-11 min-w-11 px-2.5 text-lg';
   if (n.sub) return `<span ${attr} title="Valor sustituido" class="${brick} border-blue-600 bg-blue-100 text-blue-950 ring-2 ring-blue-300 dark:bg-blue-900/70 dark:text-blue-50 inline-flex ${size} items-center justify-center">${kx('('+tokTex(n.t)+')')}</span>`;
   return `<span ${attr} class="${brick} ${pieceColor(n.t)} inline-flex ${size} items-center justify-center">${kx(tokTex(n.t))}</span>`;
@@ -163,9 +214,10 @@ function pieceColor(t){
 }
 const BANK_TEX = {frac:'\\frac{\\square}{\\square}', sqrt:'\\sqrt{\\square}', pot:'\\square^{\\square}', exp:'e^{\\square}',
   sin:'\\sin(\\square)', cos:'\\cos(\\square)', tan:'\\tan(\\square)', ln:'\\ln(\\square)', log:'\\log(\\square)', log_3:'\\log_3(\\square)',
-  lim:'\\lim_{\\square\\to\\square}(\\square)'};
+  lim:'\\lim_{\\square\\to\\square}(\\square)', der:'\\tfrac{d}{d\\square}[\\square]', int:'\\int\\square\\,d\\square', intd:'\\int_{\\square}^{\\square}\\square\\,d\\square'};
 const BANK_TITLE = {frac:'Fracción: numerador y denominador', sqrt:'Raíz: un espacio dentro', pot:'Potencia: un recuadro con base y exponente',
-  exp:'Exponencial: e elevado a lo que pongas dentro', lim:'Límite: variable, hacia dónde tiende y la expresión entre paréntesis'};
+  exp:'Exponencial: e elevado a lo que pongas dentro', der:'Derivada: la variable y, entre corchetes, lo que se deriva',
+  int:'Integral indefinida: el integrando y la variable de dx', intd:'Integral definida: límites inferior y superior, integrando y variable', lim:'Límite: variable, hacia dónde tiende y la expresión entre paréntesis'};
 function bankPiece(key, t){
   const brick = 'touch-none select-none cursor-grab rounded-md border border-b-4 shadow-sm inline-flex min-h-12 min-w-12 items-center justify-center px-3 text-lg touch-manipulation transition-transform active:scale-90 hover:-translate-y-0.5';
   const label = kx(BANK_TEX[t] ?? tokTex(t));
@@ -201,7 +253,9 @@ function paletteHTML(key, step, st){
         <span>${open.icon} ${open.name} · ${st.pin ? '📌 fijado' : 'suelta para cerrar'}</span>
         ${st.pin ? `<button data-lg="closecat" class="flex h-8 w-8 items-center justify-center rounded-lg border border-stone-300 bg-white text-sm touch-manipulation dark:border-zinc-600 dark:bg-zinc-900" aria-label="Cerrar menú">✕</button>` : ''}
       </div>
-      <div class="flex flex-wrap justify-center gap-2 sm:justify-start">${groups[open.id].map(t=>bankPiece(key,t)).join('')}</div>`
+      <div class="flex flex-wrap justify-center gap-2 sm:justify-start">${groups[open.id].map(t=>bankPiece(key,t)).join('')}</div>
+      ${open.id==='var' ? `<button data-lg="abc" class="mt-2 inline-flex min-h-9 items-center gap-1 rounded-lg border border-stone-300 bg-white px-3 text-xs touch-manipulation dark:border-zinc-600 dark:bg-zinc-900">🔤 ${st.abc ? 'Ocultar' : 'Más letras (a–z, A–Z)'}</button>
+        ${st.abc ? `<p class="mt-1 text-[11px] text-stone-500 dark:text-zinc-400">Cada letra es una variable distinta: <b>a</b> y <b>A</b> no son la misma.</p><div class="mt-1 flex flex-wrap gap-1.5">${ABC.filter(l=>!groups.var.includes(l)).map(l=>bankPiece(key,l).replace('min-h-12 min-w-12','min-h-10 min-w-10')).join('')}</div>` : ''}` : ''}`
     : `<div class="flex h-full min-h-[5.5rem] items-center justify-center px-2 text-center text-sm text-stone-500 dark:text-zinc-400"><span>Toca una categoría para <b>fijar</b> su menú, o <b>mantenla presionada</b> para asomarlo y arrastrar.</span></div>`;
   const btn = c => { const on = st.cat===c.id;
     return `<button type="button" data-cat="${key}|${c.id}" aria-pressed="${on}" class="flex min-h-14 touch-none select-none flex-col items-center justify-center gap-0.5 rounded-xl border px-1 py-1 text-[11px] leading-tight transition-transform active:scale-95 ${on ? 'border-blue-600 bg-blue-600 text-white dark:border-blue-400 dark:bg-blue-400 dark:text-zinc-950' : 'border-stone-200 bg-white dark:border-zinc-700 dark:bg-zinc-900'}"><span class="text-lg leading-none">${c.icon}</span>${c.name}<span class="opacity-70">${groups[c.id].length}</span></button>`; };
@@ -291,6 +345,7 @@ function legoAction(key, act){
     if (act==='undo' && st.hist.length){ st.root = JSON.parse(st.hist.pop()); st.active=null; }
     if (act==='clear'){ snapshot(st); st.root=[]; st.active=null; }
     if (act==='closecat'){ st.cat=null; st.pin=false; }
+    if (act==='abc'){ st.abc = !st.abc; }
     if (act==='nextzone'){ const zs = allZones(st.root); st.active = zs[(zs.indexOf(st.active||st.root)+1) % zs.length]; }
     if (act==='outzone'){ st.active = (st.active && parentZone(st.root, st.active)) || null; }
     return renderLego(key);
@@ -312,6 +367,7 @@ function legoAction(key, act){
   if (act==='reveal'){ st.log.push({seen:true}); st.prev = treeOf(s.a[0]); st.step++; st.root=[]; st.hist=[]; st.active=null; st.tries=0; st.msg=null; prepararPaso(ex, st); }
   if (act==='restart'){ delete LEGO[key]; }
   if (act==='closecat'){ st.cat=null; st.pin=false; }
+  if (act==='abc'){ st.abc = !st.abc; }
   if (act==='nextzone'){ const zs = allZones(st.root); st.active = zs[(zs.indexOf(st.active||st.root)+1) % zs.length]; }
   if (act==='outzone'){ st.active = (st.active && parentZone(st.root, st.active)) || null; }
   if (act==='props'){ st.verProps = !st.verProps; }

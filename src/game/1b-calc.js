@@ -103,11 +103,12 @@ class Dominio {
   }
   aplicables(raiz){ return new Set(this.cartas.all().filter(c => !c.free && c.targets(raiz).length).map(c => c.id)); }
 }
-const PIEZAS_CALC = ['1','2','3','4','5','6','7','8','9','0','x','+','-','·','(',')','sin','cos','tan','ln','exp','pot','frac','sqrt'];
+const PIEZAS_CALC = ['1','2','3','4','5','6','7','8','9','0','x','+','-','·','(',')','sin','cos','tan','ln','exp','pot','frac','sqrt','der','int'];
 function libreCalc(conC){
   return (src, raiz, solucion) => {
     let e; try { e = K.parse(src); } catch (err){ return {error:err.message}; }
     if (e.k === '=') return {error:'Aquí no va “=”: escribe solo el resultado.'};
+    if (K.contiene(e, 'D') || K.contiene(e, 'I') || e.k === 'Idef') return {error:'Todavía queda una derivada o integral sin resolver: escribe el resultado final.'};
     if (conC && !K.contiene(e, 'C')) return {error:'Falta la constante de integración + C.'};
     if (!K.equivalentes(e, solucion, {constante:conC})) return {error:'Ese resultado no es correcto.'};
     return {raiz:K.simp(e)};
@@ -217,13 +218,16 @@ function piezasCalc(e){
       if (K.isNum(e.e) && e.e.q.equals(new Q(1, 2))) return [{t:'sqrt', z:[piezasCalc(e.b)]}];
       if (K.isNum(e.e) && e.e.q.sign < 0) return [{t:'frac', z:[[pz('1')], piezasCalc(K.simp(K.pow(e.b, e.e.q.neg())))]}];
       return [{t:'pot', z:[piezasCalc(e.b), piezasCalc(e.e)]}];     // recuadro base + exponente
+    case 'D': return [{t:'der', z:[[pz('x')], piezasCalc(e.a)]}];            // d/dx[ … ] como recuadro
+    case 'I': return [{t:'int', z:[piezasCalc(e.a), [pz('x')]]}];            // ∫ … dx como recuadro
     case 'f':
       if (e.f === 'exp') return [{t:'exp', z:[piezasCalc(e.a)]}];
       return [{t:e.f === 'lnabs' ? 'ln' : e.f, z:[piezasCalc(e.a)]}];   // la función contiene su argumento
   }
   throw new Error('No se puede convertir');
 }
-const prellenarCalc = raiz => { try { return K.contiene(raiz, 'D') || K.contiene(raiz, 'I') ? [] : piezasCalc(raiz); } catch { return []; } };
+/** El paso libre arranca con la expresión actual en fichas (las derivadas e integrales pendientes van en sus recuadros). */
+const prellenarCalc = raiz => { try { return piezasCalc(raiz); } catch { return []; } };
 
 /* ---------- Instancias de dominio ---------- */
 const PIEZAS_FUND = ['1','2','3','4','5','6','7','8','9','0','x','+','-','=','(',')','·','frac'];

@@ -166,6 +166,11 @@ const Calc = (() => {
   const key = e => tex(e);
 
   /* ---------- Evaluación numérica ---------- */
+  function simpson(f, a, b, env, n = 400){
+    const h = (b - a) / n; let s = 0;
+    for (let i = 0; i <= n; i++){ const w = i === 0 || i === n ? 1 : i % 2 ? 4 : 2; s += w * evaluar(f, {...env, x:a + i * h}); }
+    return s * h / 3;
+  }
   function evaluar(e, env){
     switch (e.k){
       case 'n': return e.q.valor;
@@ -176,6 +181,11 @@ const Calc = (() => {
       case '*': return e.a.reduce((s, t) => s * evaluar(t, env), 1);
       case '^': return Math.pow(evaluar(e.b, env), evaluar(e.e, env));
       case '/': return evaluar(e.n, env) / evaluar(e.d, env);
+      // Evaluación numérica de derivadas, integrales y límites (para comparar respuestas armadas con fichas)
+      case 'D': { const h = 1e-4, x = env.x ?? 0; return (8 * (evaluar(e.a, {...env, x:x + h}) - evaluar(e.a, {...env, x:x - h})) - (evaluar(e.a, {...env, x:x + 2*h}) - evaluar(e.a, {...env, x:x - 2*h}))) / (12 * h); }
+      case 'I': return simpson(e.a, 0, env.x ?? 0, env);
+      case 'Idef': return simpson(e.e, evaluar(e.a, env), evaluar(e.b, env), env);
+      case 'lim': { const a = evaluar(e.a, env), h = 1e-6; return (evaluar(e.e, {...env, x:a + h}) + evaluar(e.e, {...env, x:a - h})) / 2; }
       case 'f': { const v = evaluar(e.a, env);
         return {sin:Math.sin, cos:Math.cos, tan:Math.tan, ln:x => Math.log(Math.abs(x)), lnabs:x => Math.log(Math.abs(x)), log:Math.log10, exp:Math.exp, sqrt:Math.sqrt}[e.f](v); }
     }
@@ -204,12 +214,19 @@ const Calc = (() => {
     const s = src.replace(/\s+/g, '').replace(/−/g, '-');
     let i = 0;
     const eat = t => s.startsWith(t, i) ? (i += t.length, true) : false;
-    const empiezaFactor = () => i < s.length && (/[\d(xyeπ]/.test(s[i]) || s.startsWith('frac{', i) || s.startsWith('sqrt{', i) || FUNCS.some(f => s.startsWith(f, i)) || s.startsWith('C', i));
+    const empiezaFactor = () => i < s.length && (/[\d(xyeπ]/.test(s[i]) || s.startsWith('frac{', i) || s.startsWith('sqrt{', i) || FUNCS.some(f => s.startsWith(f, i)) || s.startsWith('C', i) || s.startsWith('deriv{', i) || s.startsWith('integ', i) || s.startsWith('lim_{', i));
     const llaves = () => { const e = expr(); if (!eat('}')) throw new ErrorLectura('Falta cerrar un espacio.'); return e; };
     function atomo(){
       if (eat('(')){ const e = expr(); if (!eat(')')) throw new ErrorLectura('Falta cerrar un paréntesis.'); return e; }
       if (eat('frac{')){ const a = llaves(); if (!eat('{')) throw new ErrorLectura('Fracción incompleta.'); return div(a, llaves()); }
       if (eat('sqrt{')) return fn('sqrt', llaves());
+      // Fichas contenedoras de cálculo: derivada, integrales y límite
+      if (eat('deriv{')){ llaves(); if (!eat('{')) throw new ErrorLectura('Derivada incompleta.'); return D(llaves()); }
+      if (eat('integ_{')){ const a = llaves(); if (!eat('^{')) throw new ErrorLectura('Falta el límite superior.'); const b = llaves();
+        if (!eat('{')) throw new ErrorLectura('Integral incompleta.'); llaves(); if (!eat('{')) throw new ErrorLectura('Integral incompleta.'); return {k:'Idef', a, b, e:llaves()}; }
+      if (eat('integ{')){ llaves(); if (!eat('{')) throw new ErrorLectura('Integral incompleta.'); return I(llaves()); }
+      if (eat('lim_{')){ if (!eat('x→')) throw new ErrorLectura('El límite debe ser de x.'); const a = expr(); if (!eat('}(')) throw new ErrorLectura('Límite incompleto.');
+        const e = expr(); if (!eat(')')) throw new ErrorLectura('Falta cerrar el límite.'); return {k:'lim', a, e}; }
       for (const f of FUNCS) if (eat(f)){ const arg = potencia(); return fn(f, arg); }
       if (eat('x')) return X;
       if (eat('y')) return {k:'v', n:'y'};

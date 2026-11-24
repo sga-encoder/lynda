@@ -203,6 +203,12 @@ const TUT = [{id:'fichas', lego:[
   {src:'Tutorial 6 · Usar propiedades (cartas)', p:R`2(x+3)`, steps:[
     {q:'Arma 2(x + 3) con los paréntesis de 🧩 Agrupar.', k:['2','(',')','x','+','3'], a:['2(x+3)'], w:'Los paréntesis agrupan lo que se multiplica por 2.', h:'2, (, x, +, 3, ).'},
     {q:'Aplica una propiedad: toca 🃏 Propiedades y elige «Distributiva» (o escríbelo tú). Luego verifica.', copia:true, k:['2x','6','+','x','2'], a:['2x+6'], w:'Las cartas del juego son las mismas propiedades: aquí las aplicas directamente sobre tus fichas.', h:'2·x + 2·3.'}]},
+  {src:'Tutorial 7 · Derivadas e integrales', p:R`\frac{d}{dx}\left[x^{3}\right],\ \int 3x^{2}\,dx`, steps:[
+    {q:'La derivada también es un recuadro: pon ƒ d/d□[□], en el espacio pequeño la x y dentro de los corchetes x³.', k:['der','x','pot','3'], a:['deriv{x}{x^{3}}'], w:'d/dx indica que se deriva respecto a x lo que está dentro.', h:'Variable: x. Adentro: la potencia x³.'},
+    {q:'Resuelve la derivada.', k:['3','x','pot','2'], a:['3x^{2}'], w:R`\((x^3)'=3x^2\).`, h:'Baja el 3 y resta 1 al exponente.'},
+    {q:'Ahora la integral: pon ƒ ∫□d□ con 3x² adentro y x en el dx.', k:['int','3','x','pot','2'], a:['integ{x}{3x^{2}}'], w:'La integral contiene al integrando; el dx dice cuál es la variable.', h:'Integrando: 3 y la potencia x². Variable: x.'},
+    {q:'Integral definida: pon ƒ ∫ de □ a □ con límites 0 y 1, el integrando 3x² y la variable x.', k:['intd','0','1','3','x','pot','2'], a:['integ_{0}^{1}{x}{3x^{2}}'], w:'Los límites van en los espacios pequeños: abajo el inferior, arriba el superior.', h:'Abajo 0, arriba 1.'},
+    {q:'Calcula su valor.', k:['1','3','0'], a:['1'], w:R`\(\int_0^1 3x^2\,dx=\big[x^3\big]_0^1=1\).`, h:'La antiderivada es x³.'}]},
 ]}];
 
 /* Demostración animada: una ficha viaja de la bandeja al lienzo */

@@ -7,7 +7,7 @@
    ===================================================================== */
 const STRUCT = {frac:2, sqrt:1, sup:1};
 const TOKTEX = {'·':'\\cdot','÷':'\\div','≤':'\\le','≥':'\\ge','≠':'\\ne','±':'\\pm','ln':'\\ln','log':'\\log','log_3':'\\log_3',
-  'sin':'\\sin','cos':'\\cos','tan':'\\tan',',':',','(':'(',')':')','[':'[',']':']'};
+  'y′':"y'",'sin':'\\sin','cos':'\\cos','tan':'\\tan',',':',','(':'(',')':')','[':'[',']':']'};
 const tokTex = t => TOKTEX[t] ?? t.replace(/π/g,'\\pi ').replace(/∞/g,'\\infty ');
 const kx = (tex, display=false) => window.katex ? katex.renderToString(tex,{throwOnError:false, displayMode:display}) : tex;
 
@@ -15,7 +15,7 @@ const kx = (tex, display=false) => window.katex ? katex.renderToString(tex,{thro
 function ansTex(s){
   return s.replace(/frac\{/g,'\\frac{').replace(/sqrt\{/g,'\\sqrt{').replace(/log_3/g,'\\log_3 ')
     .replace(/\b(ln|log|sin|cos|tan)/g,'\\$1 ').replace(/·/g,'\\cdot ').replace(/±/g,'\\pm ').replace(/≤/g,'\\le ')
-    .replace(/≥/g,'\\ge ').replace(/≠/g,'\\ne ').replace(/π/g,'\\pi ').replace(/∞/g,'\\infty ').replace(/,/g,',\\ ');
+    .replace(/′/g,"'").replace(/≥/g,'\\ge ').replace(/≠/g,'\\ne ').replace(/π/g,'\\pi ').replace(/∞/g,'\\infty ').replace(/,/g,',\\ ');
 }
 
 /* ---------- Modelo ---------- */
@@ -38,8 +38,11 @@ function splitTop(s){                      // separa por comas fuera de {} y ()
   for (const ch of s){ if('{(['.includes(ch)) d++; if('})]'.includes(ch)) d--; if(ch===','&&d===0){out.push(cur);cur='';} else cur+=ch; }
   out.push(cur); return out;
 }
-function checkAnswer(step, built){
+/** Las piezas con signo se separan: el número va en 🔢 y el signo en ± (−8 → «−» + «8»). */
+const piezasDe = k => [...new Set(k.flatMap(t => /^[-+]./.test(t) ? [t[0], t.slice(1)] : [t]))];
+function checkAnswer(step, built, numerico = false){
   const b = norm(built);
+  if (numerico && !step.set && !step.exact) return step.a.some(a => norm(a)===b || Calc.mismaRespuesta(a, b));
   if (step.set){
     const key = s => splitTop(norm(s)).map(x=>x.replace(/^x=/,'')).sort().join('|');
     return step.a.some(a => key(a)===key(b));
@@ -109,7 +112,7 @@ function catOf(t){
   return 'sig';
 }
 function paletteHTML(key, step, st){
-  const groups = {}; (step.orden ? step.k : shuffled(step.k, key+st.step)).forEach(t=>(groups[catOf(t)] ||= []).push(t));
+  const groups = {}; (step.orden ? piezasDe(step.k) : shuffled(piezasDe(step.k), key+st.step)).forEach(t=>(groups[catOf(t)] ||= []).push(t));
   const cats = CATS.filter(c=>groups[c.id]);
   if (st.cat && !groups[st.cat]) { st.cat = null; st.pin = false; }
   const open = st.cat ? CATS.find(c=>c.id===st.cat) : null;
@@ -178,9 +181,11 @@ function renderLego(key){
   renderMath(card.querySelector('[data-lego-body]'));
   card.querySelector('[data-badge]').textContent = done[key] ? '✅ Resuelto' : `${Math.min(st.step,steps.length)}/${steps.length} pasos`;
 }
-function legoEx(key){                 // key = f-<tema>-<i>
-  const [, tema, i] = key.match(/^f-(.+)-(\d+)$/);
-  return FUND.find(t=>t.id===tema).lego[+i];
+const SECCION_LEGO = {f:() => FUND, d:() => DIF};      // prefijo de la clave → temas
+function legoEx(key){                 // key = <f|d>-<tema>-<i>
+  const [, sec, tema, i] = key.match(/^([fd])-(.+)-(\d+)$/);
+  const ex = SECCION_LEGO[sec]().find(t=>t.id===tema).lego[+i];
+  return sec === 'd' ? {num:true, ...ex} : ex;
 }
 function allZones(zone){ return [zone, ...zone.flatMap(n=>(n.z||[]).flatMap(allZones))]; }
 function snapshot(st){ st.hist.push(JSON.stringify(st.root)); if (st.hist.length>50) st.hist.shift(); }
@@ -199,7 +204,7 @@ function legoAction(key, act){
   const st = legoState(key), ex = legoEx(key), s = ex.steps[st.step];
   if (act==='check'){
     if (!st.root.length){ st.msg = {ok:false, t:'El lienzo está vacío. Arrastra piezas del banco.'}; }
-    else if (checkAnswer(s, ser(st.root))){
+    else if (checkAnswer(s, ser(st.root), ex.num)){
       st.log.push({seen:false}); st.step++; st.root=[]; st.hist=[]; st.active=null; st.tries=0;
       st.msg = {ok:true, t:'¡Correcto! Sigue con el siguiente paso.'};
       if (st.step>=ex.steps.length){ done[key]=true; store.set('done', done); buildNavFromHash(); }

@@ -175,7 +175,14 @@ function pageExamen(){
 /* =====================================================================
    PÁGINAS NUEVAS: inicio general, Fundamentos, Cálculo diferencial
    ===================================================================== */
-const fundProgress = T => { const tot=T.lego.length, n=T.lego.filter((_,i)=>done[`f-${T.id}-${i}`]).length; return {n,tot}; };
+/** Secciones de Aprender con temas y ejercicios de piezas (misma página para ambas). */
+const SECCIONES_AP = {
+  f: {lista:() => FUND, nombre:'Fundamentos', icon:'🧱', dict:'F', lead:'La base de todo el cálculo. Recórrelos en orden: cada tema usa los anteriores.', sig:['#/d', 'Cálculo diferencial ▸']},
+  d: {lista:() => DIF, nombre:'Cálculo diferencial', icon:'📈', dict:'D', lead:'Límites, derivadas y sus aplicaciones. En los ejercicios con piezas se acepta cualquier forma equivalente de la respuesta.', sig:['#/integral', 'Cálculo integral ▸']},
+};
+const temaProgress = (T, sec = 'f') => { const tot=T.lego.length, n=T.lego.filter((_,i)=>done[`${sec}-${T.id}-${i}`]).length; return {n,tot}; };
+const fundProgress = T => temaProgress(T, 'f');
+const secTotales = sec => SECCIONES_AP[sec].lista().reduce((a,T)=>{ const p=temaProgress(T,sec); return {n:a.n+p.n, tot:a.tot+p.tot}; }, {n:0, tot:0});
 const dictBtn = (cat, label='📖 Ver propiedades en el diccionario') =>
   `<button class="${C.chip}" data-dict-cat="${cat}">${label}</button>`;
 
@@ -189,10 +196,10 @@ function pageHome(){
   <p class="${C.lead}">Empieza por los fundamentos, sigue con cálculo diferencial y termina con cálculo integral. Cada tema explica lo básico, resuelve ejemplos de nivel medio y difícil diciendo <b>qué</b> se hace y <b>por qué</b>, y te deja ejercicios.</p>
   <div class="mt-5 grid gap-4 md:grid-cols-3">
     ${sec('#/f','🧱','1 · Fundamentos','Operaciones, fracciones, factorización, ecuaciones e inecuaciones. Ejercicios con piezas para armar.', bar(fOk,fAll))}
-    ${sec('#/diferencial','📈','2 · Cálculo diferencial','Límites, derivadas y sus aplicaciones.', '<span class="mt-2 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-950/60 dark:text-amber-200">Próximamente</span>')}
+    ${sec('#/d','📈','2 · Cálculo diferencial','Límites, continuidad, derivadas, cadena, implícita, máximos, optimización y L\'Hôpital.', bar(secTotales('d').n, secTotales('d').tot))}
     ${sec('#/integral','∫','3 · Cálculo integral','Técnicas de integración, impropias y la solución del examen.', bar(iOk,iAll))}
   </div>
-  <a href="#/jugar" class="mt-4 flex items-center gap-4 rounded-2xl bg-gradient-to-r from-indigo-950 to-violet-900 p-5 text-white shadow-sm touch-manipulation active:scale-[0.98] transition-transform"><span class="text-5xl">👽</span><span><b class="block text-lg">🎮 Practicar: Defensa Algebraica</b><span class="text-sm text-indigo-200">Resuelve ecuaciones con cartas de propiedades para dar energía a los soldados. Lo que completas en Aprender desbloquea problemas nuevos.</span></span></a>
+  <a href="#/jugar" class="mt-4 flex items-center gap-4 rounded-2xl bg-gradient-to-r from-indigo-950 to-violet-900 p-5 text-white shadow-sm touch-manipulation active:scale-[0.98] transition-transform"><span class="text-5xl">👽</span><span><b class="block text-lg">🎮 Practicar: Defensa Algebraica</b><span class="text-sm text-indigo-200">Juego de cartas: resuelve ecuaciones, derivadas e integrales para dar energía a los soldados. Elige practicar Fundamentos, Diferencial, Integral o todo junto.</span></span></a>
   <div class="${C.card} mt-6"><b>📖 Diccionario de propiedades</b>
     <p class="!my-1.5">Todas las propiedades y fórmulas en un solo lugar, con buscador. Ábrelo desde cualquier página con el botón <b>📖 Diccionario</b> de la barra superior (o la tecla <kbd class="rounded border border-stone-300 px-1 text-xs dark:border-zinc-600">D</kbd>).</p>
     <button class="${C.btnP}" data-dict-open>Abrir diccionario</button></div>
@@ -206,20 +213,20 @@ function pageHome(){
     </ol></div>`;
 }
 
-function pageFundIndex(){
-  return `<h2 class="${C.h2}">🧱 Fundamentos</h2>
-  <p class="${C.lead}">La base de todo el cálculo. Recórrelos en orden: cada tema usa los anteriores.</p>
+function pageSecIndex(sec){
+  const S = SECCIONES_AP[sec], L = S.lista();
+  return `<h2 class="${C.h2}">${S.icon} ${S.nombre}</h2>
+  <p class="${C.lead}">${S.lead}</p>
   <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-   ${FUND.map((T,i)=>{const p=fundProgress(T);return tile('#/f/'+T.id, `${i+1} · ${T.t}`, `${T.examples.length} ejemplos · ${p.n}/${p.tot} ejercicios con piezas`)}).join('')}
+   ${L.map((T,i)=>{const p=temaProgress(T,sec);return tile(`#/${sec}/${T.id}`, `${i+1} · ${T.t}`, `${T.examples.length} ejemplos · ${p.n}/${p.tot} ejercicios con piezas`)}).join('')}
   </div>
-  <div class="${C.card} mt-6">📖 Las propiedades de esta sección están en el <button class="text-blue-700 underline dark:text-blue-300" data-dict-sec="F">Diccionario de propiedades</button>.</div>`;
+  <div class="${C.card} mt-6">📖 Las propiedades de esta sección están en el <button class="text-blue-700 underline dark:text-blue-300" data-dict-sec="${S.dict}">Diccionario de propiedades</button>.</div>`;
 }
-
-function pageFundTopic(T){
-  const i = FUND.indexOf(T), prev = FUND[i-1], next = FUND[i+1];
+function pageSecTopic(sec, T){
+  const S = SECCIONES_AP[sec], L = S.lista(), i = L.indexOf(T), prev = L[i-1], next = L[i+1];
   const link = (href, txt) => `<a class="${C.btn}" href="${href}">${txt}</a>`;
-  const p = fundProgress(T);
-  return `<div class="text-sm text-stone-500 dark:text-zinc-400"><a href="#/f" class="underline">Fundamentos</a> › Tema ${i+1} de ${FUND.length}</div>
+  const p = temaProgress(T, sec);
+  return `<div class="text-sm text-stone-500 dark:text-zinc-400"><a href="#/${sec}" class="underline">${S.nombre}</a> › Tema ${i+1} de ${L.length}</div>
   <h2 class="${C.h2}">${i+1}. ${T.t}</h2>
   <div class="my-2.5 flex flex-wrap gap-1.5">${dictBtn(T.dict)}</div>
   <h3 class="${C.h3}">Lo más básico</h3>${T.intro}
@@ -228,20 +235,11 @@ function pageFundTopic(T){
   ${T.examples.map(exampleCard).join('')}
   <h3 class="${C.h3}">Ejercicios con piezas <small class="${C.src}">(${p.n}/${p.tot} resueltos)</small></h3>
   <p class="${C.src}">Arma cada paso en el lienzo con las piezas de las categorías y pulsa Verificar.</p>
-  ${T.lego.map((ex,k)=>legoCard(ex, `f-${T.id}-${k}`, k)).join('')}
+  ${T.lego.map((ex,k)=>legoCard(ex, `${sec}-${T.id}-${k}`, k)).join('')}
   <div class="mt-10 flex flex-wrap justify-between gap-2.5">
-   ${prev ? link('#/f/'+prev.id, '◂ '+prev.short) : link('#/f','◂ Fundamentos')}
-   ${next ? link('#/f/'+next.id, next.short+' ▸') : link('#/diferencial','Cálculo diferencial ▸')}
+   ${prev ? link(`#/${sec}/${prev.id}`, '◂ '+prev.short) : link(`#/${sec}`, '◂ '+S.nombre)}
+   ${next ? link(`#/${sec}/${next.id}`, next.short+' ▸') : link(S.sig[0], S.sig[1])}
   </div>`;
-}
-
-function pageDiferencial(){
-  const plan = ['Límites: idea intuitiva y propiedades','Límites laterales, al infinito y continuidad','Definición de derivada (límite del cociente de diferencias)','Reglas de derivación: potencia, producto, cociente','Regla de la cadena','Derivadas de exponenciales, logarítmicas y trigonométricas','Derivación implícita','Razones de cambio relacionadas','Máximos, mínimos y trazado de curvas','Optimización',"Regla de L'Hôpital"];
-  return `<h2 class="${C.h2}">📈 Cálculo diferencial</h2>
-  <p class="${C.lead}">Esta sección se está construyendo con el mismo formato: lo básico, ejemplos medio y difícil paso a paso, y ejercicios con piezas.</p>
-  <div class="${C.note}"><b>Mientras tanto:</b> las reglas de derivación ya están en el <button class="underline" data-dict-sec="D">Diccionario (Cálculo diferencial)</button> y en las <a href="#/bases/derivadas" class="underline">bases de derivadas</a>.</div>
-  <h3 class="${C.h3}">Temas planeados</h3>
-  <ol>${plan.map(t=>`<li>${t} <span class="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-950/60 dark:text-amber-200">próximamente</span></li>`).join('')}</ol>`;
 }
 
 /* =====================================================================
@@ -310,19 +308,20 @@ document.addEventListener('keydown', e=>{
 function currentId(){
   const [r, sub] = location.hash.replace(/^#\/?/,'').split('/');
   if (!r || r==='inicio') return 'home';
-  if (r==='f') return sub ? 'f/'+sub : 'f';
+  if (r==='f' || r==='d') return sub ? r+'/'+sub : r;
+  if (r==='diferencial') return 'd';
   return r;
 }
 function buildNav(cur){
   const grp = (t, href, open) => `<a href="${href}" class="mx-1 mb-1 mt-4 flex items-center justify-between rounded-lg px-1.5 py-1 text-xs font-bold uppercase tracking-wider ${open?'text-blue-700 dark:text-blue-300':'text-stone-500 dark:text-zinc-400'} hover:bg-blue-50 dark:hover:bg-blue-950/40">${t}<span>${open?'▾':'▸'}</span></a>`;
   const a = (href,label,id,extra='') => `<a href="${href}" class="flex justify-between gap-1.5 rounded-lg px-2.5 py-1.5 text-[0.93rem] hover:bg-blue-50 dark:hover:bg-blue-950/50 ${cur===id?'bg-blue-50 font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300':''}">${label}${extra}</a>`;
   const cnt = (n,t) => `<span class="text-xs font-normal text-stone-500 dark:text-zinc-400">${n}/${t}</span>`;
-  const sec = cur==='home' ? 'home' : cur==='jugar' ? 'P' : cur.startsWith('f') ? 'F' : cur==='diferencial' ? 'D' : 'I';
+  const sec = cur==='home' ? 'home' : cur==='jugar' ? 'P' : cur.startsWith('f') ? 'F' : cur.startsWith('d') ? 'D' : 'I';
   let h = a('#/','🏠 Inicio','home') + a('#/jugar','🎮 Practicar: Defensa Algebraica','jugar') + `<button data-dict-open class="mt-1 flex w-full rounded-lg px-2.5 py-1.5 text-left text-[0.93rem] hover:bg-blue-50 dark:hover:bg-blue-950/50">📖 Diccionario</button>`;
   h += grp('🧱 Fundamentos', '#/f', sec==='F'||sec==='home');
   if (sec==='F'||sec==='home') h += a('#/f','Todos los temas','f') + FUND.map((T,i)=>{const p=fundProgress(T);return a('#/f/'+T.id, `${i+1}. ${T.short}`, 'f/'+T.id, cnt(p.n,p.tot))}).join('');
-  h += grp('📈 Cálculo diferencial', '#/diferencial', sec==='D');
-  if (sec==='D') h += a('#/diferencial','Temas (próximamente)','diferencial');
+  h += grp('📈 Cálculo diferencial', '#/d', sec==='D');
+  if (sec==='D') h += a('#/d','Todos los temas','d') + DIF.map((T,i)=>{const p=temaProgress(T,'d');return a('#/d/'+T.id, `${i+1}. ${T.short}`, 'd/'+T.id, cnt(p.n,p.tot))}).join('');
   h += grp('∫ Cálculo integral', '#/integral', sec==='I'||sec==='home');
   if (sec==='I'||sec==='home') h += a('#/integral','Inicio de la sección','integral') + a('#/bases','📐 Bases para integrar','bases') +
     LESSONS.map(L=>{const p=lessonProgress(L);return a('#/'+L.id, `${L.n}. ${L.short}`, L.id, cnt(p.n,p.tot))}).join('') +
@@ -349,11 +348,11 @@ function route(){
   const [r, sub] = location.hash.replace(/^#\/?/,'').split('/');
   const view = document.getElementById('view');
   const L = LESSONS.find(x=>x.id===r);
-  const T = r==='f' && sub ? FUND.find(x=>x.id===sub) : null;
+  const SEC = r==='diferencial' ? 'd' : r;
+  const T = SECCIONES_AP[SEC] && sub ? SECCIONES_AP[SEC].lista().find(x=>x.id===sub) : null;
   let html, title;
-  if (T){ html = pageFundTopic(T); title = T.short; }
-  else if (r==='f'){ html = pageFundIndex(); title = 'Fundamentos'; }
-  else if (r==='diferencial'){ html = pageDiferencial(); title = 'Cálculo diferencial'; }
+  if (T){ html = pageSecTopic(SEC, T); title = T.short; }
+  else if (SECCIONES_AP[SEC]){ html = pageSecIndex(SEC); title = SECCIONES_AP[SEC].nombre; }
   else if (r==='jugar'){ html = pageHome(); title = 'Practicar'; }
   else if (r==='integral'){ html = pageIntegral(); title = 'Cálculo integral'; }
   else if (L){ html = pageLesson(L); title = L.short; }
@@ -365,7 +364,7 @@ function route(){
   if (r==='jugar') abrirJuego(); else cerrarJuego();
   buildNavFromHash();
   renderMath(view);
-  if (T) T.lego.forEach((_,k)=>renderLego(`f-${T.id}-${k}`));
+  if (T) T.lego.forEach((_,k)=>renderLego(`${SEC}-${T.id}-${k}`));
   toggleMenu(false);
   const target = sub && !T && document.getElementById('b-'+sub);
   if (target) setTimeout(()=>target.scrollIntoView({behavior:'smooth',block:'start'}),30);

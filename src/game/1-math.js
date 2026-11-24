@@ -17,28 +17,7 @@ class EventBus {                                   // patrón Observer
   off(type, fn){ const a = this.#h.get(type); if (a) this.#h.set(type, a.filter(f => f !== fn)); }
   emit(type, payload){ (this.#h.get(type) ?? []).forEach(f => f(payload)); }
 }
-const gcd = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) [a, b] = [b, a % b]; return a || 1; };
-
-class Q {
-  constructor(n, d = 1){
-    if (d === 0) throw new RangeError('División entre cero');
-    if (d < 0){ n = -n; d = -d; }
-    const g = gcd(n, d); this.n = n / g; this.d = d / g; Object.freeze(this);
-  }
-  static of(v){ return v instanceof Q ? v : new Q(v, 1); }
-  add(o){ o = Q.of(o); return new Q(this.n * o.d + o.n * this.d, this.d * o.d); }
-  sub(o){ return this.add(Q.of(o).neg()); }
-  mul(o){ o = Q.of(o); return new Q(this.n * o.n, this.d * o.d); }
-  div(o){ o = Q.of(o); return new Q(this.n * o.d, this.d * o.n); }
-  neg(){ return new Q(-this.n, this.d); }
-  abs(){ return new Q(Math.abs(this.n), this.d); }
-  get isZero(){ return this.n === 0; }
-  get isOne(){ return this.n === 1 && this.d === 1; }
-  get isInt(){ return this.d === 1; }
-  get sign(){ return Math.sign(this.n); }
-  equals(o){ o = Q.of(o); return this.n === o.n && this.d === o.d; }
-  toTex(){ return this.d === 1 ? `${this.n}` : `${this.n < 0 ? '-' : ''}\\frac{${Math.abs(this.n)}}{${this.d}}`; }
-}
+// Q (racionales) y gcd viven en src/expr.js (compartidos)
 
 class Rng {                                         // xorshift: reproducible si se da semilla
   constructor(seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0){ this.s = seed || 1; }

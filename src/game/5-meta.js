@@ -243,7 +243,7 @@ class MazoScene extends Scene {
       <div class="flex items-center justify-between">${btnVolver}<span class="text-xs text-zinc-400">${lista.length}/${MAX_MAZO} combinaciones</span></div>
       <h2 class="mt-3 text-2xl font-black">🃏 Mazo</h2>
       <p class="text-xs text-zinc-400">Combinaciones de propiedades que se aplican en orden y te acompañan en <b>todas</b> las partidas (una vez por ronda cada una). Hay un mazo por área.</p>
-      ${tabs([['fund', '🧱', 'Fundamentos'], ['dif', '📈', 'Diferencial'], ['int', '∫', 'Integral']], this.dom)}
+      ${tabs([['fund', '🧱', 'Fundamentos'], ['alg', '🔺', 'Álgebra'], ['dif', '📈', 'Diferencial'], ['int', '∫', 'Integral']], this.dom)}
       <div class="mt-2 flex-1 space-y-2 overflow-y-auto pb-4">
         ${this.armando ? this.constructor_(D) : `
         ${lista.map((cb, i) => `<div class="${UI.card} flex items-center gap-3"><span class="text-2xl">🔗</span><div class="flex-1"><b>${cb.nombre}</b>

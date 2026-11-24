@@ -45,7 +45,7 @@ class GameApp {
 }
 
 /* ---------- Menú ---------- */
-const MODOS = [['fund', '🧱', 'Fundamentos'], ['dif', '📈', 'Diferencial'], ['int', '∫', 'Integral'], ['todo', '🌐', 'Todo junto']];
+const MODOS = [['fund', '🧱', 'Fundamentos'], ['alg', '🔺', 'Potencias, log y trig'], ['dif', '📈', 'Diferencial'], ['int', '∫', 'Integral'], ['todo', '🌐', 'Todo junto']];
 class MenuScene extends Scene {
   enter(){
     const p = this.app.progreso, d = p.data, hechos = this.app.doneKeys();
@@ -58,14 +58,14 @@ class MenuScene extends Scene {
       <div class="text-center"><div class="text-6xl">👽🛸</div><h2 class="mt-2 text-3xl font-black tracking-tight">Defensa Algebraica</h2>
         <p class="mt-2 text-zinc-300">Los soldados solo disparan con la <b class="text-amber-300">energía</b> que generan los científicos… y los científicos eres tú. Cada paso que te acerca a la solución carga energía: más rápido, más creativo y con menos pasos = más XP.</p></div>
       <div><b class="text-sm">¿Qué quieres practicar?</b>
-        <div class="mt-2 grid grid-cols-2 gap-2">${MODOS.map(([id, ic, n]) => `<button data-modo="${id}" class="flex min-h-14 items-center justify-center gap-2 rounded-2xl border-2 px-3 font-semibold touch-manipulation ${d.modo === id ? 'border-emerald-400 bg-emerald-400/15 text-emerald-200' : 'border-zinc-700 bg-zinc-900'}"><span class="text-xl">${ic}</span>${n}</button>`).join('')}</div>
+        <div class="mt-2 grid grid-cols-2 gap-2">${MODOS.map(([id, ic, n]) => `<button data-modo="${id}" class="${id === 'todo' ? 'col-span-2 ' : ''}flex min-h-14 items-center justify-center gap-2 rounded-2xl border-2 px-3 font-semibold touch-manipulation ${d.modo === id ? 'border-emerald-400 bg-emerald-400/15 text-emerald-200' : 'border-zinc-700 bg-zinc-900'}"><span class="text-xl">${ic}</span>${n}</button>`).join('')}</div>
         <p class="mt-2 text-xs text-zinc-400">${disp.length ? `${disp.length}/${total} tipo(s) de problema disponibles` : 'Aún no hay problemas disponibles'}${disp.length < total ? ' · más se desbloquean en la 🗺️ Ruta' : ''}.</p></div>
       <div><b class="text-sm">Dificultad</b>
         <div class="mt-2 grid grid-cols-4 gap-1.5">${DIFICULTADES.map(df => { const ok = this.app.dificultadDesbloqueada(df.id), on = (d.dificultad ?? 'soldado') === df.id;
           return `<button data-dif="${df.id}" ${ok ? '' : 'disabled'} class="flex min-h-14 flex-col items-center justify-center rounded-2xl border-2 px-1 text-xs font-semibold touch-manipulation disabled:opacity-40 ${on ? 'border-rose-400 bg-rose-400/15 text-rose-200' : 'border-zinc-700 bg-zinc-900'}"><span class="text-lg">${ok ? df.icon : '🔒'}</span>${df.nombre}</button>`; }).join('')}</div>
         <p class="mt-1.5 text-xs text-zinc-400">${dificultad(d.dificultad).desc}</p></div>
       <button data-a="jugar" class="${UI.btnP} !min-h-14 text-lg" ${disp.length ? '' : 'disabled'}>▶ Jugar</button>
-      <div class="${UI.card} flex items-center gap-3 text-sm"><span class="text-2xl">🗺️</span><span class="flex-1"><b>Ruta · nivel ${ruta.nivel + 1}/${RUTA.length}</b>${d.todo ? ' <span class="text-amber-300">(desarrollo: todo abierto)</span>' : ''}<div class="mt-1 h-1.5 overflow-hidden rounded bg-zinc-800"><div class="h-full bg-amber-400" style="width:${Math.min(100, 100 * ruta.xp / RUTA.at(-1).xp)}%"></div></div></span><span class="text-xs text-zinc-400">${ruta.xp} XP</span></div>
+      <div class="${UI.card} flex items-center gap-3 text-sm"><span class="text-2xl">🗺️</span><span class="flex-1"><b>Ruta · nivel ${ruta.nivelReal + 1}/${ruta.total}</b>${d.todo ? ' <span class="text-amber-300">(desarrollo: todo abierto)</span>' : ''}<div class="mt-1 h-1.5 overflow-hidden rounded bg-zinc-800"><div class="h-full bg-amber-400" style="width:${100 * (ruta.nivelReal + 1) / ruta.total}%"></div></div></span><span class="text-xs text-zinc-400">${ruta.xp} XP</span></div>
       <div class="grid grid-cols-2 gap-3"><button data-a="catalogo" class="${UI.btn}">📚 Catálogo</button><button data-a="mejoras" class="${UI.btn}">🛠 Mejoras <span class="text-amber-300">${d.puntos} 🔬</span></button><button data-a="mazo" class="${UI.btn}">🃏 Mazo</button><button data-a="partidas" class="${UI.btn}">💾 Partidas${guardadas ? ` <span class="text-sky-300">${guardadas}</span>` : ''}</button><button data-a="ayuda" class="${UI.btn} col-span-2">❓ Cómo jugar</button></div>
       <div><b class="text-sm">Modo asistido</b>
         <div class="mt-2 grid grid-cols-4 gap-1.5">${NIVELES_AYUDA.map((n, i) => `<button data-ayuda="${i}" class="flex min-h-14 flex-col items-center justify-center rounded-2xl border-2 px-1 text-xs font-semibold touch-manipulation ${(d.asistido ?? 0) === i ? 'border-sky-400 bg-sky-400/15 text-sky-200' : 'border-zinc-700 bg-zinc-900'}"><span class="text-lg">${n.icon}</span>${n.nombre}</button>`).join('')}</div>
@@ -165,7 +165,7 @@ class Run {
 }
 
 /* ---------- Cartas (diseño) ---------- */
-const GRAD = {fund:'from-sky-400 to-indigo-500', dif:'from-emerald-400 to-teal-600', int:'from-fuchsia-400 to-violet-600', libre:'from-amber-300 to-orange-500', combo:'from-rose-400 to-amber-400', nuevo:'from-zinc-500 to-zinc-700'};
+const GRAD = {fund:'from-sky-400 to-indigo-500', alg:'from-orange-400 to-rose-500', dif:'from-emerald-400 to-teal-600', int:'from-fuchsia-400 to-violet-600', libre:'from-amber-300 to-orange-500', combo:'from-rose-400 to-amber-400', nuevo:'from-zinc-500 to-zinc-700'};
 const ktMini = tex => window.katex ? katex.renderToString(tex, {throwOnError:false, strict:false}) : tex;
 function cartaHTML(c, dom, {sel = false, attr = `data-carta="${c.id}"`, chica = false, marca = null} = {}){
   const g = c.free ? GRAD.libre : GRAD[dom.id];
@@ -562,6 +562,7 @@ class BattleScene extends Scene {
   oleadaTerminada(){
     const r = this.run, nuevos = this.sincronizarCatalogo();
     this.app.ruta.ganar(XP_RUTA.oleada + (r.oleada === OLEADAS ? XP_RUTA.mision : 0));
+    if (r.oleada === OLEADAS) this.app.ruta.contar('misiones');
     if (r.oleada === OLEADAS){ const pts = puntosMision(r.mision); this.app.progreso.ganarPuntos(pts); r.puntosMisiones += pts; const m = r.mision; setTimeout(() => this.aviso(`🏅 ¡Misión ${m} cumplida! +${pts} 🔬`), 2700); }
     if (nuevos.length) setTimeout(() => this.aviso(`📚 Nuevo en el catálogo (${nuevos.length})`), 5300);
     if (r.oleada < OLEADAS){ r.oleada++; }
@@ -572,6 +573,7 @@ class BattleScene extends Scene {
   fin(victoria, abandono = false){
     if (this.terminado) return; this.terminado = true;
     this.sincronizarCatalogo();
+    if (victoria) this.app.ruta.contar('victorias');
     const r = this.run, pts = this.app.progreso.registrarPartida(r.xpTotal);
     this.abrirCapa(`<div class="m-auto flex w-full max-w-sm flex-col gap-3 text-center">
       <div class="text-6xl">${victoria ? '🏆' : '💥'}</div><h2 class="text-2xl font-black">${victoria ? '¡La Tierra está a salvo!' : abandono ? 'Partida abandonada' : 'La base cayó'}</h2>

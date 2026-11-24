@@ -22,6 +22,9 @@ const dificultad = id => DIFICULTADES.find(d => d.id === id) ?? DIFICULTADES[1];
 /** Cartas que necesita cada tipo de problema (calculado con el solucionador): al desbloquear el tipo se desbloquean sus cartas. */
 const CARTAS_DE_TIPO = {
   lin1:['mover', 'seme', 'div', 'oper'], simp1:['seme'], lin2:['mover', 'seme', 'div', 'oper'], simp2:['dist', 'seme'], dist:['dist', 'mover', 'seme', 'div', 'oper'],
+  apot0:['p-cero', 'p-uno', 'a-oper'], apot1:['p-prod', 'p-coc', 'p-uno', 'a-oper'], apot2:['p-pot', 'p-prod'], apot3:['p-prodpot', 'p-cocpot', 'p-pot', 'a-oper'],
+  araiz1:['r-prod', 'r-pot', 'r-exacta'], araiz2:['r-coc', 'r-pot', 'r-exacta'], alog1:['l-prod', 'l-pot'], alog2:['l-coc', 'l-pot', 'l-inv', 'a-oper'], alog3:['l-inv'],
+  atrig1:['t-pit', 'a-oper'], atrig2:['t-par', 't-tan', 'a-oper'], atrig3:['t-doble', 't-cos2'], atrig4:['t-tan', 't-par', 't-pit'],
   dpoli:['d-suma', 'd-kf', 'd-cte', 'd-pot'], dtrig:['d-suma', 'd-kf', 'd-tabla'], dprod:['d-prod', 'd-pot', 'd-tabla'], dcad:['d-cad', 'd-suma', 'd-kf', 'd-cte', 'd-pot'],
   dtan:['d-suma', 'd-kf', 'd-pot', 'd-tabla'], dsqrt:['d-suma', 'd-kf', 'd-pot'], dneg:['d-suma', 'd-kf', 'd-pot'], dcoc:['d-prod', 'd-suma', 'd-cte', 'd-pot', 'd-cad'],
   dln:['d-kf', 'd-cad', 'd-suma', 'd-cte', 'd-pot'], dexp2:['d-cad', 'd-kf', 'd-pot'], dsincos:['d-kf', 'd-prod', 'd-tabla'],
@@ -29,57 +32,106 @@ const CARTAS_DE_TIPO = {
   ineg:['i-suma', 'i-kf', 'i-pot', 'i-c'], irecip:['i-kf', 'i-sust', 'i-c'], ilin:['i-sust', 'i-c'],
 };
 
-/* ---------- Ruta: niveles con sus premios ---------- */
-const RUTA = [
-  {xp:0,    tipos:['lin1', 'simp1', 'dpoli', 'ipoli'], difs:['recluta', 'soldado'], bonus:['rifle', 'amplificador', 'escudo']},
-  {xp:60,   tipos:['lin2', 'dsqrt', 'isqrt'], bonus:['laser', 'reclutas']},
-  {xp:140,  tipos:['simp2', 'dneg', 'ineg'], bonus:['lenta']},
-  {xp:240,  tipos:['dtrig', 'itrig'], bonus:['misil', 'municion'], puntos:15},
-  {xp:360,  tipos:['dist', 'dtan'], bonus:['concentracion']},
-  {xp:500,  tipos:['dprod', 'ilin'], bonus:['mortero', 'botiquin'], puntos:25},
-  {xp:660,  tipos:['dcad', 'irecip'], difs:['veterano'], bonus:['tesla']},
-  {xp:840,  tipos:['dexp2', 'dln'], bonus:['franco'], puntos:40},
-  {xp:1040, tipos:['dcoc', 'dsincos']},
-  {xp:1260, difs:['leyenda'], puntos:60},
-  {xp:1500, puntos:120, titulo:'🏆 Leyenda del cálculo'},
-];
+/* ---------- Ruta: un nivel por cada hito de aprendizaje ----------
+   La ruta se construye a partir de los temas de la guía: el tutorial (en
+   dos niveles), cada tema de Fundamentos, Diferencial e Integral, la
+   práctica de las cartas de propiedades y algunos logros del juego.
+   Cada hito cumplido entrega sus premios (tipos de problema y con ellos
+   sus cartas, bonificadores, dificultades o 🔬). */
+const BASE_RUTA = {titulo:'Inicio', icon:'🚩', tipos:['lin1', 'simp1', 'dpoli', 'ipoli'], difs:['recluta', 'soldado'], bonus:['rifle', 'amplificador', 'escudo']};
+const PREMIOS_TEMA = {
+  'f-signos':{bonus:['reclutas']}, 'f-multdiv':{puntos:10}, 'f-fracciones':{bonus:['lenta']},
+  'f-potencias':{tipos:['apot0', 'apot1', 'apot2', 'apot3']}, 'f-factorizacion':{tipos:['simp2']}, 'f-lineales':{tipos:['lin2', 'dist'], bonus:['laser']},
+  'f-cuadraticas':{bonus:['municion']}, 'f-polinomicas':{bonus:['misil']}, 'f-racionales':{bonus:['concentracion']}, 'f-radicales':{tipos:['araiz1', 'araiz2']},
+  'f-exponenciales':{tipos:['alog3'], bonus:['mortero']}, 'f-logaritmicas':{tipos:['alog1', 'alog2']}, 'f-trigonometricas':{tipos:['atrig1', 'atrig2', 'atrig3', 'atrig4'], bonus:['botiquin']},
+  'f-inecuaciones':{puntos:20},
+  'd-limites':{puntos:10}, 'd-reglas':{tipos:['dsqrt', 'dneg']}, 'd-producto':{tipos:['dprod']}, 'd-cadena':{tipos:['dcad', 'dexp2']}, 'd-trascendentes':{tipos:['dtrig', 'dtan', 'dln'], bonus:['tesla']},
+  'd-implicita':{tipos:['dcoc']}, 'd-extremos':{tipos:['dsincos']}, 'd-optimizacion':{difs:['veterano'], bonus:['franco']}, 'd-lhopital':{puntos:25},
+  'l1':{tipos:['isqrt', 'ineg']}, 'l2':{tipos:['itrig', 'ilin', 'irecip']}, 'l7':{difs:['leyenda'], puntos:40},
+};
+const prefijos = (keys, pref) => keys.filter(k => k.startsWith(pref)).length;
+/** Lista de hitos (se arma al usarla: necesita los temas de la guía). */
+function construirRuta(){
+  const G = typeof FUND !== 'undefined';
+  const hitos = [{...BASE_RUTA, req:[]}];
+  const tema = (sec, T) => ({titulo:`${sec === 'f' ? 'Fundamentos' : 'Diferencial'}: ${T.short}`, icon:sec === 'f' ? '🧱' : '📈', href:`#/${sec}/${T.id}`,
+    req:[{txt:'ejercicios del tema', pref:`${sec}-${T.id}-`, n:T.lego.length}], ...(PREMIOS_TEMA[`${sec}-${T.id}`] ?? {})});
+  const props = (dom, ids, titulo, n) => ({titulo, icon:'🃏', href:`#/p/${dom}`, req:[{txt:'ejercicios de esas cartas', prefs:ids.map(id => `p-${dom}-${id}-`), n}], puntos:10});
+  const juego = (titulo, campo, n, extra = {}) => ({titulo, icon:'🎮', href:'#/jugar', req:[{txt:{partidas:'partidas jugadas', misiones:'misiones cumplidas', victorias:'victorias'}[campo], juego:campo, n}], ...extra});
+  if (G){
+    hitos.push({titulo:'Tutorial: primeras fichas', icon:'🧩', href:'#/tutorial', req:[{txt:'tutoriales 1 a 3', prefs:['t-fichas-0', 't-fichas-1', 't-fichas-2'], n:3}], puntos:5});
+    hitos.push({titulo:'Tutorial completo', icon:'🧩', href:'#/tutorial', req:[{txt:'tutoriales', pref:'t-fichas-', n:TUT[0].lego.length}], puntos:10});
+    hitos.push(juego('Primera partida', 'partidas', 1));
+    for (const T of FUND){
+      hitos.push(tema('f', T));
+      if (T.id === 'lineales') hitos.push(props('fund', ['dist', 'seme', 'mover', 'div', 'oper'], 'Cartas: despejar ecuaciones', 5));
+      if (T.id === 'potencias') hitos.push(props('alg', ['p-prod', 'p-coc', 'p-pot', 'p-prodpot', 'p-cocpot', 'p-cero', 'p-uno'], 'Cartas: propiedades de las potencias', 7));
+      if (T.id === 'radicales') hitos.push(props('alg', ['r-prod', 'r-coc', 'r-pot', 'r-exacta'], 'Cartas: propiedades de las raíces', 4));
+      if (T.id === 'logaritmicas') hitos.push(props('alg', ['l-prod', 'l-coc', 'l-pot', 'l-inv'], 'Cartas: propiedades de los logaritmos', 4));
+      if (T.id === 'trigonometricas') hitos.push(props('alg', ['t-pit', 't-tan', 't-doble', 't-cos2', 't-par'], 'Cartas: identidades trigonométricas', 5));
+    }
+    hitos.push(juego('Primera misión cumplida', 'misiones', 1, {puntos:15}));
+    for (const T of DIF){
+      hitos.push(tema('d', T));
+      if (T.id === 'cadena') hitos.push(props('dif', ['d-suma', 'd-kf', 'd-cte', 'd-pot', 'd-tabla', 'd-prod', 'd-cad'], 'Cartas: reglas de derivación', 7));
+    }
+    hitos.push(juego('Tres misiones cumplidas', 'misiones', 3, {puntos:25}));
+    for (const L of LESSONS){
+      hitos.push({titulo:`Integral: ${L.short}`, icon:'∫', href:`#/${L.id}`, req:[{txt:'ejercicios de la lección', pref:`${L.id}-`, n:L.exercises.length}], ...(PREMIOS_TEMA[L.id] ?? {})});
+      if (L.id === 'l1') hitos.push(props('int', ['i-suma', 'i-kf', 'i-cte', 'i-pot', 'i-ln', 'i-tabla', 'i-sust', 'i-c'], 'Cartas: reglas de integración', 8));
+    }
+    hitos.push(juego('¡La Tierra está a salvo!', 'victorias', 1, {puntos:60, titulo2:'🏆 Leyenda del cálculo'}));
+  }
+  return hitos;
+}
+let RUTA_CACHE = null;
+const RUTA_HITOS = () => RUTA_CACHE ??= construirRuta();
 const XP_RUTA = {ejercicio:20, problema:4, oleada:12, mision:30};
 
 class Ruta {
   /** @param {Progreso} progreso  @param {()=>string[]} doneKeys */
   constructor(progreso, doneKeys){ this.progreso = progreso; this.doneKeys = doneKeys; }
   get dev(){ return !!this.progreso.data.todo; }
-  /** Ejercicios de Aprender y de propiedades terminados. */
   get ejercicios(){ return this.doneKeys().filter(k => /^(f|d|p|t)-|^l\d/.test(k)).length; }
   get xp(){ return this.ejercicios * XP_RUTA.ejercicio + (this.progreso.data.rutaXP ?? 0); }
-  get nivelReal(){ return RUTA.filter(t => this.xp >= t.xp).length - 1; }
-  get nivel(){ return this.dev ? RUTA.length - 1 : this.nivelReal; }
-  alcanzados(){ return RUTA.slice(0, this.nivel + 1); }
+  /** Avance de un requisito: [hecho, total]. */
+  avance(r){
+    const keys = this.doneKeys(), d = this.progreso.data;
+    const v = r.juego ? (d[r.juego] ?? 0) : r.prefs ? r.prefs.reduce((s, p) => s + (prefijos(keys, p) > 0 ? 1 : 0), 0) : prefijos(keys, r.pref);
+    return [Math.min(v, r.n), r.n];
+  }
+  cumplido(h){ return h.req.every(r => { const [a, b] = this.avance(r); return a >= b; }); }
+  hitos(){ return RUTA_HITOS().map((h, i) => ({...h, i, ok:this.dev || this.cumplido(h)})); }
+  get nivelReal(){ return RUTA_HITOS().filter(h => this.cumplido(h)).length - 1; }
+  get nivel(){ return this.dev ? RUTA_HITOS().length - 1 : this.nivelReal; }
+  get total(){ return RUTA_HITOS().length; }
+  alcanzados(){ return this.hitos().filter(h => h.ok); }
   tipos(){ return new Set(this.alcanzados().flatMap(t => t.tipos ?? [])); }
   difs(){ return new Set(this.alcanzados().flatMap(t => t.difs ?? [])); }
   bonus(){ return new Set(this.alcanzados().flatMap(t => t.bonus ?? [])); }
   ganar(n){ this.progreso.data.rutaXP = (this.progreso.data.rutaXP ?? 0) + n; this.progreso.guardar(); }
-  /** Premios de 🔬 que ya se pueden reclamar. */
-  porReclamar(){ const r = this.progreso.data.rutaReclamados ?? []; return RUTA.map((t, i) => i).filter(i => RUTA[i].puntos && i <= this.nivel && !r.includes(i)); }
+  /** Logros del juego que cuentan en la ruta. */
+  contar(campo){ this.progreso.data[campo] = (this.progreso.data[campo] ?? 0) + 1; this.progreso.guardar(); }
+  porReclamar(){ const r = this.progreso.data.rutaReclamados ?? []; return this.hitos().filter(h => h.puntos && h.ok && !r.includes(h.i)).map(h => h.i); }
   reclamar(i){
     if (!this.porReclamar().includes(i)) return 0;
-    (this.progreso.data.rutaReclamados ??= []).push(i); this.progreso.ganarPuntos(RUTA[i].puntos); return RUTA[i].puntos;
+    (this.progreso.data.rutaReclamados ??= []).push(i); this.progreso.ganarPuntos(RUTA_HITOS()[i].puntos); return RUTA_HITOS()[i].puntos;
   }
-  /** Resumen para pintar la línea de tiempo (lo usa también la página Ruta de la guía). */
   resumen(){
     const nombreTipo = Object.fromEntries(Object.values(DOMINIOS).flatMap(d => d.tipos.map(t => [t.id, {name:t.name, icon:d.icon}])));
     const cartaInfo = Object.fromEntries(Object.values(DOMINIOS).flatMap(d => d.cartas.all().map(c => [c.id, {name:c.name, icon:c.icon}])));
     const vistas = new Set(), rec = this.progreso.data.rutaReclamados ?? [];
-    return {xp:this.xp, nivel:this.nivel, nivelReal:this.nivelReal, dev:this.dev, ejercicios:this.ejercicios, max:RUTA.at(-1).xp,
-      tiers:RUTA.map((t, i) => {
-        const cartas = (t.tipos ?? []).flatMap(id => CARTAS_DE_TIPO[id] ?? []).filter(c => !vistas.has(c) && vistas.add(c));
-        return {i, xp:t.xp, ok:i <= this.nivel, titulo:t.titulo,
+    return {xp:this.xp, nivel:this.nivel, nivelReal:this.nivelReal, dev:this.dev, ejercicios:this.ejercicios, total:this.total,
+      tiers:this.hitos().map(h => {
+        const cartas = (h.tipos ?? []).flatMap(id => CARTAS_DE_TIPO[id] ?? []).filter(c => !vistas.has(c) && vistas.add(c));
+        return {i:h.i, ok:h.ok, real:this.cumplido(h), titulo:h.titulo, titulo2:h.titulo2, icon:h.icon, href:h.href,
+          req:h.req.map(r => { const [a, b] = this.avance(r); return {txt:r.txt, a, b}; }),
           premios:[
-            ...(t.tipos ?? []).map(id => ({tipo:'problema', icon:nombreTipo[id]?.icon ?? '🧮', nombre:nombreTipo[id]?.name ?? id})),
+            ...(h.tipos ?? []).map(id => ({tipo:'problema', icon:nombreTipo[id]?.icon ?? '🧮', nombre:nombreTipo[id]?.name ?? id})),
             ...cartas.map(id => ({tipo:'carta', icon:cartaInfo[id]?.icon ?? '🃏', nombre:cartaInfo[id]?.name ?? id})),
-            ...(t.difs ?? []).map(id => ({tipo:'dificultad', icon:dificultad(id).icon, nombre:`Dificultad ${dificultad(id).nombre}`})),
-            ...(t.bonus ?? []).map(id => ({tipo:'bonus', icon:BONUS_DEFS[id].icon, nombre:BONUS_DEFS[id].name})),
-            ...(t.puntos ? [{tipo:'puntos', icon:'🔬', nombre:`+${t.puntos} puntos de investigación`, reclamable:i <= this.nivel && !rec.includes(i), reclamado:rec.includes(i)}] : []),
+            ...(h.difs ?? []).map(id => ({tipo:'dificultad', icon:dificultad(id).icon, nombre:`Dificultad ${dificultad(id).nombre}`})),
+            ...(h.bonus ?? []).map(id => ({tipo:'bonus', icon:BONUS_DEFS[id].icon, nombre:BONUS_DEFS[id].name})),
+            ...(h.puntos ? [{tipo:'puntos', icon:'🔬', nombre:`+${h.puntos} puntos de investigación`, reclamable:h.ok && !rec.includes(h.i), reclamado:rec.includes(h.i)}] : []),
           ]};
       })};
   }

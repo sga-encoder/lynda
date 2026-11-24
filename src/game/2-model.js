@@ -258,7 +258,7 @@ class Progreso {
     this.repo = repo;
     this.data = {puntos:0, mejoras:{}, record:0, partidas:0, modo:'fund', todo:true, semi:true, asistido:0, dificultad:'soldado', rutaXP:0, ...repo.load()};
     this.data.desc = {armas:['rifle'], tacticos:[], enemigos:[], soldados:[], cartas:[], fusiones:[], ...(this.data.desc ?? {})};
-    this.data.mazo = {fund:[], dif:[], int:[], ...(this.data.mazo ?? {})};
+    this.data.mazo = {fund:[], alg:[], dif:[], int:[], ...(this.data.mazo ?? {})};
   }
   /** Registra algo encontrado por primera vez (para el catálogo). Devuelve true si es nuevo. */
   descubrir(cat, id){ const l = this.data.desc[cat]; if (l.includes(id)) return false; l.push(id); this.guardar(); return true; }

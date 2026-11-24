@@ -218,6 +218,7 @@ function piezasCalc(e){
       if (K.isNum(e.e) && e.e.q.equals(new Q(1, 2))) return [{t:'sqrt', z:[piezasCalc(e.b)]}];
       if (K.isNum(e.e) && e.e.q.sign < 0) return [{t:'frac', z:[[pz('1')], piezasCalc(K.simp(K.pow(e.b, e.e.q.neg())))]}];
       return [{t:'pot', z:[piezasCalc(e.b), piezasCalc(e.e)]}];     // recuadro base + exponente
+    case '/': return [{t:'frac', z:[piezasCalc(e.n), piezasCalc(e.d)]}];
     case 'D': return [{t:'der', z:[[pz('x')], piezasCalc(e.a)]}];            // d/dx[ … ] como recuadro
     case 'I': return [{t:'int', z:[piezasCalc(e.a), [pz('x')]]}];            // ∫ … dx como recuadro
     case 'f':

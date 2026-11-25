@@ -7,7 +7,7 @@
    ===================================================================== */
 /* Piezas contenedoras: nombre → número de espacios internos.
    Todas las funciones son RECUADROS que contienen a otras piezas (no flotan al lado). */
-const STRUCT = {frac:2, pot:2, exp:1, sqrt:1, sin:1, cos:1, tan:1, ln:1, log:1, log_3:1, lim:3,
+const STRUCT = {par:1, frac:2, pot:2, exp:1, sqrt:1, sin:1, cos:1, tan:1, ln:1, log:1, log_3:1, lim:3,
   der:2,    // d/d▢ [ ▢ ]        espacios: variable, expresión
   int:2,    // ∫ ▢ d▢            espacios: integrando, variable
   intd:4};  // ∫_▢^▢ ▢ d▢        espacios: límite inferior, superior, integrando, variable
@@ -68,11 +68,12 @@ const newNode = t => STRUCT[t] ? {t, z:Array.from({length:STRUCT[t]},()=>[])} : 
 function serBase(z){
   const b = ser(z);
   if (z.length === 1 && !z[0].z && !/^\d+[a-zπ]$/i.test(z[0].t)) return b;   // 3x como base sería (3x)
-  if (z.length === 1 && z[0].t === 'sqrt') return b;
+  if (z.length === 1 && (z[0].t === 'sqrt' || z[0].t === 'par')) return b;
   return /^\(.*\)$/.test(b) && z[0].t === '(' && z.at(-1).t === ')' ? b : `(${b})`;
 }
 function ser(zone){
-  return zone.map(n=> n.t==='frac' ? `frac{${ser(n.z[0])}}{${ser(n.z[1])}}`
+  return zone.map(n=> n.t==='par' ? `(${ser(n.z[0])})`
+                    : n.t==='frac' ? `frac{${ser(n.z[0])}}{${ser(n.z[1])}}`
                     : n.t==='sqrt' ? `sqrt{${ser(n.z[0])}}`
                     : n.t==='pot'  ? `${serBase(n.z[0])}^{${ser(n.z[1])}}`
                     : n.t==='exp'  ? `e^{${ser(n.z[0])}}`
@@ -95,7 +96,9 @@ function splitTop(s){                      // separa por comas fuera de {} y ()
 const separarCoef = t => { const m = /^(\d+(?:\.\d+)?)([a-zA-Zπ])$/.exec(t); return m ? [m[1], m[2]] : [t]; };
 /** En el menú solo hay cifras sueltas (0–9): «12» se arma con 1 y 2, que en el lienzo se juntan en una sola ficha. */
 const separarCifras = t => /^\d{2,}$/.test(t) ? t.split('') : [t];
-const piezasDe = k => [...new Set(k.flatMap(t => /^[-+]./.test(t) ? [t[0], t.slice(1)] : [t]).flatMap(separarCoef).flatMap(separarCifras))];
+const conIntervalos = k => k.some(t => t === '[' || t === ']');   // en los intervalos «(» puede cerrar con «]»: ahí siguen sueltos
+const piezasDe = k => [...new Set(k.flatMap(t => /^[-+]./.test(t) ? [t[0], t.slice(1)] : [t]).flatMap(separarCoef).flatMap(separarCifras)
+  .flatMap(t => conIntervalos(k) ? [t] : t === '(' ? ['par'] : t === ')' ? [] : [t]))];   // «( )» es una sola pieza
 /** Cifras seguidas en un mismo espacio se agrupan en UNA ficha (1, 2 → 12). Se modifica el mismo arreglo. */
 const esCifras = n => !!n && !n.z && !n.sub && /^\d+$/.test(n.t);
 /* Monomios: signo + número + variable se agrupan en UNA ficha (−, 3, x → −3x).
@@ -175,6 +178,14 @@ function checkReemplazo(step, root){
   } catch { return {ok:false, t:'No se puede leer la expresión: revisa que no falte nada.'}; }
   return {ok:true};
 }
+/** Carácter que cierra el «(» de la posición i (para no confundir intervalos como (−∞, 3]). */
+function cierraCon(s, i){
+  let d = 0, coma = false;
+  for (let j = i; j < s.length; j++){ const c = s[j];
+    if ('([{'.includes(c)) d++; else if (')]}'.includes(c) && --d === 0) return coma ? ',' : c;   // con coma es un intervalo/par ordenado
+    else if (c === ',' && d === 1) coma = true; }
+  return null;
+}
 /** Convierte una respuesta serializada en piezas (para copiar la fórmula de un paso al siguiente). */
 function treeOf(src){
   const s = norm(src); let i = 0;
@@ -193,10 +204,12 @@ function treeOf(src){
       if (f){ i += f.length + 1; const a = seq(')'); eat(')'); out.push({t:f, z:[a]}); continue; }
       if (eat('^{')){
         const e = seq('}'); eat('}'); let base;
-        if (out.at(-1)?.t === ')'){ let d = 0, j = out.length - 1; for (; j >= 0; j--){ if (out[j].t===')') d++; if (out[j].t==='(' && !--d) break; } base = out.splice(j).slice(1, -1); }
+        if (out.at(-1)?.t === 'par') base = out.pop().z[0];                  // (x+1)^{2}: la base es lo de adentro
+        else if (out.at(-1)?.t === ')'){ let d = 0, j = out.length - 1; for (; j >= 0; j--){ if (out[j].t===')') d++; if (out[j].t==='(' && !--d) break; } base = out.splice(j).slice(1, -1); }
         else base = out.length ? [out.pop()] : [];
         out.push({t:'pot', z:[base, e]}); continue;
       }
+      if (s[i] === '(' && cierraCon(s, i) === ')'){ i++; const a = seq(')'); eat(')'); out.push({t:'par', z:[a]}); continue; }   // paréntesis = un solo bloque
       const m = /^\d+(\.\d+)?/.exec(s.slice(i));
       if (m){ i += m[0].length; out.push({t:m[0]}); continue; }
       if (s[i+1] === '′'){ out.push({t:s.slice(i, i+2)}); i += 2; continue; }
@@ -263,6 +276,14 @@ function bloquesHTML(key, st){
   const n = st.borrar; if (!n || !allZones(st.root).some(z => z.includes(n))) return '';
   const b = 'inline-flex min-h-12 min-w-12 items-center justify-center rounded-lg border-2 border-b-4 px-3 font-serif text-xl touch-manipulation active:scale-95';
   if (potDenominador(st.root, n)) return `<div data-panel class="mt-2 rounded-xl border-2 border-violet-400 bg-violet-50/70 p-2 text-center text-xs dark:bg-violet-950/30">Esta potencia está <b>abajo de una fracción</b>. Arrástrala fuera (por su borde) o tócala aquí: sube con <b>exponente negativo</b>.<div class="mt-1.5"><button data-lg="subirpot" class="${b} !min-h-10 !text-sm border-violet-500 bg-white font-sans font-semibold text-violet-800 dark:bg-zinc-900 dark:text-violet-200">⬆ Subir con exponente negativo</button></div></div>`;
+  if (n.t === 'par'){                                                  // paréntesis con varios monomios = polinomio
+    const ts = terminosPar(n); if (ts.length < 2) return '';
+    const fuera = signoAntesDe(st.root, n);
+    return `<div data-panel class="mt-2 rounded-xl border-2 border-amber-400 bg-amber-50/70 p-2 dark:bg-amber-950/30">
+      <div class="text-xs font-semibold">🧩 Polinomio dentro del paréntesis</div>
+      <div class="mt-1.5 flex flex-wrap justify-center gap-2">${ts.map(({nodo, i}) => `<span data-blq="${key}|${i}" style="touch-action:none" class="${b} border-amber-500 bg-white text-amber-950 dark:bg-zinc-900 dark:text-amber-100">${kx(ansTex(ser([{...nodo, partes:nodo.partes, t:nodo.t}]).replace(/^\+/, '')))}</span>`).join('')}</div>
+      <p class="mt-1 text-center text-[11px] text-stone-600 dark:text-zinc-400">Arrastra un monomio fuera del paréntesis para sacarlo${fuera === '-' ? '. Hay un <b>−</b> delante: <b>al salir cambia de signo</b>' : fuera === 'coef' ? '. Delante hay un número que multiplica: primero distribúyelo' : ''}.</p></div>`;
+  }
   const bl = bloquesDe(n); if (!bl) return '';
   const eq = st.root.includes(n) && st.root.some(x => x.t === '=');
   return `<div data-panel class="mt-2 rounded-xl border-2 border-amber-400 bg-amber-50/70 p-2 dark:bg-amber-950/30">
@@ -285,10 +306,10 @@ function ladoDe(root, zone, idx){
 /** a^n → a^(−n), con paréntesis en la base si tiene varias fichas. */
 function negarPotencia(pot){
   const [base, ex] = pot.z;
-  if (base.length > 1 && !(base[0].t === '(' && base.at(-1).t === ')')) pot.z[0] = [{t:'('}, ...base, {t:')'}];
+  if (base.length > 1 && !(base[0].t === '(' && base.at(-1).t === ')')) pot.z[0] = [{t:'par', z:[base]}];
   if (ex.length === 1 && esCifras(ex[0])) pot.z[1] = [hacerMono({}, ['-', ex[0].t])];
   else if (ex.length === 1 && ex[0].mono && ex[0].partes[0] === '-'){ const p = ex[0].partes.slice(1); pot.z[1] = [p.length === 1 ? {t:p[0]} : hacerMono({}, p)]; }
-  else pot.z[1] = [{t:'-'}, {t:'('}, ...ex, {t:')'}];
+  else pot.z[1] = [{t:'-'}, {t:'par', z:[ex]}];
   return pot;
 }
 /** Saca una potencia del denominador: a / x² → (a)·x⁻². */
@@ -297,7 +318,7 @@ function sacarPotencia(st, node, zone, idx){
   snapshot(st); st.borrar = null; const {frac, padre} = den;
   frac.z[1].splice(frac.z[1].indexOf(node), 1); negarPotencia(node);
   if (!frac.z[1].length){
-    const num = frac.z[0], envuelto = num.length > 1 ? [{t:'('}, ...num, {t:')'}] : num;
+    const num = frac.z[0], envuelto = num.length > 1 ? [{t:'par', z:[num]}] : num;
     padre.splice(padre.indexOf(frac), 1, ...envuelto, node);
   } else (zone || frac.z[0]).splice(Math.min(idx ?? Infinity, (zone || frac.z[0]).length), 0, node);
   st.msg = {ok:true, t:'La potencia salió del denominador: ahora su exponente es negativo.'}; buzz(20);
@@ -309,6 +330,36 @@ function potDenominador(root, n){
   return buscar(root);
 }
 const containsNodo = (m, n) => (m.z || []).some(z => z.includes(n) || z.some(k => containsNodo(k, n)));
+/** Términos (monomios, números, recuadros) dentro de un paréntesis, sin los signos sueltos. */
+const terminosPar = n => n.z[0].map((nodo, i) => ({nodo, i})).filter(({nodo}) => !esSigno(nodo));
+/** Lo que hay justo antes de un paréntesis: '-' (signo menos), '+', 'coef' (un número/monomio que multiplica) o null. */
+function signoAntesDe(root, par){
+  const z = allZones(root).find(z => z.includes(par)), prev = z?.[z.indexOf(par) - 1];
+  if (!prev) return null;
+  if (prev.t === '-' && !prev.z) return '-';
+  if (prev.t === '+' && !prev.z) return '+';
+  if (prev.mono && prev.partes.length === 1 && prev.partes[0] === '-') return '-';
+  return esCifras(prev) || prev.mono || esLetra(prev) ? 'coef' : null;
+}
+/** Sacar un monomio del paréntesis: si delante hay «−», cambia de signo al salir. */
+function sacarDePar(st, par, i, zEl, x, y){
+  const dentro = par.z[0], nodo = dentro[i]; if (!nodo || !zEl) return;
+  const {zone} = findZone(zEl.dataset.z); if (zone === dentro || containsZone(par, zone)) return;   // soltado dentro: no cambia nada
+  const antes = signoAntesDe(st.root, par);
+  if (antes === 'coef'){ st.msg = {ok:false, t:'Delante del paréntesis hay un número que multiplica: primero distribúyelo (Propiedad distributiva).'}; st.vibrar = par; return; }
+  snapshot(st);
+  const anterior = dentro[i - 1]; dentro.splice(i, 1); if (anterior && esSigno(anterior)) dentro.splice(i - 1, 1);   // se lleva también su signo suelto
+  const p = partesTermino(nodo), signoSuelto = anterior && esSigno(anterior) ? anterior.t : null;
+  if (signoSuelto && !esSigno({t:p[0]})) p.unshift(signoSuelto);
+  if (antes === '-'){ if (p[0] === '-') p[0] = '+'; else if (p[0] === '+') p[0] = '-'; else p.unshift('-'); }   // −(a + b): b sale como −b
+  else if (!esSigno({t:p[0]})) p.unshift('+');
+  const nuevo = nodo.z ? nodo : (p.length > 1 ? hacerMono({}, p) : {t:p[0]});
+  if (nodo.z && antes === '-') { zone.splice(Math.min(dropIndex(zEl, x, y), zone.length), 0, {t:'-'}, nodo); }
+  else zone.splice(Math.min(dropIndex(zEl, x, y), zone.length), 0, nuevo);
+  if (dentro[0] && dentro[0].mono && dentro[0].partes[0] === '+') dentro[0].partes.shift();
+  st.borrar = null;
+  st.msg = {ok:true, t:antes === '-' ? 'Salió del paréntesis con el signo cambiado (había un − delante).' : 'Salió del paréntesis.'}; buzz(15);
+}
 /** Soltar un bloque del panel. */
 function soltarBloque(st, d, zEl, x, y){
   const M = st.borrar, bl = bloquesDe(M); if (!bl || !zEl) return;
@@ -353,6 +404,7 @@ function nodeHTML(key, n, zid, i, depth, sm){
   const pad = sm ? 'gap-px p-px' : 'gap-0.5 px-1 py-0.5';
   const lbl = t => `<span class="pointer-events-none font-serif ${sm?'text-sm':'text-lg'} italic leading-none">${t}</span>`;
   const sub = (zi, small=sm) => zoneHTML(key, n.z[zi], depth+1, small);
+  if (n.t==='par') return `<span ${attr} title="Paréntesis: lo de adentro va junto" class="${brick} border-stone-400 bg-stone-50 text-stone-900 dark:border-zinc-500 dark:bg-zinc-900 dark:text-zinc-100 inline-flex items-center ${pad}"><span class="pointer-events-none font-serif ${sm?'text-lg':'text-3xl'} leading-none opacity-70">(</span>${sub(0)}<span class="pointer-events-none font-serif ${sm?'text-lg':'text-3xl'} leading-none opacity-70">)</span></span>`;
   if (n.t==='frac') return `<span ${attr} title="Fracción" class="${brick} ${green} inline-flex flex-col items-center ${pad}">${sub(0)}<span class="h-0.5 w-full rounded bg-emerald-700 dark:bg-emerald-300"></span>${sub(1)}</span>`;
   if (n.t==='sqrt') return `<span ${attr} title="Raíz" class="${brick} ${violet} inline-flex items-stretch ${sm?'p-0.5':'px-1.5 py-1'}">${RADICAL}<span class="border-t-2 border-violet-700 pt-0.5 dark:border-violet-300">${sub(0)}</span></span>`;
   // Potencia: UN recuadro con dos espacios: base (normal) y exponente (pequeño, arriba a la derecha)
@@ -382,10 +434,10 @@ function pieceColor(t){
   if (/[a-zπ∞]/i.test(t)) return 'border-amber-500 bg-amber-50 text-amber-950 dark:border-amber-500 dark:bg-amber-950/60 dark:text-amber-100';
   return 'border-stone-400 bg-stone-100 text-stone-900 dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-100';
 }
-const BANK_TEX = {frac:'\\frac{\\square}{\\square}', sqrt:'\\sqrt{\\square}', pot:'\\square^{\\square}', exp:'e^{\\square}',
+const BANK_TEX = {par:'(\\square)', frac:'\\frac{\\square}{\\square}', sqrt:'\\sqrt{\\square}', pot:'\\square^{\\square}', exp:'e^{\\square}',
   sin:'\\sin(\\square)', cos:'\\cos(\\square)', tan:'\\tan(\\square)', ln:'\\ln(\\square)', log:'\\log(\\square)', log_3:'\\log_3(\\square)',
   lim:'\\lim_{\\square\\to\\square}(\\square)', der:'\\tfrac{d}{d\\square}[\\square]', int:'\\int\\square\\,d\\square', intd:'\\int_{\\square}^{\\square}\\square\\,d\\square'};
-const BANK_TITLE = {frac:'Fracción: numerador y denominador', sqrt:'Raíz: un espacio dentro', pot:'Potencia: un recuadro con base y exponente',
+const BANK_TITLE = {par:'Paréntesis: un solo bloque; pon adentro lo que va junto', frac:'Fracción: numerador y denominador', sqrt:'Raíz: un espacio dentro', pot:'Potencia: un recuadro con base y exponente',
   exp:'Exponencial: e elevado a lo que pongas dentro', der:'Derivada: la variable y, entre corchetes, lo que se deriva',
   int:'Integral indefinida: el integrando y la variable de dx', intd:'Integral definida: límites inferior y superior, integrando y variable', lim:'Límite: variable, hacia dónde tiende y la expresión entre paréntesis'};
 function bankPiece(key, t){
@@ -407,7 +459,7 @@ const CATS = [
   {id:'agr', icon:'🧩', name:'Agrupar'},
 ];
 function catOf(t){
-  if (t==='frac' || /^[()\[\]]$/.test(t)) return 'agr';
+  if (t==='frac' || t==='par' || /^[()\[\]]$/.test(t)) return 'agr';
   if (STRUCT[t]) return 'fun';                       // potencia, raíz, e^▢, sin, ln, lím… son funciones
   if (/^[-+]?\d+(\.\d+)?$/.test(t)) return 'num';
   if (/[a-zπ∞]/i.test(t)) return 'var';
@@ -888,7 +940,8 @@ document.addEventListener('pointerup', e=>{
     return renderLego(d.key);
   }
   if (d.src==='bloque'){
-    if (d.moved) soltarBloque(st, d, zoneAt(e.clientX, e.clientY - d.lift, d.key), e.clientX, e.clientY - d.lift);
+    if (d.moved){ const zEl = zoneAt(e.clientX, e.clientY - d.lift, d.key);
+      if (st.borrar?.t === 'par') sacarDePar(st, st.borrar, d.i, zEl, e.clientX, e.clientY - d.lift); else soltarBloque(st, d, zEl, e.clientX, e.clientY - d.lift); }
     renderLego(d.key);
     if (st.vibrar){ const v = elDeNodo(d.key, st.vibrar); st.vibrar = null; if (v){ v.classList.add('lego-vibrar'); setTimeout(() => v.classList.remove('lego-vibrar'), 700); } buzz([30, 40, 30]); }
     return;

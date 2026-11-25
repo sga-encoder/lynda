@@ -71,7 +71,7 @@ function lessonProgress(L){
   return {n, tot};
 }
 const tile = (href, title, sub) => { const b = bloqueoLeccion(href); return b
-  ? `<a href="${href}" class="block rounded-2xl border border-dashed border-stone-300 bg-stone-100/70 p-3.5 sm:p-4 opacity-70 dark:border-zinc-700 dark:bg-zinc-900/40"><b class="mb-1 block">🔒 ${title}</b><small class="text-stone-500 dark:text-zinc-400">Primero termina: ${b.titulo}</small></a>`
+  ? `<a href="${href}" class="block rounded-2xl border border-dashed border-stone-300 bg-stone-100/70 p-3.5 sm:p-4 opacity-70 dark:border-zinc-700 dark:bg-zinc-900/40"><b class="mb-1 block">${icono3D('🔒')} ${title}</b><small class="text-stone-500 dark:text-zinc-400">Primero termina: ${b.titulo}</small></a>`
   : tileAbierto(href, title, sub); };
 const tileAbierto = (href, title, sub) =>
   `<a href="${href}" class="block rounded-2xl border border-stone-200 bg-white p-3.5 sm:p-4 shadow-sm touch-manipulation active:scale-[0.98] transition-transform hover:border-blue-500 dark:border-zinc-800 dark:bg-zinc-900"><b class="mb-1 block">${title}</b><small class="text-stone-500 dark:text-zinc-400">${sub}</small></a>`;
@@ -242,7 +242,7 @@ function pageHome(){
   const dT = secTotales('d');
   const R = rutaApp();
   const btn = (href, icon, title, sub, n, t, tono) => `<a href="${href}" class="group flex items-center gap-4 rounded-2xl border-2 border-stone-200 bg-white p-4 shadow-sm transition-transform hover:border-blue-500 active:scale-[0.98] dark:border-zinc-800 dark:bg-zinc-900">
-      <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${tono} text-3xl shadow-inner">${icon}</span>
+      <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${tono} text-3xl shadow-inner">${icono3D(icon, 'block h-11 w-11')}</span>
       <span class="min-w-0 flex-1"><b class="block text-lg leading-tight">${title}</b><span class="block text-sm text-stone-600 dark:text-zinc-400">${sub}</span>
         ${t != null ? `<span class="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-stone-200 dark:bg-zinc-800"><span class="block h-full bg-emerald-500" style="width:${t?100*n/t:0}%"></span></span><span class="text-xs text-stone-500 dark:text-zinc-400">${n}/${t}</span>` : ''}</span>
       <span class="text-2xl text-stone-400 group-hover:text-blue-600">›</span></a>`;
@@ -255,10 +255,10 @@ function pageHome(){
     ${btn('#/d','📈','Cálculo diferencial','Límites, derivadas y sus aplicaciones.', dT.n, dT.tot, 'from-emerald-200 to-teal-300 dark:from-emerald-900 dark:to-teal-900')}
     ${btn('#/integral','∫','Cálculo integral','Técnicas de integración, impropias y el examen resuelto.', iOk, iAll, 'from-fuchsia-200 to-violet-300 dark:from-fuchsia-900 dark:to-violet-900')}
     <a href="#/jugar" class="flex items-center gap-4 rounded-2xl bg-gradient-to-r from-indigo-950 to-violet-900 p-4 text-white shadow-sm transition-transform active:scale-[0.98] md:col-span-2">
-      <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-3xl">🎮</span>
+      <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-3xl">${icono3D('🎮', 'block h-11 w-11')}</span>
       <span class="min-w-0 flex-1"><b class="block text-lg leading-tight">Juego: Defensa Algebraica</b><span class="block text-sm text-indigo-200">Usa las cartas de propiedades para dar energía a los soldados.</span></span><span class="text-2xl">›</span></a>
   </div>
-  <a href="#/ruta" class="mt-4 flex items-center gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-700 dark:bg-amber-950/30"><span class="text-2xl">🗺️</span>
+  <a href="#/ruta" class="mt-4 flex items-center gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-700 dark:bg-amber-950/30"><span class="text-2xl">${icono3D('🗺️', 'block h-9 w-9')}</span>
     <span class="flex-1"><b>Ruta · nivel ${R.nivelReal+1} de ${R.total}</b><span class="mt-1 block h-1.5 overflow-hidden rounded-full bg-amber-200 dark:bg-amber-900"><span class="block h-full bg-amber-500" style="width:${100*(R.nivelReal+1)/R.total}%"></span></span></span><span>›</span></a>`;
 }
 /* ---------- Tutorial: cómo se usa cada ficha (solo demostración animada, sin ejercicios) ----------
@@ -495,28 +495,28 @@ function pageRuta(){
   const TONO = {problema:'bg-sky-100 text-sky-900 dark:bg-sky-950/60 dark:text-sky-200', carta:'bg-violet-100 text-violet-900 dark:bg-violet-950/60 dark:text-violet-200', dificultad:'bg-rose-100 text-rose-900 dark:bg-rose-950/60 dark:text-rose-200', bonus:'bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200', puntos:'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200', jefe:'bg-orange-100 text-orange-900 dark:bg-orange-950/60 dark:text-orange-200'};
   const ETQ = {problema:'Problema', carta:'Carta', dificultad:'Dificultad', bonus:'Bonificador', puntos:'Premio', jefe:'Enemigo'};
   const hechos = R.nivelReal + 1;
-  return `<h2 class="${C.h2}">🗺️ Ruta de progreso</h2>
+  return `<h2 class="${C.h2}">${icono3D('🗺️')} Ruta de progreso</h2>
   <p class="${C.lead}">Un nivel por cada paso de tu aprendizaje: el tutorial, cada tema de Fundamentos, Diferencial e Integral, las cartas de propiedades y logros del juego. Cada nivel cumplido desbloquea contenido del juego. Las lecciones se abren en orden: para pasar a la siguiente, termina la anterior.</p>
   ${R.dev ? `<div class="${C.card} border-amber-400 bg-amber-50 dark:bg-amber-950/30">🧪 <b>Modo desarrollo activo</b>: en el juego todo está desbloqueado (también el catálogo). Se cambia en ⚙️ Configuración. Abajo ves tu avance real.</div>` : ''}
   <div class="${C.card} flex items-center gap-4">
-    <div class="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-orange-500 font-black text-white shadow"><span class="text-[10px] uppercase">Nivel</span><span class="text-2xl leading-none">${hechos}</span></div>
+    <div class="flex h-20 w-16 shrink-0 flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-orange-500 font-black text-white shadow">${icono3D('🏆', 'block h-8 w-8')}<span class="text-[10px] uppercase">Nivel</span><span class="text-xl leading-none">${hechos}</span></div>
     <div class="min-w-0 flex-1"><b>${hechos} de ${R.total} niveles</b> <span class="text-sm text-stone-500 dark:text-zinc-400">· ${R.xp} XP</span>
-      <div class="mt-1.5 h-3 overflow-hidden rounded-full bg-stone-200 dark:bg-zinc-800"><div class="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500" style="width:${100*hechos/R.total}%"></div></div>
+      <div data-barra3d="#f59e0b" class="mt-1.5 h-3 overflow-hidden rounded-full bg-stone-200 dark:bg-zinc-800"><div class="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500" style="width:${100*hechos/R.total}%"></div></div>
       <small class="text-stone-500 dark:text-zinc-400">${sig ? `Siguiente: <a class="underline" href="#/ruta/${sig.i}">${sig.titulo}</a>` : '¡Ruta completa!'}</small></div></div>
   <ol class="relative mt-6 !list-none border-l-4 border-stone-200 !pl-6 dark:border-zinc-800">
     ${R.tiers.map(t=>`<li class="relative mb-4" id="ruta-${t.i}">
-      <span class="absolute -left-[2.35rem] top-1 flex h-8 w-8 items-center justify-center rounded-full border-4 text-xs font-black ${t.real?'border-amber-400 bg-amber-300 text-amber-950':'border-stone-200 bg-white text-stone-500 dark:border-zinc-800 dark:bg-zinc-900'}">${t.real?'✓':t.i+1}</span>
+      <span class="absolute -left-[2.35rem] top-1 flex h-8 w-8 items-center justify-center rounded-full border-4 text-xs font-black ${t.real?'border-amber-400 bg-amber-300 text-amber-950':'border-stone-200 bg-white text-stone-500 dark:border-zinc-800 dark:bg-zinc-900'}">${t.real?icono3D('🏅', 'block h-6 w-6'):t.i+1}</span>
       <div class="rounded-2xl border p-3 ${t.real?'border-amber-300 bg-white dark:border-amber-700 dark:bg-zinc-900':'border-stone-200 bg-stone-100/60 dark:border-zinc-800 dark:bg-zinc-900/40'} ${sig && sig.i===t.i?'ring-2 ring-blue-400':''}">
-        <div class="flex items-start justify-between gap-2"><a href="#/ruta/${t.i}" class="font-bold">${t.icon} Nivel ${t.i+1} · ${t.titulo}${t.titulo2?` <span class="text-amber-600">${t.titulo2}</span>`:''}</a><span class="shrink-0 text-xs text-stone-500 dark:text-zinc-400">${t.real?'✅':'🔒'}</span></div>
-        ${t.req.map(r=>`<div class="mt-1.5 flex items-center gap-2 text-xs text-stone-600 dark:text-zinc-400"><span class="h-1.5 w-24 overflow-hidden rounded-full bg-stone-200 dark:bg-zinc-800"><span class="block h-full bg-emerald-500" style="width:${100*r.a/r.b}%"></span></span>${r.a}/${r.b} ${r.txt}</div>`).join('')}
-        ${t.premios.length ? `<div class="mt-2 flex flex-wrap gap-1.5">${t.premios.map(p=>`<span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${TONO[p.tipo]}"><span>${p.icon}</span><span class="opacity-70">${ETQ[p.tipo]}:</span> ${p.nombre}${p.reclamable?` <button data-reclamar="${t.i}" class="ml-1 rounded-full bg-emerald-600 px-2 text-white">Reclamar</button>`:p.reclamado?' ✓':''}</span>`).join('')}</div>` : ''}</div></li>`).join('')}
+        <div class="flex items-start justify-between gap-2"><a href="#/ruta/${t.i}" class="font-bold">${icono3D(t.icon)} Nivel ${t.i+1} · ${t.titulo}${t.titulo2?` <span class="text-amber-600">${t.titulo2}</span>`:''}</a><span class="shrink-0 text-xs text-stone-500 dark:text-zinc-400">${icono3D(t.real?'✅':'🔒', 'inline-block h-6 w-6')}</span></div>
+        ${t.req.map(r=>`<div class="mt-1.5 flex items-center gap-2 text-xs text-stone-600 dark:text-zinc-400"><span data-barra3d="#10b981" class="h-1.5 w-24 overflow-hidden rounded-full bg-stone-200 dark:bg-zinc-800"><span class="block h-full bg-emerald-500" style="width:${100*r.a/r.b}%"></span></span>${r.a}/${r.b} ${r.txt}</div>`).join('')}
+        ${t.premios.length ? `<div class="mt-2 flex flex-wrap gap-1.5">${t.premios.map(p=>`<span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${TONO[p.tipo]}"><span>${icono3D(p.icon)}</span><span class="opacity-70">${ETQ[p.tipo]}:</span> ${p.nombre}${p.reclamable?` <button data-reclamar="${t.i}" class="ml-1 rounded-full bg-emerald-600 px-2 text-white">Reclamar</button>`:p.reclamado?' ✓':''}</span>`).join('')}</div>` : ''}</div></li>`).join('')}
   </ol>
   <div class="mt-2 flex flex-wrap gap-2"><a class="${C.btnP}" href="#/jugar">🎮 Ir al juego</a><a class="${C.btn}" href="#/aprender">🏠 Inicio</a></div>`;
 }
 
 function pageSecIndex(sec){
   const S = SECCIONES_AP[sec], L = S.lista();
-  return `<h2 class="${C.h2}">${S.icon} ${S.nombre}</h2>
+  return `<h2 class="${C.h2}">${icono3D(S.icon)} ${S.nombre}</h2>
   <p class="${C.lead}">${S.lead}</p>
   <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
    ${L.map((T,i)=>{const p=temaProgress(T,sec);return tile(`#/${sec}/${T.id}`, `${i+1} · ${T.t}`, `${T.examples.length} ejemplos · ${p.n}/${p.tot} ejercicios con piezas`)}).join('')}
@@ -617,8 +617,8 @@ function currentId(){
   return r;
 }
 function buildNav(cur){
-  const grp = (t, href, open) => `<a href="${href}" class="mx-1 mb-1 mt-4 flex items-center justify-between rounded-lg px-1.5 py-1 text-xs font-bold uppercase tracking-wider ${open?'text-blue-700 dark:text-blue-300':'text-stone-500 dark:text-zinc-400'} hover:bg-blue-50 dark:hover:bg-blue-950/40">${t}<span>${open?'▾':'▸'}</span></a>`;
-  const a = (href,label,id,extra='') => { const lk = bloqueoLeccion(href); return `<a href="${href}" class="flex justify-between gap-1.5 rounded-lg px-2.5 py-1.5 text-[0.93rem] hover:bg-blue-50 dark:hover:bg-blue-950/50 ${lk?'text-stone-400 dark:text-zinc-500':''} ${cur===id?'bg-blue-50 font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300':''}">${lk?'🔒 ':''}${label}${lk?'':extra}</a>`; };
+  const grp = (t, href, open) => `<a href="${href}" class="mx-1 mb-1 mt-4 flex items-center justify-between rounded-lg px-1.5 py-1 text-xs font-bold uppercase tracking-wider ${open?'text-blue-700 dark:text-blue-300':'text-stone-500 dark:text-zinc-400'} hover:bg-blue-50 dark:hover:bg-blue-950/40"><span>${conIcono3D(t)}</span><span>${open?'▾':'▸'}</span></a>`;
+  const a = (href,label,id,extra='') => { const lk = bloqueoLeccion(href); return `<a href="${href}" class="flex justify-between gap-1.5 rounded-lg px-2.5 py-1.5 text-[0.93rem] hover:bg-blue-50 dark:hover:bg-blue-950/50 ${lk?'text-stone-400 dark:text-zinc-500':''} ${cur===id?'bg-blue-50 font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300':''}"><span>${lk?icono3D('🔒')+' ':''}${conIcono3D(label)}</span>${lk?'':extra}</a>`; };
   const cnt = (n,t) => `<span class="text-xs font-normal text-stone-500 dark:text-zinc-400">${n}/${t}</span>`;
   const sec = cur==='home' ? 'home' : cur==='jugar' ? 'P' : cur==='ruta' ? 'ruta' : cur.startsWith('p/') ? 'props' : cur.startsWith('f') ? 'F' : cur.startsWith('d') ? 'D' : 'I';
   let h = a('#/aprender','🏠 Inicio','home') + a('#/ruta','🗺️ Ruta','ruta') + a('#/jugar','🎮 Juego: Defensa Algebraica','jugar') + `<button data-dict-open class="mt-1 flex w-full rounded-lg px-2.5 py-1.5 text-left text-[0.93rem] hover:bg-blue-50 dark:hover:bg-blue-950/50">📖 Diccionario</button>`;

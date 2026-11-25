@@ -367,6 +367,81 @@ const Iconos3D = (() => {
       g.add(tubo([[-1.1, 0.45, 0], [0.4, 0.45, 0], [0.75, 0.7, 0], [0.55, 0.95, 0], [0.35, 0.8, 0]], 0.09, m));
       g.add(tubo([[-1.2, 0, 0], [0.8, 0, 0], [1.1, -0.25, 0], [0.9, -0.5, 0], [0.7, -0.35, 0]], 0.09, m));
       g.add(tubo([[-0.9, -0.5, 0], [0.1, -0.5, 0]], 0.08, m)); return g; },
+    puzzle(){ const g = new T.Group(), m = mat('#0ea5e9');
+      g.add(malla(extruir(rect(1.5, 1.5, 0.12), 0.4, 0.08), m));
+      g.add(malla(new T.CylinderGeometry(0.32, 0.32, 0.56, 28), m, [0, 0.92, 0], [Math.PI / 2, 0, 0]));
+      g.add(malla(new T.CylinderGeometry(0.32, 0.32, 0.56, 28), m, [0.92, 0, 0], [Math.PI / 2, 0, 0]));
+      g.add(malla(new T.CylinderGeometry(0.3, 0.3, 0.6, 28), mat('#0f172a', {r:0.8}), [-0.75, 0, 0], [Math.PI / 2, 0, 0], [1, 1, 0.2]));
+      return g; },
+    ladrillos(){ const g = new T.Group(), c = ['#ea580c', '#c2410c', '#f97316'];
+      [[-0.55, -0.4], [0.55, -0.4], [0, 0.18], [-1.1, 0.18], [1.1, 0.18], [-0.55, 0.76], [0.55, 0.76]].forEach(([x, y], i) => {
+        if (Math.abs(x) > 1) return; g.add(malla(extruir(rect(1.0, 0.5, 0.06), 0.45, 0.04), mat(c[i % 3], {r:0.6}), [x, y, 0])); });
+      return g; },
+    grafica(){ const g = new T.Group();
+      [[-0.75, 0.6, '#34d399'], [-0.15, 1.0, '#10b981'], [0.45, 1.5, '#059669']].forEach(([x, h, c]) => g.add(malla(extruir(rect(0.42, h, 0.06), 0.35, 0.04), mat(c), [x, -0.8 + h / 2, 0])));
+      g.add(tubo([[-1.0, -0.2, 0.35], [-0.3, 0.1, 0.35], [0.2, 0.0, 0.35], [0.85, 0.75, 0.35]], 0.07, mat('#facc15', {e:'#f59e0b', ei:0.3})));
+      g.add(malla(new T.ConeGeometry(0.17, 0.4, 16), mat('#facc15', {e:'#f59e0b', ei:0.3}), [0.95, 0.88, 0.35], [0, 0, -0.75]));
+      return g; },
+    bandera(){ const g = new T.Group();
+      g.add(malla(new T.CylinderGeometry(0.07, 0.07, 2.4, 12), mat('#cbd5e1', {m:0.8}), [-0.75, 0, 0]));
+      g.add(malla(esfera(0.13), mat('#facc15', {m:0.7}), [-0.75, 1.25, 0]));
+      const pg = new T.PlaneGeometry(1.4, 0.9, 16, 4), pp = pg.attributes.position;
+      for (let i = 0; i < pp.count; i++){ const x = pp.getX(i); pp.setZ(i, Math.sin((x + 0.7) * 3.5) * 0.12 * (x + 0.7)); }
+      pg.computeVertexNormals(); g.add(malla(pg, mat('#ef4444'), [0, 0.65, 0]));
+      return g; },
+    check(){ const g = new T.Group();
+      g.add(malla(extruir(poli([[-0.95, 0.1], [-0.55, 0.5], [-0.25, 0.2], [0.6, 1.05], [1.0, 0.65], [-0.25, -0.6]]), 0.35, 0.09), mat('#22c55e', {e:'#16a34a', ei:0.2})));
+      return g; },
+    candado(){ const g = new T.Group();
+      g.add(malla(new T.TorusGeometry(0.45, 0.13, 12, 28, Math.PI), mat('#94a3b8', {m:0.9, r:0.2}), [0, 0.35, 0]));
+      for (const x of [-0.45, 0.45]) g.add(malla(new T.CylinderGeometry(0.13, 0.13, 0.35, 14), mat('#94a3b8', {m:0.9, r:0.2}), [x, 0.2, 0]));
+      g.add(malla(extruir(rect(1.4, 1.0, 0.18), 0.5, 0.08), mat('#f59e0b', {m:0.6, r:0.3}), [0, -0.45, 0]));
+      g.add(malla(esfera(0.13), mat('#1f2937'), [0, -0.35, 0.33])); g.add(malla(box(0.1, 0.3, 0.1), mat('#1f2937'), [0, -0.55, 0.33]));
+      return g; },
+    medalla(){ const g = new T.Group();
+      g.add(malla(extruir(poli([[-0.55, 1.3], [-0.15, 1.3], [0.05, 0.4], [-0.25, 0.4]]), 0.05, 0.02), mat('#2563eb'), [0, 0, -0.2]));
+      g.add(malla(extruir(poli([[0.55, 1.3], [0.15, 1.3], [-0.05, 0.4], [0.25, 0.4]]), 0.05, 0.02), mat('#dc2626'), [0, 0, -0.18]));
+      g.add(malla(new T.CylinderGeometry(0.75, 0.75, 0.2, 40), mat('#fbbf24', {m:0.85, r:0.2}), [0, -0.25, 0], [Math.PI / 2, 0, 0]));
+      g.add(malla(new T.TorusGeometry(0.75, 0.07, 10, 40), mat('#f59e0b', {m:0.9, r:0.2}), [0, -0.25, 0]));
+      g.add(malla(extruir(estrella(0.45, 0.19), 0.08, 0.03), mat('#fef3c7', {m:0.6, r:0.25}), [0, -0.25, 0.14]));
+      return g; },
+    trofeo(){ const g = new T.Group(), oro = mat('#fbbf24', {m:0.9, r:0.18});
+      const perfil = [[0, -0.2], [0.55, -0.15], [0.75, 0.3], [0.8, 0.9], [0.7, 0.92], [0.6, 0.35], [0.4, 0.0], [0, -0.05]].map(([x, y]) => new T.Vector2(x, y));
+      g.add(malla(new T.LatheGeometry(perfil, 32), oro, [0, 0.15, 0]));
+      for (const s of [-1, 1]) g.add(malla(new T.TorusGeometry(0.32, 0.07, 10, 24, Math.PI * 1.2), oro, [s * 0.82, 0.65, 0], [0, s > 0 ? 0 : Math.PI, -Math.PI * 0.6]));
+      g.add(malla(new T.CylinderGeometry(0.1, 0.16, 0.5, 14), oro, [0, -0.25, 0]));
+      g.add(malla(extruir(rect(1.0, 0.3, 0.06), 0.6, 0.04), mat('#7c2d12', {r:0.5}), [0, -0.65, 0]));
+      return g; },
+    planta(){ const g = new T.Group();
+      g.add(malla(new T.CylinderGeometry(0.55, 0.4, 0.7, 24), mat('#b45309', {r:0.6}), [0, -0.75, 0]));
+      g.add(malla(new T.CylinderGeometry(0.05, 0.05, 0.9, 8), mat('#15803d'), [0, -0.05, 0]));
+      for (const s of [-1, 1]) g.add(malla(esfera(1), mat('#22c55e'), [s * 0.35, 0.35 + (s > 0 ? 0.15 : 0), 0], [0, 0, s * -0.6], [0.45, 0.2, 0.25]));
+      return g; },
+    espadas(){ const g = new T.Group();
+      for (const s of [-1, 1]){ const e = new T.Group(); e.rotation.z = s * 0.75; g.add(e);
+        e.add(malla(extruir(poli([[-0.1, -0.3], [0.1, -0.3], [0.1, 1.1], [0, 1.3], [-0.1, 1.1]]), 0.06, 0.03), mat('#e2e8f0', {m:0.9, r:0.15})));
+        e.add(malla(box(0.6, 0.12, 0.14), mat('#fbbf24', {m:0.8}), [0, -0.45, 0]));
+        e.add(malla(new T.CylinderGeometry(0.07, 0.07, 0.45, 10), mat('#7c2d12'), [0, -0.75, 0])); }
+      return g; },
+    fuego(){ const g = new T.Group();
+      [['#ef4444', 1, 0, 0], ['#f97316', 0.72, 0.05, 0.15], ['#fde047', 0.45, 0.1, 0.3]].forEach(([c, s, x, z]) => {
+        g.add(malla(esfera(0.6 * s), mat(c, {e:c, ei:0.7}), [x, -0.35 * s, z])); g.add(malla(new T.ConeGeometry(0.58 * s, 1.5 * s, 20), mat(c, {e:c, ei:0.7}), [x, 0.4 * s, z])); });
+      return g; },
+    calavera(){ const g = new T.Group(), hueso = mat('#f5f5f4', {r:0.5});
+      g.add(malla(esfera(0.85), hueso, [0, 0.15, 0], [0, 0, 0], [1, 0.95, 0.9])); g.add(malla(extruir(rect(0.9, 0.5, 0.12), 0.5, 0.05), hueso, [0, -0.6, 0.15]));
+      for (const x of [-0.32, 0.32]) g.add(malla(esfera(0.22), mat('#0f172a', {r:0.9}), [x, 0.1, 0.66], [0, 0, 0], [1, 1.1, 0.5]));
+      g.add(malla(new T.ConeGeometry(0.1, 0.2, 3), mat('#0f172a'), [0, -0.18, 0.75], [0, 0, Math.PI]));
+      return g; },
+    matraz(){ const g = new T.Group(), vidrio = new T.MeshPhysicalMaterial({color:0xe0f2fe, transparent:true, opacity:0.35, roughness:0.05, clearcoat:1, side:T.DoubleSide});
+      g.add(malla(esfera(0.75), vidrio, [0, -0.35, 0])); g.add(malla(new T.CylinderGeometry(0.22, 0.25, 0.9, 20, 1, true), vidrio, [0, 0.65, 0]));
+      g.add(malla(esfera(0.62), mat('#a855f7', {e:'#c084fc', ei:0.6}), [0, -0.42, 0], [0, 0, 0], [1, 0.8, 1]));
+      g.add(malla(new T.TorusGeometry(0.24, 0.05, 8, 20), mat('#cbd5e1', {m:0.8}), [0, 1.1, 0], [Math.PI / 2, 0, 0]));
+      [[0.15, 1.35], [-0.1, 1.6]].forEach(([x, y]) => g.add(malla(esfera(0.09), mat('#e9d5ff', {e:'#c084fc', ei:0.8}), [x, y, 0])));
+      return g; },
+    alien(){ const g = new T.Group();
+      g.add(malla(esfera(1), mat('#4ade80', {r:0.4}), [0, 0, 0], [0, 0, 0], [0.85, 1.05, 0.8]));
+      for (const s of [-1, 1]) g.add(malla(esfera(0.32), mat('#020617', {r:0.1}), [s * 0.36, 0.1, 0.62], [0, 0, s * -0.5], [1, 1.5, 0.6]));
+      return g; },
   };
   /** Modelo listo para dibujar: centrado y del mismo tamaño (cabe en 2,2 unidades). */
   function crear(nombre){
@@ -379,6 +454,19 @@ const Iconos3D = (() => {
   }
   return {crear, nombres:Object.keys(F)};
 })();
+/** Emojis de la app que tienen icono 3D modelado. */
+const EMOJI_3D = {'🧩':'puzzle', '🧱':'ladrillos', '📈':'grafica', '∫':'integral', '🎮':'mando', '🗺️':'mapa', '🏠':'casa', '📖':'libro', '📚':'libros', '🃏':'cartas',
+  '🚩':'bandera', '⚡':'rayo', '🪖':'casco', '🔬':'matraz', '🌱':'planta', '⚔️':'espadas', '🔥':'fuego', '💀':'calavera', '✅':'check', '✓':'check', '🔒':'candado',
+  '👽':'alien', '🔫':'rifle', '💣':'bomba', '🛡️':'escudo', '⛑️':'cruz', '🔧':'llave', '❤️':'corazon', '🌊':'ola', '⚙️':'engrane', '🛠':'herramientas', '🏆':'trofeo', '🏅':'medalla', '🧮':'abaco'};
+/** Nombre del modelo de un emoji (con o sin selector de variación U+FE0F). */
+const nombreIcono3D = e => { const b = String(e).replace(/\uFE0F/g, ''); return EMOJI_3D[e] ?? EMOJI_3D[b] ?? EMOJI_3D[b + '\uFE0F']; };
+/** HTML de un icono: modelo 3D si existe (el emoji queda para 2D), si no el emoji tal cual. */
+function icono3D(emoji, clases = 'inline-block h-[1.2em] w-[1.3em] align-[-0.25em]'){
+  const n = nombreIcono3D(emoji);
+  return n ? `<span data-i3d="${n}" class="${clases}">${emoji}</span>` : emoji;
+}
+/** Separa un emoji inicial de su texto («🏠 Inicio») y lo vuelve icono 3D. */
+const conIcono3D = (txt, clases) => { const m = /^(\S+)\s+([\s\S]*)$/.exec(txt); return m && nombreIcono3D(m[1]) ? `${icono3D(m[1], clases)} ${m[2]}` : txt; };
 /** Icono 3D de cada clima y de cada tipo de soldado. */
 const ICONO_CLIMA = {despejado:'luna', lluvia:'lluvia', niebla:'niebla', nieve:'nieve', tormenta:'tormenta', viento:'viento'};
 const ICONO_TROPA = {fusilero:'rifle', pesado:'escudo', granadero:'bomba', medico:'cruz', ingeniero:'llave'};

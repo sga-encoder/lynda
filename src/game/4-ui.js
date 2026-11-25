@@ -319,10 +319,11 @@ class BattleScene extends Scene {
     if (objs.length === 1) return this.resultadoDe(c, objs[0]);
     this.carta = c; this.objetivos = objs;
     this.dibujarProblema(); this.dibujarMano();
-    this.mensaje(c.id === 'seme' ? 'Elige qué grupo juntar: toca uno de sus términos (se resaltan juntos).' : `Toca en la expresión dónde aplicar <b>${c.name}</b>.`, 'amber');
+    this.mensaje(c.id === 'seme' ? 'Elige qué grupo juntar: toca uno de sus términos (se resaltan juntos).' : c.id === 'dist' ? 'Toca el <b>polinomio</b> (el paréntesis marcado) al que aplicas la distributiva.' : `Toca en la expresión dónde aplicar <b>${c.name}</b>.`, 'amber');
   }
   /** Semiautomático: el jugador elige cuál es el resultado correcto de aplicar la carta. */
   resultadoDe(c, path){
+    if (c.id === 'dist'){ this.aplicar(c.apply(this.raiz, path), {carta:c}); return this.seguirCombo(); }   // distributiva: elegido el polinomio, se aplica sin preguntar
     if (c.id === 'mover' && this.raiz instanceof Eq){   // guiado: ¿el término llega positivo o negativo al otro lado?
       const t = this.raiz.children[path[0]].terms[path[1]], llega = negate(t), opuesto = t;
       const neg = n => this.dom.tex(n).trim().startsWith('-');

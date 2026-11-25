@@ -360,6 +360,36 @@ function sacarDePar(st, par, i, zEl, x, y){
   st.borrar = null;
   st.msg = {ok:true, t:antes === '-' ? 'Salió del paréntesis con el signo cambiado (había un − delante).' : 'Salió del paréntesis.'}; buzz(15);
 }
+/** Paréntesis que contiene directamente a un nodo (o null). */
+function parDe(root, n){
+  for (const z of allZones(root)) for (const m of z) if (m.t === 'par' && (m.z[0].includes(n) || containsNodo(m, n))) return m;
+  return null;
+}
+/** Distributiva sobre un paréntesis del lienzo: k(a + b) → ka + kb; −(a + b) → −a − b; (a + b) → a + b. */
+function aplicarDistributiva(st, par){
+  const z = allZones(st.root).find(z => z.includes(par)), i = z.indexOf(par), prev = z[i - 1];
+  const dentro = par.z[0].filter(n => !(esSigno(n) && false)), ts = [];
+  // términos de adentro: un signo suelto se une al término que sigue
+  for (let k = 0; k < par.z[0].length; k++){ const n = par.z[0][k];
+    if (esSigno(n)){ const sig = par.z[0][k + 1]; if (!sig) break; const T = terminoDe(sig); if (!T) return noSe(st); ts.push({c:(n.t === '-' ? -1 : 1) * T.c, l:T.l}); k++; continue; }
+    const T = terminoDe(n); if (!T) return noSe(st); ts.push(T); }
+  if (!ts.length) return noSe(st);
+  let C = {c:1, l:''}, desde = i;
+  if (prev && esSigno(prev)){ C = {c:prev.t === '-' ? -1 : 1, l:''}; desde = i - 1; }
+  else if (prev){ const T = terminoDe(prev); if (T){ C = T; desde = i - 1; } else if (!['=', '+', '-', '·'].includes(prev.t)) return noSe(st); }
+  if (C.l && ts.some(t => t.l && t.l !== C.l)) return noSe(st);       // x·y: muy avanzado para las fichas
+  snapshot(st);
+  const nodos = ts.flatMap(t => {
+    const c = C.c * t.c, l = (C.l || '') + (t.l || '');
+    if (l.length === 2){ const coef = Math.abs(c) === 1 ? (c < 0 ? [{t:'-'}] : [{t:'+'}]) : [hacerMono({}, [c < 0 ? '-' : '+', String(Math.abs(c))])];   // x·x = x²
+      return [...coef, {t:'pot', z:[[{t:l[0]}], [{t:'2'}]]}]; }
+    return [nodoDeTermino({c, l}).mono ? nodoDeTermino({c, l}) : (c < 0 ? hacerMono({}, ['-', String(Math.abs(c))]) : hacerMono({}, ['+', String(c)]))];
+  });
+  z.splice(desde, i - desde + 1, ...nodos);
+  st.guia = null; st.borrar = null;
+  st.msg = {ok:true, t:'🃏 Distributiva aplicada: lo de adelante multiplicó a cada término del paréntesis. Revisa y pulsa Verificar.'}; buzz(15);
+}
+function noSe(st){ st.msg = {ok:false, t:'Con estas fichas no se puede aplicar automáticamente (solo números y monomios de una letra). Hazlo a mano.'}; }
 /** Soltar un bloque del panel. */
 function soltarBloque(st, d, zEl, x, y){
   const M = st.borrar, bl = bloquesDe(M); if (!bl || !zEl) return;
@@ -570,6 +600,7 @@ function guiaHTML(st){
   const g = st.guia; if (!g) return '';
   const b = 'inline-flex min-h-10 items-center gap-1 rounded-xl border px-3 text-sm touch-manipulation active:scale-95';
   const sel = g.nodo ? `<b>${kx(tokTex(g.nodo.t))}</b>` : '';
+  if (g.carta === 'dist') return `<div class="mb-2 rounded-xl border-2 border-violet-400 bg-violet-50 p-2.5 text-sm dark:bg-violet-950/40"><div class="flex items-start justify-between gap-2"><span>🃏 <b>Distributiva</b> · Toca en el lienzo el <b>paréntesis (polinomio)</b> al que se aplica: el número o signo de adelante multiplica a cada término.</span><button class="h-8 w-8 shrink-0 rounded-lg" data-lg="guia-no" aria-label="Cancelar">✕</button></div></div>`;
   const txt = g.carta === 'mover'
     ? (!g.nodo ? '1️⃣ Toca en el lienzo el término que vas a <b>pasar al otro lado</b>.' : `2️⃣ Elegiste ${sel}. Al otro lado del =, ¿pasa positivo o negativo?`)
     : (!g.nodo ? '1️⃣ Toca el término cuyo <b>número</b> pasa a dividir al otro lado.' : `2️⃣ Elegiste ${sel}: su número pasa a dividir todo el otro lado. ¿Con qué signo queda?`);
@@ -630,7 +661,7 @@ function propsHTML(key, st){
   st.propsLista = L;
   return `<div class="mt-2 rounded-xl border border-violet-300 bg-violet-50 p-2 dark:border-violet-700 dark:bg-violet-950/40">
     <div class="flex items-center justify-between text-xs font-semibold text-violet-900 dark:text-violet-100"><span>🃏 Propiedades que se pueden aplicar a lo que armaste</span><button data-lg="props" class="h-8 w-8 rounded-lg" aria-label="Cerrar">✕</button></div>
-    <div class="mt-1.5 flex flex-wrap gap-1.5">${L.length ? L.map(c => `<button class="${chip} border-violet-400 bg-white dark:bg-zinc-900" data-lg="${c.id === 'mover' || c.id === 'div' ? 'guia:' : 'prop:'}${c.id}">${c.icon} ${c.name}</button>`).join('')
+    <div class="mt-1.5 flex flex-wrap gap-1.5">${L.length ? L.map(c => `<button class="${chip} border-violet-400 bg-white dark:bg-zinc-900" data-lg="${c.id === 'mover' || c.id === 'div' || c.id === 'dist' ? 'guia:' : 'prop:'}${c.id}">${c.icon} ${c.name}</button>`).join('')
       : `<span class="text-sm text-stone-600 dark:text-zinc-300">${st.root.length ? 'Ninguna de tus cartas desbloqueadas aplica aquí (las demás se ganan en la 🗺️ Ruta).' : 'Primero arma algo en el lienzo.'}</span>`}</div></div>`;
 }
 const SECCION_LEGO = {f:() => FUND, d:() => DIF, z:() => [{id:'demo', lego:ejerciciosProbar()}]};   // z: pruebas del tutorial      // prefijo de la clave → temas
@@ -949,6 +980,12 @@ document.addEventListener('pointerup', e=>{
   if (!d.moved){                                   // toque
     if (d.src==='node' && st.guia && !st.guia.nodo){                // modo guiado: el toque elige el término
       const n = d.zone[d.i];
+      if (st.guia.carta === 'dist'){                                  // distributiva: se toca el polinomio y se aplica, sin preguntar
+        const par = n.t === 'par' ? n : parDe(st.root, n);
+        if (!par) st.msg = {ok:false, t:'Toca el paréntesis (el polinomio) al que se aplica la distributiva.'};
+        else aplicarDistributiva(st, par);
+        renderLego(d.key); return;
+      }
       if (d.zone === st.root && n.t !== '=' && !n.z && !esSigno(n)){ st.guia.nodo = n; st.msg = null; GUIA_T = performance.now(); }
       else st.msg = {ok:false, t:'Toca un término completo del lienzo (no un signo ni un recuadro).'};
       renderLego(d.key); return;

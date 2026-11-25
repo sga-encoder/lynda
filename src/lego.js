@@ -817,6 +817,8 @@ function insertNode(key, zone, idx, node){
 }
 
 /* ---------- Arrastrar / tocar (pointer events: mouse y táctil) ---------- */
+/** Efecto 3D (capa FX3D de Three.js) en un punto de la pantalla; sin 3D no hace nada. */
+const legoFx = (x, y, tipo) => document.dispatchEvent(new CustomEvent('fx3d', {detail:{x, y, tipo}}));
 let DRAG = null, GUIA_T = 0;   // GUIA_T: momento en que se eligió un término en la guía
 /** Índice de inserción consciente de filas: las piezas se agrupan por renglón (según su franja vertical)
     y dentro del renglón más cercano se decide por la mitad horizontal de cada pieza.
@@ -974,6 +976,7 @@ document.addEventListener('pointerup', e=>{
     if (d.moved){ const zEl = zoneAt(e.clientX, e.clientY - d.lift, d.key);
       if (st.borrar?.t === 'par') sacarDePar(st, st.borrar, d.i, zEl, e.clientX, e.clientY - d.lift); else soltarBloque(st, d, zEl, e.clientX, e.clientY - d.lift); }
     renderLego(d.key);
+    if (d.moved) legoFx(e.clientX, e.clientY - d.lift, st.vibrar ? 'error' : 'opera');
     if (st.vibrar){ const v = elDeNodo(d.key, st.vibrar); st.vibrar = null; if (v){ v.classList.add('lego-vibrar'); setTimeout(() => v.classList.remove('lego-vibrar'), 700); } buzz([30, 40, 30]); }
     return;
   }
@@ -990,7 +993,7 @@ document.addEventListener('pointerup', e=>{
       else st.msg = {ok:false, t:'Toca un término completo del lienzo (no un signo ni un recuadro).'};
       renderLego(d.key); return;
     }
-    if (d.src==='bank') insertNode(d.key, st.active || st.root, null, newNode(d.t));
+    if (d.src==='bank'){ insertNode(d.key, st.active || st.root, null, newNode(d.t)); legoFx(e.clientX, e.clientY, 'encaje'); }
     else { const n = d.zone[d.i]; st.borrar = st.borrar === n ? null : n; st.msg = null; }   // tocar: aparece el 🗑 flotante
     renderLego(d.key); return;
   }
@@ -1006,7 +1009,7 @@ document.addEventListener('pointerup', e=>{
     const r = d.zone === zona ? operables(zona, node, bajo) : null;
     if (r){
       zona.splice(zona.indexOf(bajo), 1, nodoDeTermino(r)); zona.splice(zona.indexOf(node), 1);
-      st.msg = {ok:true, t:'¡Operaste dos términos semejantes!'}; buzz(20); renderLego(d.key); return;
+      st.msg = {ok:true, t:'¡Operaste dos términos semejantes!'}; buzz(20); renderLego(d.key); legoFx(e.clientX, e.clientY - d.lift, 'opera'); return;
     }
     d.zone.splice(d.zone.indexOf(node), 1);                          // no se puede: queda a un lado y la de abajo vibra
     const T = terminoDe(node), aparte = T && !node.mono && T.c > 0 ? hacerMono({}, ['+', node.t]) : node;
@@ -1014,11 +1017,11 @@ document.addEventListener('pointerup', e=>{
     st.msg = {ok:false, t:'Esos términos no se pueden operar (no son semejantes o están a lados distintos del «=»).'};
     renderLego(d.key);
     const elB = elDeNodo(d.key, bajo); if (elB){ elB.classList.add('lego-vibrar'); setTimeout(() => elB.classList.remove('lego-vibrar'), 700); }
-    buzz([30, 40, 30]); return;
+    legoFx(e.clientX, e.clientY - d.lift, 'error'); buzz([30, 40, 30]); return;
   }
   const zEl = zoneAt(e.clientX, Y, d.key);
   if (d.src==='bank'){
-    if (zEl){ const {zone} = findZone(zEl.dataset.z); insertNode(d.key, zone, dropIndex(zEl,e.clientX,Y), newNode(d.t)); }
+    if (zEl){ const {zone} = findZone(zEl.dataset.z); insertNode(d.key, zone, dropIndex(zEl,e.clientX,Y), newNode(d.t)); legoFx(e.clientX, Y, 'encaje'); }
   } else {
     const node = d.zone[d.i];
     if (!zEl){ snapshot(st); d.zone.splice(d.i,1); st.active=null; }   // soltar fuera = quitar

@@ -71,7 +71,7 @@ function lessonProgress(L){
   return {n, tot};
 }
 const tile = (href, title, sub) => { const b = bloqueoLeccion(href); return b
-  ? `<a href="${href}" class="block rounded-2xl border border-dashed border-stone-300 bg-stone-100/70 p-3.5 sm:p-4 opacity-70 dark:border-zinc-700 dark:bg-zinc-900/40"><b class="mb-1 block">🔒 ${title}</b><small class="text-stone-500 dark:text-zinc-400">Primero termina: ${b.titulo}</small></a>`
+  ? `<a href="${href}" class="block rounded-2xl border border-dashed border-stone-300 bg-stone-100/70 p-3.5 sm:p-4 opacity-70 dark:border-zinc-700 dark:bg-zinc-900/40"><b class="mb-1 block">${icono3D('🔒')} ${title}</b><small class="text-stone-500 dark:text-zinc-400">Primero termina: ${b.titulo}</small></a>`
   : tileAbierto(href, title, sub); };
 const tileAbierto = (href, title, sub) =>
   `<a href="${href}" class="block rounded-2xl border border-stone-200 bg-white p-3.5 sm:p-4 shadow-sm touch-manipulation active:scale-[0.98] transition-transform hover:border-blue-500 dark:border-zinc-800 dark:bg-zinc-900"><b class="mb-1 block">${title}</b><small class="text-stone-500 dark:text-zinc-400">${sub}</small></a>`;
@@ -242,7 +242,7 @@ function pageHome(){
   const dT = secTotales('d');
   const R = rutaApp();
   const btn = (href, icon, title, sub, n, t, tono) => `<a href="${href}" class="group flex items-center gap-4 rounded-2xl border-2 border-stone-200 bg-white p-4 shadow-sm transition-transform hover:border-blue-500 active:scale-[0.98] dark:border-zinc-800 dark:bg-zinc-900">
-      <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${tono} text-3xl shadow-inner">${icon}</span>
+      <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${tono} text-3xl shadow-inner">${icono3D(icon, 'block h-11 w-11')}</span>
       <span class="min-w-0 flex-1"><b class="block text-lg leading-tight">${title}</b><span class="block text-sm text-stone-600 dark:text-zinc-400">${sub}</span>
         ${t != null ? `<span class="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-stone-200 dark:bg-zinc-800"><span class="block h-full bg-emerald-500" style="width:${t?100*n/t:0}%"></span></span><span class="text-xs text-stone-500 dark:text-zinc-400">${n}/${t}</span>` : ''}</span>
       <span class="text-2xl text-stone-400 group-hover:text-blue-600">›</span></a>`;
@@ -255,10 +255,10 @@ function pageHome(){
     ${btn('#/d','📈','Cálculo diferencial','Límites, derivadas y sus aplicaciones.', dT.n, dT.tot, 'from-emerald-200 to-teal-300 dark:from-emerald-900 dark:to-teal-900')}
     ${btn('#/integral','∫','Cálculo integral','Técnicas de integración, impropias y el examen resuelto.', iOk, iAll, 'from-fuchsia-200 to-violet-300 dark:from-fuchsia-900 dark:to-violet-900')}
     <a href="#/jugar" class="flex items-center gap-4 rounded-2xl bg-gradient-to-r from-indigo-950 to-violet-900 p-4 text-white shadow-sm transition-transform active:scale-[0.98] md:col-span-2">
-      <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-3xl">🎮</span>
+      <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-3xl">${icono3D('🎮', 'block h-11 w-11')}</span>
       <span class="min-w-0 flex-1"><b class="block text-lg leading-tight">Juego: Defensa Algebraica</b><span class="block text-sm text-indigo-200">Usa las cartas de propiedades para dar energía a los soldados.</span></span><span class="text-2xl">›</span></a>
   </div>
-  <a href="#/ruta" class="mt-4 flex items-center gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-700 dark:bg-amber-950/30"><span class="text-2xl">🗺️</span>
+  <a href="#/ruta" class="mt-4 flex items-center gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-700 dark:bg-amber-950/30"><span class="text-2xl">${icono3D('🗺️', 'block h-9 w-9')}</span>
     <span class="flex-1"><b>Ruta · nivel ${R.nivelReal+1} de ${R.total}</b><span class="mt-1 block h-1.5 overflow-hidden rounded-full bg-amber-200 dark:bg-amber-900"><span class="block h-full bg-amber-500" style="width:${100*(R.nivelReal+1)/R.total}%"></span></span></span><span>›</span></a>`;
 }
 /* ---------- Tutorial: cómo se usa cada ficha (solo demostración animada, sin ejercicios) ----------
@@ -393,8 +393,8 @@ function pageTutorial(){
   DEMO_N = 0;
   if (!done['t-visto']){ done['t-visto'] = true; store.set('done', done); }
   const tarjeta = (cab, cuerpo) => `<div class="${C.card} overflow-hidden">${cab}${cuerpo}</div>`;
-  const demos = DEMOS(), indice = demos.map((d,i)=>`<a href="#/tutorial" data-ir="demo-${i}" class="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-900">${d.icon} ${d.titulo}</a>`).join(' ');
-  return `<div class="text-sm text-stone-500 dark:text-zinc-400"><a href="#/aprender" class="underline">Inicio</a> › Tutorial</div>
+  const demos = DEMOS(), indice = demos.map((d,i)=>`<a href="#/tutorial" data-ir="demo-${i}" class="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-900">${icono3D(d.icon)} ${d.titulo}</a>`).join(' ');
+  return (`<div class="text-sm text-stone-500 dark:text-zinc-400"><a href="#/aprender" class="underline">Inicio</a> › Tutorial</div>
   <h2 class="${C.h2}">🧩 Tutorial: cómo se usa cada ficha</h2>
   <p class="${C.lead}">Aquí no hay ejercicios: solo mira cómo funciona cada ficha. Las animaciones se repiten solas. Después practica en <a href="#/f" class="underline">Fundamentos</a>.</p>
   ${DEMO_FICHAS}
@@ -408,17 +408,17 @@ function pageTutorial(){
       [lienzoDemo([hoja('2'), hoja('x'), hoja('+'), hoja('1')]), lienzoDemo([nz('frac',[hoja('x')],[])]), lienzoDemo([nz('frac',[hoja('x')],[hoja('2')]), hoja('+')])]))}
   <h3 class="${C.h3}">🪄 Gestos del lienzo</h3>
   <p class="${C.src}">Tocar, mantener, juntar y pasar al otro lado: lo que puedes hacer con las fichas que ya están en el lienzo.</p>
-  <div class="mt-3 grid gap-3 md:grid-cols-2">${GESTOS().map(g=>tarjeta(`<div class="flex items-center gap-2"><span class="flex h-10 min-w-10 items-center justify-center rounded-xl bg-amber-100 px-2 font-serif text-lg dark:bg-amber-950">${g.icon}</span><b class="text-lg">${g.titulo}</b></div>
+  <div class="mt-3 grid gap-3 md:grid-cols-2">${GESTOS().map(g=>tarjeta(`<div class="flex items-center gap-2"><span class="flex h-10 min-w-10 items-center justify-center rounded-xl bg-amber-100 px-2 font-serif text-lg dark:bg-amber-950">${icono3D(g.icon, 'block h-8 w-8')}</span><b class="text-lg">${g.titulo}</b></div>
       <p class="!my-2 text-sm">${g.txt}</p>`, escenas(g.pasos, g.frames))).join('')}</div>
   <h3 class="${C.h3}">🧱 Ficha por ficha</h3>
   <div class="flex flex-wrap gap-1.5">${indice}</div>
-  <div class="mt-3 grid gap-3 md:grid-cols-2">${demos.map((d,i)=>tarjeta(`<div id="demo-${i}" class="flex items-center gap-2"><span class="flex h-10 min-w-10 items-center justify-center rounded-xl bg-violet-100 px-2 font-serif text-lg dark:bg-violet-950">${d.icon}</span><b class="text-lg">${d.titulo}</b><span class="ml-auto text-xs text-stone-500 dark:text-zinc-400">${d.cat}</span></div>
+  <div class="mt-3 grid gap-3 md:grid-cols-2">${demos.map((d,i)=>tarjeta(`<div id="demo-${i}" class="flex items-center gap-2"><span class="flex h-10 min-w-10 items-center justify-center rounded-xl bg-violet-100 px-2 font-serif text-lg dark:bg-violet-950">${icono3D(d.icon, 'block h-8 w-8')}</span><b class="text-lg">${d.titulo}</b><span class="ml-auto text-xs text-stone-500 dark:text-zinc-400">${d.cat}</span></div>
       <p class="!my-2 text-sm">${d.txt}</p><div class="pointer-events-none mb-3 flex flex-wrap gap-1.5">${d.fichas.map(t=>bankPiece('demo', t)).join('')}</div>`, escenas(d.pasos, d.frames, i))).join('')}</div>
   <h3 class="${C.h3}">✔ Verificar, pista y propiedades</h3>
   ${tarjeta('', `<ul class="text-sm"><li><b>✔ Verificar</b> revisa el paso; si está bien pasas al siguiente.</li><li><b>💡 Pista</b> y <b>👁 Solución</b> ayudan si te atascas.</li><li><b>↶ Deshacer</b> y <b>🗑 Limpiar</b> corrigen el lienzo.</li><li><b>🃏 Propiedades</b> (en Fundamentos) aplica una carta del juego a lo que armaste.</li><li><b>💻 En computador</b>: arrastra con el mouse; «mantener presionado» es dejar el clic apretado. <kbd>Supr</kbd> elimina la ficha marcada con 🗑 y <kbd>Esc</kbd> la desmarca o cierra el editor.</li><li><b>📝 Tu proceso hasta aquí</b>: arriba del lienzo ves los pasos que ya verificaste; con <b>📋 Empezar desde mi paso anterior</b> copias el último.</li></ul>`)}
   <h3 class="${C.h3}">🗺️ La Ruta y las lecciones</h3>
   ${tarjeta('', `<ul class="text-sm"><li>Las lecciones se abren <b>en orden</b>: para entrar a la siguiente, termina los ejercicios con piezas de la anterior (🔒 = bloqueada).</li><li>En la 🗺️ Ruta, <b>toca un nivel</b>: si ya puedes, te lleva directo a sus ejercicios; si no, te muestra los módulos que te faltan y el botón <b>📚 Empezar a estudiar</b>.</li><li>Cada tema también desbloquea cosas del juego: problemas, cartas y los <b>Comandantes</b> de cada mundo.</li></ul>`)}
-  <div class="mt-8 flex justify-end"><a class="${C.btnP}" href="#/f">Practicar en Fundamentos ▸</a></div>`;
+  <div class="mt-8 flex justify-end"><a class="${C.btnP}" href="#/f">Practicar en Fundamentos ▸</a></div>`).replace(/(<h[23] class="[^"]*">)(\S+)\s/g, (m, h, e) => nombreIcono3D(e) || /\p{Extended_Pictographic}/u.test(e) ? `${h}${icono3D(e)} ` : m);   // títulos con icono 3D
 }
 
 /* ---------- Propiedades: índice por área y práctica de una carta ---------- */
@@ -495,28 +495,28 @@ function pageRuta(){
   const TONO = {problema:'bg-sky-100 text-sky-900 dark:bg-sky-950/60 dark:text-sky-200', carta:'bg-violet-100 text-violet-900 dark:bg-violet-950/60 dark:text-violet-200', dificultad:'bg-rose-100 text-rose-900 dark:bg-rose-950/60 dark:text-rose-200', bonus:'bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200', puntos:'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200', jefe:'bg-orange-100 text-orange-900 dark:bg-orange-950/60 dark:text-orange-200'};
   const ETQ = {problema:'Problema', carta:'Carta', dificultad:'Dificultad', bonus:'Bonificador', puntos:'Premio', jefe:'Enemigo'};
   const hechos = R.nivelReal + 1;
-  return `<h2 class="${C.h2}">🗺️ Ruta de progreso</h2>
+  return `<h2 class="${C.h2}">${icono3D('🗺️')} Ruta de progreso</h2>
   <p class="${C.lead}">Un nivel por cada paso de tu aprendizaje: el tutorial, cada tema de Fundamentos, Diferencial e Integral, las cartas de propiedades y logros del juego. Cada nivel cumplido desbloquea contenido del juego. Las lecciones se abren en orden: para pasar a la siguiente, termina la anterior.</p>
   ${R.dev ? `<div class="${C.card} border-amber-400 bg-amber-50 dark:bg-amber-950/30">🧪 <b>Modo desarrollo activo</b>: en el juego todo está desbloqueado (también el catálogo). Se cambia en ⚙️ Configuración. Abajo ves tu avance real.</div>` : ''}
   <div class="${C.card} flex items-center gap-4">
-    <div class="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-orange-500 font-black text-white shadow"><span class="text-[10px] uppercase">Nivel</span><span class="text-2xl leading-none">${hechos}</span></div>
+    <div class="flex h-20 w-16 shrink-0 flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-orange-500 font-black text-white shadow">${icono3D('🏆', 'block h-8 w-8')}<span class="text-[10px] uppercase">Nivel</span><span class="text-xl leading-none">${hechos}</span></div>
     <div class="min-w-0 flex-1"><b>${hechos} de ${R.total} niveles</b> <span class="text-sm text-stone-500 dark:text-zinc-400">· ${R.xp} XP</span>
-      <div class="mt-1.5 h-3 overflow-hidden rounded-full bg-stone-200 dark:bg-zinc-800"><div class="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500" style="width:${100*hechos/R.total}%"></div></div>
+      <div data-barra3d="#f59e0b" class="mt-1.5 h-3 overflow-hidden rounded-full bg-stone-200 dark:bg-zinc-800"><div class="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500" style="width:${100*hechos/R.total}%"></div></div>
       <small class="text-stone-500 dark:text-zinc-400">${sig ? `Siguiente: <a class="underline" href="#/ruta/${sig.i}">${sig.titulo}</a>` : '¡Ruta completa!'}</small></div></div>
   <ol class="relative mt-6 !list-none border-l-4 border-stone-200 !pl-6 dark:border-zinc-800">
     ${R.tiers.map(t=>`<li class="relative mb-4" id="ruta-${t.i}">
-      <span class="absolute -left-[2.35rem] top-1 flex h-8 w-8 items-center justify-center rounded-full border-4 text-xs font-black ${t.real?'border-amber-400 bg-amber-300 text-amber-950':'border-stone-200 bg-white text-stone-500 dark:border-zinc-800 dark:bg-zinc-900'}">${t.real?'✓':t.i+1}</span>
+      <span class="absolute -left-[2.35rem] top-1 flex h-8 w-8 items-center justify-center rounded-full border-4 text-xs font-black ${t.real?'border-amber-400 bg-amber-300 text-amber-950':'border-stone-200 bg-white text-stone-500 dark:border-zinc-800 dark:bg-zinc-900'}">${t.real?icono3D('🏅', 'block h-6 w-6'):t.i+1}</span>
       <div class="rounded-2xl border p-3 ${t.real?'border-amber-300 bg-white dark:border-amber-700 dark:bg-zinc-900':'border-stone-200 bg-stone-100/60 dark:border-zinc-800 dark:bg-zinc-900/40'} ${sig && sig.i===t.i?'ring-2 ring-blue-400':''}">
-        <div class="flex items-start justify-between gap-2"><a href="#/ruta/${t.i}" class="font-bold">${t.icon} Nivel ${t.i+1} · ${t.titulo}${t.titulo2?` <span class="text-amber-600">${t.titulo2}</span>`:''}</a><span class="shrink-0 text-xs text-stone-500 dark:text-zinc-400">${t.real?'✅':'🔒'}</span></div>
-        ${t.req.map(r=>`<div class="mt-1.5 flex items-center gap-2 text-xs text-stone-600 dark:text-zinc-400"><span class="h-1.5 w-24 overflow-hidden rounded-full bg-stone-200 dark:bg-zinc-800"><span class="block h-full bg-emerald-500" style="width:${100*r.a/r.b}%"></span></span>${r.a}/${r.b} ${r.txt}</div>`).join('')}
-        ${t.premios.length ? `<div class="mt-2 flex flex-wrap gap-1.5">${t.premios.map(p=>`<span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${TONO[p.tipo]}"><span>${p.icon}</span><span class="opacity-70">${ETQ[p.tipo]}:</span> ${p.nombre}${p.reclamable?` <button data-reclamar="${t.i}" class="ml-1 rounded-full bg-emerald-600 px-2 text-white">Reclamar</button>`:p.reclamado?' ✓':''}</span>`).join('')}</div>` : ''}</div></li>`).join('')}
+        <div class="flex items-start justify-between gap-2"><a href="#/ruta/${t.i}" class="font-bold">${icono3D(t.icon)} Nivel ${t.i+1} · ${t.titulo}${t.titulo2?` <span class="text-amber-600">${t.titulo2}</span>`:''}</a><span class="shrink-0 text-xs text-stone-500 dark:text-zinc-400">${icono3D(t.real?'✅':'🔒', 'inline-block h-6 w-6')}</span></div>
+        ${t.req.map(r=>`<div class="mt-1.5 flex items-center gap-2 text-xs text-stone-600 dark:text-zinc-400"><span data-barra3d="#10b981" class="h-1.5 w-24 overflow-hidden rounded-full bg-stone-200 dark:bg-zinc-800"><span class="block h-full bg-emerald-500" style="width:${100*r.a/r.b}%"></span></span>${r.a}/${r.b} ${r.txt}</div>`).join('')}
+        ${t.premios.length ? `<div class="mt-2 flex flex-wrap gap-1.5">${t.premios.map(p=>`<span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${TONO[p.tipo]}"><span>${icono3D(p.icon)}</span><span class="opacity-70">${ETQ[p.tipo]}:</span> ${p.nombre}${p.reclamable?` <button data-reclamar="${t.i}" class="ml-1 rounded-full bg-emerald-600 px-2 text-white">Reclamar</button>`:p.reclamado?' ✓':''}</span>`).join('')}</div>` : ''}</div></li>`).join('')}
   </ol>
   <div class="mt-2 flex flex-wrap gap-2"><a class="${C.btnP}" href="#/jugar">🎮 Ir al juego</a><a class="${C.btn}" href="#/aprender">🏠 Inicio</a></div>`;
 }
 
 function pageSecIndex(sec){
   const S = SECCIONES_AP[sec], L = S.lista();
-  return `<h2 class="${C.h2}">${S.icon} ${S.nombre}</h2>
+  return `<h2 class="${C.h2}">${icono3D(S.icon)} ${S.nombre}</h2>
   <p class="${C.lead}">${S.lead}</p>
   <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
    ${L.map((T,i)=>{const p=temaProgress(T,sec);return tile(`#/${sec}/${T.id}`, `${i+1} · ${T.t}`, `${T.examples.length} ejemplos · ${p.n}/${p.tot} ejercicios con piezas`)}).join('')}
@@ -617,8 +617,8 @@ function currentId(){
   return r;
 }
 function buildNav(cur){
-  const grp = (t, href, open) => `<a href="${href}" class="mx-1 mb-1 mt-4 flex items-center justify-between rounded-lg px-1.5 py-1 text-xs font-bold uppercase tracking-wider ${open?'text-blue-700 dark:text-blue-300':'text-stone-500 dark:text-zinc-400'} hover:bg-blue-50 dark:hover:bg-blue-950/40">${t}<span>${open?'▾':'▸'}</span></a>`;
-  const a = (href,label,id,extra='') => { const lk = bloqueoLeccion(href); return `<a href="${href}" class="flex justify-between gap-1.5 rounded-lg px-2.5 py-1.5 text-[0.93rem] hover:bg-blue-50 dark:hover:bg-blue-950/50 ${lk?'text-stone-400 dark:text-zinc-500':''} ${cur===id?'bg-blue-50 font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300':''}">${lk?'🔒 ':''}${label}${lk?'':extra}</a>`; };
+  const grp = (t, href, open) => `<a href="${href}" class="mx-1 mb-1 mt-4 flex items-center justify-between rounded-lg px-1.5 py-1 text-xs font-bold uppercase tracking-wider ${open?'text-blue-700 dark:text-blue-300':'text-stone-500 dark:text-zinc-400'} hover:bg-blue-50 dark:hover:bg-blue-950/40"><span>${conIcono3D(t)}</span><span>${open?'▾':'▸'}</span></a>`;
+  const a = (href,label,id,extra='') => { const lk = bloqueoLeccion(href); return `<a href="${href}" class="flex justify-between gap-1.5 rounded-lg px-2.5 py-1.5 text-[0.93rem] hover:bg-blue-50 dark:hover:bg-blue-950/50 ${lk?'text-stone-400 dark:text-zinc-500':''} ${cur===id?'bg-blue-50 font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300':''}"><span>${lk?icono3D('🔒')+' ':''}${conIcono3D(label)}</span>${lk?'':extra}</a>`; };
   const cnt = (n,t) => `<span class="text-xs font-normal text-stone-500 dark:text-zinc-400">${n}/${t}</span>`;
   const sec = cur==='home' ? 'home' : cur==='jugar' ? 'P' : cur==='ruta' ? 'ruta' : cur.startsWith('p/') ? 'props' : cur.startsWith('f') ? 'F' : cur.startsWith('d') ? 'D' : 'I';
   let h = a('#/aprender','🏠 Inicio','home') + a('#/ruta','🗺️ Ruta','ruta') + a('#/jugar','🎮 Juego: Defensa Algebraica','jugar') + `<button data-dict-open class="mt-1 flex w-full rounded-lg px-2.5 py-1.5 text-left text-[0.93rem] hover:bg-blue-50 dark:hover:bg-blue-950/50">📖 Diccionario</button>`;
@@ -771,6 +771,8 @@ function pintarAjustes(){
       <button data-aj="ayuda" class="mt-1.5 flex min-h-12 w-full items-center gap-3 rounded-xl border-2 border-stone-200 px-3 text-left touch-manipulation active:scale-[0.98] dark:border-zinc-700"><span class="text-2xl">❓</span><span class="flex-1"><b class="block text-sm">Cómo jugar</b><span class="text-xs text-stone-500 dark:text-zinc-400">Tutorial del juego paso a paso</span></span><span>▸</span></button></div>
     <div class="mt-4"><b class="text-sm">Modo asistido (juego)</b><div class="mt-1.5 flex gap-1.5">${AY.map(([ic,n],i)=>opt(`data-aj-ayuda="${i}"`, (d.asistido ?? 0) === i, `<span class="text-lg">${ic}</span>${n}`)).join('')}</div>
       <p class="mt-1 text-xs text-stone-500 dark:text-zinc-400">Más nivel = más pistas y sugerencias, pero menos XP.</p></div>
+    <div class="mt-4"><b class="text-sm">Gráficos (juego y piezas)</b><div class="mt-1.5 flex gap-1.5">${Object.entries(Graficos.NIVELES).map(([id, n]) => opt(`data-aj-graf="${id}" ${id !== '2d' && !Graficos.webgl ? 'disabled' : ''}`, Graficos.nivel === id, `<span class="text-lg">${n.icon}</span>${n.nombre}`)).join('')}</div>
+      <p class="mt-1 text-xs text-stone-500 dark:text-zinc-400">${Graficos.webgl ? Graficos.NIVELES[Graficos.nivel].desc + ' Batalla, personajes, armas, efectos y catálogo con Three.js.' : 'Este navegador no tiene WebGL: se usa el dibujo 2D.'}</p></div>
     <div class="mt-4"><b class="text-sm">Archivos</b><p class="text-xs text-stone-500 dark:text-zinc-400">Todo tu avance (guía, juego, Ruta y partidas) en un archivo JSON.</p>
       <div class="mt-1.5 flex gap-2"><button data-aj="exportar" class="${C.btn} flex-1">⬇ Exportar</button><label class="${C.btn} flex-1">⬆ Importar<input type="file" accept="application/json,.json" data-aj-importar class="hidden"></label></div></div>
     <div class="mt-4 rounded-2xl border border-amber-300 p-3 dark:border-amber-700"><b class="text-sm">🧪 Modo desarrollador</b>
@@ -796,6 +798,8 @@ async function importarAvance(file){
 document.addEventListener('click', e => {
   if (e.target.closest('[data-ajustes]')) return abrirAjustes();
   if (e.target.id === 'ajustes') return cerrarAjustes();
+  const gr = e.target.closest('[data-aj-graf]');
+  if (gr && !gr.disabled){ Graficos.nivel = gr.dataset.ajGraf; FX3D.en(gr, 'acierto'); return pintarAjustes(); }
   const ay = e.target.closest('[data-aj-ayuda]');
   if (ay){ const P = progresoJuego(); P.data.asistido = +ay.dataset.ajAyuda; P.guardar(); return pintarAjustes(); }
   const a = e.target.closest('[data-aj]')?.dataset.aj; if (!a) return;

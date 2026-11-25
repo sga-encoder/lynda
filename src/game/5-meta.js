@@ -47,6 +47,8 @@ const fusionAnim = (icon, oculto) => `<div class="relative flex h-[4.4rem] items
   <span class="absolute h-12 w-12 rounded-full bg-fuchsia-400/30 [animation:destello_2.6s_ease-out_infinite]"></span>
   <span class="relative text-4xl [animation:fusion-pop_2.6s_ease-in-out_infinite] ${oculto ? 'brightness-0 opacity-60' : ''}">${icon}</span></div>`;
 
+/** ¿Se usan las vitrinas 3D del catálogo? (gráficos 3D activos y Three.js disponible) */
+const vitrina3D = () => Graficos.ui3d && !!Kit3D && Lienzos3D.autoprueba();
 /* ---------- Vista previa animada (keyframes en canvas) ---------- */
 class VistaPrevia extends Renderer {
   constructor(cv, item){ super(cv); this.item = item; }
@@ -85,7 +87,7 @@ class VistaPrevia extends Renderer {
   armaSoldado(c, it, t){
     const s = new Soldado(0, it.tipo); s.x = 18; this.soldado(c, s);
     const e = ENEMIGOS.explorador(100, {vida:1, velocidad:1}); e.x = 100; e.y = MUNDO.suelo; e.estado = 'camina'; e.fase = t * 6; this.enemigo(c, e, t);
-    const fx = fxDisparo({potenciadores:it.pot ? {[it.pot]:3} : {}}, it.arma), granada = fx.forma === 'granada' || fx.forma === 'orbe' && it.tipo === 'granadero';
+    const fx = fxDisparo({potenciadores:potenciadoresMuestra(it)}, it.arma), granada = fx.forma === 'granada' || fx.forma === 'orbe' && it.tipo === 'granadero';
     for (let k = 0; k < 3; k++){
       const u = ((t * 0.9 + k / 3) % 1), x = 24 + 72 * u, y = MUNDO.suelo - 12 - (granada ? 26 * Math.sin(Math.PI * u) : 0);
       const hist = fx.estela ? Array.from({length:3 + 2 * fx.estela}, (_, j) => [x - (j + 1) * 3, y]).reverse().flat() : null;
@@ -115,7 +117,8 @@ class VistaPrevia extends Renderer {
 /* ---------- Catálogo ---------- */
 class CatalogoScene extends Scene {
   enter(){ this.tab ??= 'cartas'; this.todo = !!this.app.progreso.data.todo; this.pintar(); }   // «ver todo» solo existe con el modo desarrollador   // en modo desarrollo se ve todo
-  exit(){ cancelAnimationFrame(this.raf); if (this.tecla) document.removeEventListener('keydown', this.tecla); this.tecla = null; }
+  exit(){ cancelAnimationFrame(this.raf); this.soltarVisores(); if (this.tecla) document.removeEventListener('keydown', this.tecla); this.tecla = null; }
+  soltarVisores(){ this.obs?.disconnect(); (this.visores ?? []).forEach(v => v.dispose()); this.visores = []; }
   conocido(cat, id){ return this.todo || this.app.progreso.conocido(cat, id); }
   dominioDisponible(dom){ const d = this.app.progreso.data; return this.todo || dom.tipos.some(t => d.todo || this.app.tipoDesbloqueado(t)); }
   items(){
@@ -123,7 +126,9 @@ class CatalogoScene extends Scene {
     // Armas = las de los soldados (3 por tipo) y, debajo de cada una, sus 6 potenciadores
     if (this.tab === 'armas') return TIPOS_TROPA.flatMap(tipo => ARMAS_TROPA[tipo].flatMap(([id, name, icon, st, desc], k) => [
       {kind:'potarma', grupo:id, tipo, arma:id, pot:null, id, x:{icon, nombre:name, desc}, ok:this.todo || tropaDesbloqueada(this.app, tipo, 'arma', k), name},
-      ...PLANTILLAS_POT.map(p => { const pid = `${id}:${p.k}`; return {kind:'potarma', grupo:id, tipo, arma:id, pot:pid, id:pid, x:POTENCIADORES[pid], ok:this.conocido('potenciadores', pid), name:POTENCIADORES[pid].nombre}; })]));
+      ...PLANTILLAS_POT.map(p => { const pid = `${id}:${p.k}`; return {kind:'potarma', grupo:id, tipo, arma:id, pot:pid, id:pid, x:POTENCIADORES[pid], ok:this.conocido('potenciadores', pid), name:POTENCIADORES[pid].nombre}; }),
+      {kind:'potarma', grupo:id, tipo, arma:id, pot:'todos', id:`${id}:todos`, ok:this.todo || tropaDesbloqueada(this.app, tipo, 'arma', k), name:`Todos a la vez · ${name}`,   // muestra cómo se mezclan los 6 potenciadores
+        x:{icon:'🌈', nombre:`Todos a la vez · ${name}`, armaNombre:name, desc:'Así dispara con los 6 potenciadores al nivel máximo: los efectos se suman en el mismo disparo.'}}]));
     if (this.tab === 'tacticos') return Object.entries(BONUS_DEFS).filter(([, d]) => d.tipo === 'tactico' && !d.fusion).map(([id, d]) => ({kind:'tactico', id, d, ok:this.conocido('tacticos', id), name:d.name}));
     // Fusiones: se sabe que existen, pero no cómo se consiguen (se descubren jugando)
     // ⚡ Potenciadores: 6 superpotenciadores + 6 por cada una de las 15 armas de los soldados
@@ -139,7 +144,8 @@ class CatalogoScene extends Scene {
   }
   tile(it, i){
     const desconocido = !it.ok, nombre = desconocido ? (it.kind === 'carta' ? '🔒 ' + it.name : 'Desconocido') : it.name;
-    const vista = it.kind === 'fusion' ? fusionAnim(it.d.icon, desconocido)
+    const vista = vitrina3D() && it.kind !== 'carta' ? `<canvas data-prev="${i}" class="block aspect-[120/70] w-full rounded-lg bg-gradient-to-b from-[#0b1023] to-[#312e81] ${desconocido ? 'brightness-0 opacity-60' : ''}"></canvas>`   // vitrina 3D animada
+      : it.kind === 'fusion' ? fusionAnim(it.d.icon, desconocido)
       : it.kind === 'carta' ? `<div class="flex justify-center py-1 ${desconocido ? 'grayscale opacity-40' : ''}">${cartaHTML(it.c, it.dom, {attr:'', chica:true})}</div>`
       : (it.kind === 'tactico' || it.kind === 'pot') ? `<div class="flex h-[4.4rem] items-center justify-center text-4xl ${desconocido ? 'brightness-0 opacity-50' : '[animation:flotar_2s_ease-in-out_infinite]'}">${it.d.icon}</div>`
       : `<canvas data-prev="${i}" class="block aspect-[120/70] w-full rounded-lg ${desconocido ? 'brightness-0 opacity-60' : ''}"></canvas>`;
@@ -163,12 +169,20 @@ class CatalogoScene extends Scene {
     this.animar();
   }
   animar(){
+    this.soltarVisores();
+    // Solo se dibujan las fichas visibles (y, con la ficha grande abierta, solo esa)
+    this.obs = new IntersectionObserver(es => es.forEach(e => { const v = this.visores.find(v => v.cv === e.target); if (v) v.visible = e.isIntersecting; }));
     const vistas = [...this.app.root.querySelectorAll('canvas[data-prev], canvas[data-grande]')].map(cv => {
-      const it = cv.dataset.grande != null ? this.detalle : this.lista[+cv.dataset.prev];
+      const grande = cv.dataset.grande != null, it = grande ? this.detalle : this.lista[+cv.dataset.prev];
+      if (vitrina3D()){
+        try { const v = new Vitrina3D(cv, it, grande); this.visores.push(v); this.obs.observe(cv); return v; } catch (err){ console.warn('Vitrina 3D no disponible:', err); }
+      }
       return new VistaPrevia(cv, it.kind === 'potarma' ? it : {kind:it.kind === 'enemigo' ? 'enemigo' : it.kind === 'fusion' ? 'arma' : it.kind, id:it.id, uid:it.uid});   // uid: el soldado concreto (sus colores)
     });
-    const t0 = performance.now();
-    const paso = now => { const t = (now - t0) / 1000; vistas.forEach(v => v.dibujar(t)); this.raf = requestAnimationFrame(paso); };
+    const t0 = performance.now(); let n = 0;
+    const paso = now => { const t = Math.max(0, (now - t0) / 1000), conDetalle = !!this.detalle; n++;   // el primer cuadro puede traer una marca anterior
+      for (const v of vistas){ if (v.visible === false) continue; if (v.grande === false && (conDetalle || n % 2)) continue; v.dibujar(t); }   // fichas pequeñas a 30 cuadros/s
+      this.raf = requestAnimationFrame(paso); };
     this.raf = requestAnimationFrame(paso);
   }
   click(e){
@@ -205,11 +219,12 @@ class CatalogoScene extends Scene {
         <p class="mt-2 text-xs text-zinc-400">Área: ${it.dom.icon} ${it.dom.nombre} · usada en partidas: ${P.conocido('cartas', it.id) ? 'sí' : 'todavía no'}</p>`;
     } else if (it.kind === 'potarma'){
       const x = it.x;
-      vista = `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl"></canvas>`;
-      cuerpo = `<p class="text-sm text-zinc-300">${x.desc}</p><p class="mt-2 text-xs text-zinc-400">${it.pot ? `Potenciador de <b>${x.armaNombre}</b> (${SOLDADOS[it.tipo].name}): se elige al subir de nivel en la partida, hasta nivel ${MAX_POT}. Mira cómo cambia el disparo.` : `Arma de ${SOLDADOS[it.tipo].name}: se equipa y mejora en 🪖 Pelotón. Tiene 6 potenciadores.`}</p>`;
+      vista = `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl bg-gradient-to-b from-[#0b1023] to-[#312e81]"></canvas>`;
+      cuerpo = `<p class="text-sm text-zinc-300">${x.desc}</p><p class="mt-2 text-xs text-zinc-400">${it.pot === 'todos' ? `💥 Carga reforzada: bala más grande · ⏩ Mecanismo rápido + 📏 Mira extendida: estela más larga · 🌀 Onda expansiva: anillo alrededor · 🔩 Punta perforante: raya cian delante · 🎯 Golpe certero: chispas. Las fusiones del arma además cambian su color.`
+        : it.pot ? `Potenciador de <b>${x.armaNombre}</b> (${SOLDADOS[it.tipo].name}): se elige al subir de nivel en la partida, hasta nivel ${MAX_POT}. Mira cómo cambia el disparo.` : `Arma de ${SOLDADOS[it.tipo].name}: se equipa y mejora en 🪖 Pelotón. Tiene 6 potenciadores.`}</p>`;
     } else if (it.kind === 'pot'){
       const x = it.x;
-      vista = `<div class="flex h-36 items-center justify-center"><span class="text-7xl [animation:flotar_2s_ease-in-out_infinite]">${x.icon}</span></div>`;
+      vista = vitrina3D() ? `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl bg-gradient-to-b from-[#0b1023] to-[#312e81]"></canvas>` : `<div class="flex h-36 items-center justify-center"><span class="text-7xl [animation:flotar_2s_ease-in-out_infinite]">${x.icon}</span></div>`;
       cuerpo = x.fusionArma ? `<p class="text-sm text-zinc-300">${x.desc}</p><p class="mt-2 text-xs text-zinc-400">Fusión de ${x.armaIcon} <b>${x.armaNombre}</b> (${SOLDADOS[x.tipo].name}) con el táctico ${BONUS_DEFS[x.tactico].icon} <b>${BONUS_DEFS[x.tactico].name}</b>. Aparece al final de una oleada, cuando esa arma tiene 3 niveles de potenciadores y el táctico está en tu equipo. También cambia sus partículas.</p>`
         : `<p class="text-sm text-zinc-300">${x.desc}</p><p class="mt-2 text-xs text-zinc-400">${x.arma ? `${x.armaIcon} Potencia el arma <b>${x.armaNombre}</b> (${SOLDADOS[x.tipo].name}). Se elige al final de una oleada, cuando su tipo de soldado sube de nivel; hasta nivel ${MAX_POT}.`
         : `${x.clase === 'arma' ? 'Superpotenciador de arma: aparece cuando tienes 2 potenciadores al máximo.' : 'Superpotenciador con táctica: aparece con 1 potenciador y 1 táctico al máximo.'} Sirve para todas las armas.`}</p>`;
@@ -217,8 +232,9 @@ class CatalogoScene extends Scene {
       const d = it.d, niveles = d.niveles.map((n, i) => n && [i + 1, n]).filter(Boolean), claves = Object.keys(niveles[0][1]);
       const esArma = d.tipo === 'arma';
       const mejora = P.nivel((esArma ? 'arma-' : 'tac-') + (esArma ? armaBase(it.id) : it.id));
-      vista = it.kind === 'fusion' ? `<div class="grid gap-2">${esArma ? `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl"></canvas>` : ''}<div class="pointer-events-none overflow-hidden ${esArma ? '' : 'py-6'}"><div class="${esArma ? '' : 'scale-150'}">${fusionAnim(d.icon, false)}</div></div></div>`
-        : it.kind === 'arma' ? `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl"></canvas>` : `<div class="flex h-36 items-center justify-center"><span class="relative text-7xl [animation:flotar_2s_ease-in-out_infinite]">${d.icon}<span class="absolute inset-0 animate-ping rounded-full bg-emerald-400/10"></span></span></div>`;
+      vista = vitrina3D() ? `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl bg-gradient-to-b from-[#0b1023] to-[#312e81]"></canvas>`
+        : it.kind === 'fusion' ? `<div class="grid gap-2">${esArma ? `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl bg-gradient-to-b from-[#0b1023] to-[#312e81]"></canvas>` : ''}<div class="pointer-events-none overflow-hidden ${esArma ? '' : 'py-6'}"><div class="${esArma ? '' : 'scale-150'}">${fusionAnim(d.icon, false)}</div></div></div>`
+        : it.kind === 'arma' ? `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl bg-gradient-to-b from-[#0b1023] to-[#312e81]"></canvas>` : `<div class="flex h-36 items-center justify-center"><span class="relative text-7xl [animation:flotar_2s_ease-in-out_infinite]">${d.icon}<span class="absolute inset-0 animate-ping rounded-full bg-emerald-400/10"></span></span></div>`;
       cuerpo = `<p class="text-sm text-zinc-300">${d.desc}</p>
         ${d.fusion ? `<p class="mt-1 text-xs text-amber-300">⚗️ Fusión de nivel 4 · ${esArma ? 'arma' : 'táctico'}. Libera un espacio al crearse.</p>` : ''}
         <div class="mt-2 flex flex-wrap gap-1">${chipsProps(d.props)}</div>
@@ -226,7 +242,7 @@ class CatalogoScene extends Scene {
         ${d.fusion && !esArma ? '' : `<p class="mt-2 text-xs text-zinc-400">Mejora permanente: ${mejora}/3 ${esArma ? '(+10 % de daño por nivel)' : '(+10 % de potencia por nivel)'}</p>`}`;
     } else if (it.kind === 'soldado'){
       const d = SOLDADOS[it.id], m = P.nivel('sold-' + it.id), k = 1 + 0.15 * m;
-      vista = `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl"></canvas>`;
+      vista = `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl bg-gradient-to-b from-[#0b1023] to-[#312e81]"></canvas>`;
       const [, , icU, modU = {}, descU] = it.x ?? [], ETQ = {cd:'Recarga', dmg:'Daño', rango:'Alcance', vida:'Vida'};
       const rasgos = Object.entries(modU).map(([kk, v]) => `${ETQ[kk] ?? kk} ×${v}`).join(' · ');
       const RS = it.uid ? RASGOS_SOLDADO[it.uid] : null;
@@ -242,7 +258,7 @@ class CatalogoScene extends Scene {
     } else {
       const e = ENEMIGOS[it.id](0, {vida:1, velocidad:1}), info = INFO_ENEMIGO[it.id];
       const hab = [e.salta && '🦘 Salta sobre los soldados', e.bajoTierra && '⛏️ Avanza bajo tierra', e.kamikaze && '💥 Kamikaze', e.escudoMental && '🧠 Escudo mental', e.armadura && `🛡 Armadura física −${e.armadura * 100} %`, e.escudo && `🔵 Escudo de energía −${e.escudo * 100} %`].filter(Boolean);
-      vista = `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl"></canvas>`;
+      vista = `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl bg-gradient-to-b from-[#0b1023] to-[#312e81]"></canvas>`;
       cuerpo = `<p class="text-sm text-zinc-300">${e.jefe ? '👹 <b>Jefe.</b> ' : ''}${info.desc}</p><div class="mt-2">${tablaStats(`
         <tr><td>Terreno</td><td>${e.vuela ? '✈️ Aire' : '🟫 Tierra'}</td></tr>
         <tr><td>Vida base</td><td>${Math.round(e.vida)}</td></tr><tr><td>Velocidad</td><td>${e.vel}</td></tr>
@@ -254,12 +270,12 @@ class CatalogoScene extends Scene {
     cont.classList.remove('hidden');
     cont.innerHTML = `<div class="flex h-full flex-col overflow-y-auto bg-zinc-950 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
       <div class="mx-auto w-full max-w-md"><div class="flex items-center justify-between gap-2"><b class="min-w-0 truncate text-lg">${it.ok ? it.name : 'Desconocido'}</b><button data-a="cerrar" class="${UI.btn} !min-h-10 !px-3">✕</button></div>
-      <div class="mt-2 flex items-center justify-between gap-2"><button data-a="detprev" class="${UI.btn} !min-h-10 !px-4" aria-label="Anterior">◀</button><span class="text-xs text-zinc-400">${this.lista.indexOf(it) + 1} de ${this.lista.length} · desliza o usa las flechas</span><button data-a="detnext" class="${UI.btn} !min-h-10 !px-4" aria-label="Siguiente">▶</button></div>
+      <div class="mt-2 flex items-center justify-between gap-2"><button data-a="detprev" class="${UI.btn} !min-h-10 !px-4" aria-label="Anterior">◀</button><span class="text-xs text-zinc-400">${this.lista.indexOf(it) + 1} de ${this.lista.length} · desliza o usa las flechas${vitrina3D() && vista.includes('data-grande') ? ' · arrastra la escena para girarla' : ''}</span><button data-a="detnext" class="${UI.btn} !min-h-10 !px-4" aria-label="Siguiente">▶</button></div>
       <div class="mt-3">${vista}</div><div class="mt-3">${cuerpo}</div></div></div>`;
     cancelAnimationFrame(this.raf); this.animar();
     // Deslizar a los lados (o ← → en el teclado) pasa al elemento anterior/siguiente del catálogo
     let ini = null;
-    cont.onpointerdown = e => { ini = {x:e.clientX, y:e.clientY, t:performance.now()}; };
+    cont.onpointerdown = e => { ini = vitrina3D() && e.target.closest('canvas[data-grande]') ? null : {x:e.clientX, y:e.clientY, t:performance.now()}; };   // sobre la escena 3D, arrastrar la gira
     cont.onpointerup = e => { if (!ini) return; const dx = e.clientX - ini.x, dy = e.clientY - ini.y, rapido = performance.now() - ini.t < 700; ini = null;
       if (rapido && Math.abs(dx) > 60 && Math.abs(dx) > 1.5 * Math.abs(dy)) this.moverDetalle(dx < 0 ? 1 : -1); };
     cont.onpointercancel = () => { ini = null; };

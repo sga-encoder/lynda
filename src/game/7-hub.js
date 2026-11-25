@@ -117,11 +117,11 @@ class MenuScene extends PartidasScene {
 
 /* ---------- Cómo jugar: diapositivas animadas ---------- */
 const DIAPOS = [
-  {icon:'👽', titulo:'¡Invasión!', txt:'Los alienígenas atacan la base. Tus soldados solo disparan con <b class="text-amber-300">⚡ energía</b>… y la energía sale de resolver matemáticas.', anim:'[animation:flotar_2s_ease-in-out_infinite]'},
+  {icon:'👽', escena:{kind:'enemigo', id:'nave'}, titulo:'¡Invasión!', txt:'Los alienígenas atacan la base. Tus soldados solo disparan con <b class="text-amber-300">⚡ energía</b>… y la energía sale de resolver matemáticas.', anim:'[animation:flotar_2s_ease-in-out_infinite]'},
   {icon:'🃏', titulo:'Las cartas son propiedades', txt:'Abajo está el problema y tu mano de cartas. Toca una carta; si sirve en varios lugares, toca en la expresión dónde usarla y elige el resultado correcto.', carta:true},
   {icon:'⚡', titulo:'Cada paso da energía', txt:'Cada paso que te acerca a la solución carga energía y XP. Bonos por ser <b>rápido</b>, hacer <b>combos</b> y ser <b>creativo</b> con el ✍️ Paso libre.', anim:'animate-pulse'},
-  {icon:'🪖', titulo:'Soldados y potenciadores', txt:'La base recluta soldados. Cada tipo de soldado tiene su propia barra de experiencia (todos los de ese tipo la llenan al derrotar alienígenas). Al terminar cada oleada eliges, uno a uno, un potenciador por cada nivel que subió cada tipo, y luego un táctico por cada nivel que subiste resolviendo; con 3 niveles de potenciadores y el táctico adecuado aparecen las fusiones de cada arma (3 por arma); cada arma dispara distinto y sus potenciadores cambian sus partículas. En 🪖 Pelotón mejoras soldados, armas y blindajes con 🔩 chatarra (se gana incluso perdiendo).', anim:'[animation:flotar_2s_ease-in-out_infinite]'},
-  {icon:'🌧️', titulo:'Oleadas, clima y jefes', txt:'Cada misión tiene 5 oleadas y un jefe al final. El clima cambia la batalla. Los alienígenas también disparan. Ninguna oleada termina sin resolver su problema.', anim:'animate-bounce'},
+  {icon:'🪖', escena:{kind:'soldado', id:'fusilero', uid:'fus-ana'}, titulo:'Soldados y potenciadores', txt:'La base recluta soldados. Cada tipo de soldado tiene su propia barra de experiencia (todos los de ese tipo la llenan al derrotar alienígenas). Al terminar cada oleada eliges, uno a uno, un potenciador por cada nivel que subió cada tipo, y luego un táctico por cada nivel que subiste resolviendo; con 3 niveles de potenciadores y el táctico adecuado aparecen las fusiones de cada arma (3 por arma); cada arma dispara distinto y sus potenciadores cambian sus partículas. En 🪖 Pelotón mejoras soldados, armas y blindajes con 🔩 chatarra (se gana incluso perdiendo).', anim:'[animation:flotar_2s_ease-in-out_infinite]'},
+  {icon:'🌧️', escena:{kind:'enemigo', id:'coloso'}, titulo:'Oleadas, clima y jefes', txt:'Cada misión tiene 5 oleadas y un jefe al final. El clima cambia la batalla. Los alienígenas también disparan. Ninguna oleada termina sin resolver su problema.', anim:'animate-bounce'},
   {icon:'🪐', titulo:'Mundos, Comandantes y Soberanos', txt:'Hay 4 mundos, uno por eje (Fundamentos, Potencias y log, Diferencial, Integral). En cada uno vences a 4 <b>Comandantes</b> (5 oleadas cada misión) y luego al <b>Soberano</b>, que usa los 4 ataques.', anim:'animate-bounce'},
   {icon:'📚', titulo:'Los Comandantes se ganan estudiando', txt:'Cada Comandante y Soberano se desbloquea al terminar su tema en la 🗺️ Ruta (además de vencer al anterior). En el menú de misiones verás qué lección te falta.', anim:'animate-pulse'},
   {icon:'🏅', titulo:'Misiones y guardado', txt:'Al cumplir cada misión el juego se detiene: sigues o guardas para después. Al terminar, unas ventanas te muestran lo nuevo que descubriste. Las partidas se exportan como JSON.', anim:'[animation:flotar_2s_ease-in-out_infinite]'},
@@ -130,23 +130,36 @@ const DIAPOS = [
 ];
 class HelpScene extends Scene {
   enter(){ this.i ??= 0; this.pintar(); }
+  exit(){ this.soltar(); }
+  soltar(){ cancelAnimationFrame(this.raf); this.vit?.dispose(); this.vit = null; }
+  /** Escena 3D animada de la diapositiva (alienígenas, soldados, jefe). */
+  animar(s){
+    const cv = this.app.root.querySelector('canvas[data-vitrina]'); if (!cv) return;
+    try { this.vit = new Vitrina3D(cv, s.escena, true); } catch (err){ console.warn('Escena 3D no disponible:', err); return; }
+    const t0 = performance.now(), paso = now => { this.vit?.dibujar(Math.max(0, (now - t0) / 1000)); this.raf = requestAnimationFrame(paso); };
+    this.raf = requestAnimationFrame(paso);
+  }
   pintar(){
+    this.soltar();
     const s = DIAPOS[this.i], dom = DOMINIOS.fund, carta = dom.cartas.get('dist');
     this.app.html(`
     <div class="mx-auto flex h-full max-w-md flex-col px-4 pb-4 pt-4">
-      <h2 class="text-xl font-black">❓ Cómo jugar</h2>
+      <h2 class="text-xl font-black">${vitrina3D() ? icono3D('💡') : '❓'} Cómo jugar</h2>
       <div data-h="diapo" class="mt-3 flex flex-1 touch-pan-y flex-col items-center justify-center gap-4 rounded-3xl border border-zinc-800 bg-gradient-to-b from-indigo-950/60 to-zinc-950 p-5 text-center">
-        ${s.carta ? `<div class="[animation:flotar_2s_ease-in-out_infinite]">${cartaHTML(carta, dom, {attr:''})}</div>` : `<div class="text-7xl ${s.anim}">${s.icon}</div>`}
+        ${s.carta ? `<div class="[animation:flotar_2s_ease-in-out_infinite]">${cartaHTML(carta, dom, {attr:''})}</div>`
+          : s.escena && vitrina3D() ? `<canvas data-vitrina class="block aspect-[120/70] w-full rounded-2xl bg-gradient-to-b from-[#0b1023] to-[#312e81]"></canvas>`   // escena 3D animada
+          : vitrina3D() && nombreIcono3D(s.icon) ? icono3D(s.icon, 'block h-36 w-36') : `<div class="text-7xl ${s.anim}">${s.icon}</div>`}
         <b class="text-2xl">${s.titulo}</b><p class="text-sm text-zinc-300">${s.txt}</p></div>
       <div class="mt-3 flex items-center justify-between gap-2">
         <button data-d="-1" class="${UI.btn}" ${this.i ? '' : 'disabled'}>◂ Anterior</button>
-        <div class="flex gap-1">${DIAPOS.map((_, k) => `<span class="h-2 w-2 rounded-full ${k === this.i ? 'bg-emerald-400' : 'bg-zinc-700'}"></span>`).join('')}</div>
+        <div class="flex gap-1">${DIAPOS.map((_, k) => `<span class="h-2 rounded-full transition-all ${k === this.i ? 'w-5 bg-emerald-400 shadow-[0_0_8px_2px_rgba(52,211,153,.6)]' : 'w-2 bg-zinc-700'}"></span>`).join('')}</div>
         ${this.i < DIAPOS.length - 1 ? `<button data-d="1" class="${UI.btnP}">Siguiente ▸</button>` : `<button data-d="jugar" class="${UI.btnP}">▶ Jugar</button>`}</div>
     </div>`).onclick = e => {
       const d = e.target.closest('[data-d]')?.dataset.d; if (!d) return;
       if (d === 'jugar') return this.app.go(new MenuScene(this.app));
       this.i = Math.max(0, Math.min(DIAPOS.length - 1, this.i + +d)); this.pintar();
     };
+    this.animar(s);
     // deslizar con el dedo para cambiar de diapositiva
     const el = this.app.root.querySelector('[data-h="diapo"]'); let x0 = null;
     el.onpointerdown = e => { x0 = e.clientX; };

@@ -98,7 +98,8 @@ function cartaHTML(c, dom, {sel = false, attr = `data-carta="${c.id}"`, chica = 
     ${marca === 'mejor' ? '<span class="absolute -top-2 left-1/2 z-10 -translate-x-1/2 rounded-full bg-amber-300 px-2 text-[9px] font-black text-zinc-950">SIGUIENTE</span>' : ''}
     <span class="flex h-full flex-col rounded-[14px] bg-zinc-950/95 p-1.5">
       <span class="${chica ? 'text-[8px]' : 'text-[9.5px]'} font-black uppercase leading-tight tracking-wide text-white">${c.name}</span>
-      <span class="mx-auto mt-1 flex ${chica ? 'h-8 w-8 text-lg' : 'h-11 w-11 text-2xl'} items-center justify-center rounded-full bg-gradient-to-br ${g} shadow-inner shadow-black/40">${c.icon}</span>
+      ${vitrina3D() ? (Emblemas.vigilar(), `<canvas data-emblema="${c.icon}" data-color="${COLOR_AREA[c.free ? 'libre' : dom.id] ?? '#6366f1'}" aria-label="${c.icon}" class="mx-auto mt-0.5 block ${chica ? 'h-10 w-10' : 'h-14 w-14'} drop-shadow-[0_4px_8px_rgba(0,0,0,.6)]"></canvas>`)   // emblema 3D
+        : `<span class="mx-auto mt-1 flex ${chica ? 'h-8 w-8 text-lg' : 'h-11 w-11 text-2xl'} items-center justify-center rounded-full bg-gradient-to-br ${g} shadow-inner shadow-black/40">${c.icon}</span>`}
       <span class="mt-1 flex min-h-6 items-center justify-center overflow-hidden text-center ${chica ? 'text-[8px]' : 'text-[9.5px]'} text-zinc-100">${ktMini(c.formula ?? '')}</span>
       ${chica ? '' : `<span class="mt-auto text-center text-[8px] leading-tight text-zinc-400">${c.desc}</span>`}
     </span></${tag}>`;
@@ -108,6 +109,7 @@ function comboHTML(cb, dom){
   return `<button data-combo="${cb.id}" data-arte class="relative h-[9.6rem] w-[6.7rem] shrink-0 rounded-2xl bg-gradient-to-br ${GRAD.combo} p-[2px] text-left shadow-lg shadow-black/50 touch-manipulation select-none transition-transform active:scale-95 ">
     <span class="flex h-full flex-col rounded-[14px] bg-zinc-950/95 p-1.5">
       <span class="text-[9.5px] font-black uppercase leading-tight tracking-wide text-amber-200">🔗 ${cb.nombre}</span>
+      ${vitrina3D() ? (Emblemas.vigilar(), `<canvas data-emblema="🔗" data-color="${COLOR_AREA.combo}" aria-hidden="true" class="mx-auto block h-12 w-12"></canvas>`) : ''}
       <span class="mt-1 flex flex-wrap items-center justify-center gap-0.5 text-base leading-none">${iconos}</span>
       <span class="mt-auto text-center text-[8px] leading-tight text-zinc-400">🃏 Carta compuesta · sin límite</span>
     </span></button>`;
@@ -122,19 +124,19 @@ class BattleScene extends Scene {
     this.app.html(`
     <div class="relative flex h-full flex-col bg-zinc-950 text-zinc-100">
       <div class="flex items-center gap-2 px-3 pb-1.5 pt-[max(0.5rem,env(safe-area-inset-top))] text-xs">
-        <button data-a="pausa" class="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-700 text-base" aria-label="Pausa">⏸</button>
+        <button data-a="pausa" class="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-700 text-base" aria-label="Pausa"><span data-i3d="pausa" class="flex h-5 w-5 items-center justify-center">⏸</span></button>
         <button data-a="vel" data-h="vel" class="flex h-9 min-w-11 items-center justify-center rounded-xl border border-zinc-700 px-1.5 text-sm font-black" aria-label="Velocidad del juego">×1</button>
-        <div class="flex-1"><div class="flex justify-between gap-2"><b data-h="oleada"></b><span data-h="probs"></span></div>
-          <div class="mt-1 flex items-center gap-1.5"><span>Nv <b data-h="nivel"></b></span><div class="h-1.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="xp" class="h-full bg-sky-400"></div></div><span data-h="clima" class="rounded-full bg-zinc-800 px-2 py-0.5"></span></div>
-          <div class="mt-1 flex items-center gap-1.5"><span>🌊</span><div class="h-2 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="ola" class="h-full rounded bg-gradient-to-r from-violet-500 to-fuchsia-400 transition-[width] duration-300"></div></div><b data-h="olaN" class="w-9 text-right tabular-nums">0 %</b></div></div>
+        <div class="flex-1"><div class="flex justify-between gap-2"><b data-h="oleada" class="min-w-0 truncate"></b><span class="flex items-center gap-1"><span data-i3d="abaco" class="inline-block h-4 w-4">🧮</span><span data-h="probs"></span></span></div>
+          <div class="mt-1 flex items-center gap-1.5"><span>Nv <b data-h="nivel"></b></span><div data-barra3d="#38bdf8" class="h-1.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="xp" class="h-full bg-sky-400"></div></div><span class="flex items-center gap-0.5 rounded-full bg-zinc-800/80 py-0.5 pl-0.5 pr-2">${vitrina3D() ? '<span data-h="climaI" data-i3d="luna" class="mx-0.5 inline-block h-4 w-4"></span>' : ''}<span data-h="clima"></span></span></div>
+          <div class="mt-1 flex items-center gap-1.5"><span data-i3d="ola" class="inline-block h-4 w-4">🌊</span><div data-barra3d="#d946ef" class="h-2 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="ola" class="h-full rounded bg-gradient-to-r from-violet-500 to-fuchsia-400 transition-[width] duration-300"></div></div><b data-h="olaN" class="w-9 text-right tabular-nums">0 %</b></div></div>
       </div>
       <div class="relative mx-auto w-full max-w-3xl"><canvas data-h="cv" class="block aspect-[360/200] max-h-[38vh] w-full"></canvas>
-        <div data-h="jefe" class="pointer-events-none absolute inset-x-3 top-1.5 hidden"><div class="flex justify-between text-[10px] font-bold text-rose-200"><span data-h="jefeN"></span><span data-h="jefeE"></span></div><div class="h-1.5 overflow-hidden rounded bg-black/60"><div data-h="jefeV" class="h-full bg-rose-500"></div></div></div>
+        <div data-h="jefe" class="pointer-events-none absolute inset-x-3 top-1.5 hidden"><div class="flex justify-between text-[10px] font-bold text-rose-200"><span data-h="jefeN"></span><span data-h="jefeE"></span></div><div data-barra3d="#f43f5e" class="h-1.5 overflow-hidden rounded bg-black/60"><div data-h="jefeV" class="h-full bg-rose-500"></div></div></div>
         <div data-h="aviso" class="pointer-events-none absolute inset-x-0 top-1/3 px-2 text-center text-lg font-black text-white drop-shadow"></div></div>
       <div data-h="tipos" class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 pt-1.5 text-[10px]"></div>
       <div class="grid grid-cols-2 gap-2 px-3 pt-1.5 text-xs">
-        <div class="flex items-center gap-1.5">❤<div class="h-2.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="vida" class="h-full bg-emerald-500"></div></div></div>
-        <div class="flex items-center gap-1.5">⚡<div class="h-2.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="energia" class="h-full bg-amber-400"></div></div><b data-h="energiaN" class="w-6 text-right"></b></div>
+        <div class="flex items-center gap-1.5"><span data-i3d="corazon" class="inline-block h-4 w-4">❤️</span><div data-barra3d="#22c55e" class="h-2.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="vida" class="h-full bg-emerald-500"></div></div></div>
+        <div class="flex items-center gap-1.5"><span data-i3d="rayo" class="inline-block h-4 w-4">⚡</span><div data-barra3d="#fbbf24" class="h-2.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="energia" class="h-full bg-amber-400"></div></div><b data-h="energiaN" class="w-6 text-right"></b></div>
       </div>
       <div data-h="zona" class="relative flex min-h-0 flex-1 flex-col">
         <div class="flex min-h-0 flex-1 flex-col px-3 pt-1.5">
@@ -150,7 +152,7 @@ class BattleScene extends Scene {
     </div>`);
     this.$ = n => this.app.root.querySelector(`[data-h="${n}"]`);
     this.app.piezas.host = () => this.$('libre');                  // el paso libre vive dentro de la batalla
-    this.renderer = new Renderer(this.$('cv'));
+    this.renderer = crearRenderer(this.$('cv'));                  // 3D (Three.js) o 2D según ⚙️ Configuración
     this.onResize = () => this.renderer.resize(); window.addEventListener('resize', this.onResize);
     this.bus.on('enemigo-muerto', ({xp, jefe, por}) => { r.bajas++; if (jefe) r.jefes++; if (por) this.ganarXPTipo(por, xp); this.ganarXP(xp * 0.25); });   // la baja da XP al tipo de soldado que la hizo
     this.bus.on('xp-tipo', ({tipo, xp}) => this.ganarXPTipo(tipo, xp));
@@ -160,7 +162,7 @@ class BattleScene extends Scene {
     this.pausado = false; this.ultimo = performance.now(); this.t = 0;
     this.loop = this.loop.bind(this); this.raf = requestAnimationFrame(this.loop);
   }
-  exit(){ this.terminado = true; cancelAnimationFrame(this.raf); window.removeEventListener('resize', this.onResize); this.app.piezas.cerrar(); }
+  exit(){ this.terminado = true; cancelAnimationFrame(this.raf); window.removeEventListener('resize', this.onResize); this.app.piezas.cerrar(); this.renderer.dispose?.(); }
   pause(){ if (!this.terminado && !this.capaAbierta) this.mostrarPausa(); }
 
   iniciarOleada(){
@@ -234,22 +236,25 @@ class BattleScene extends Scene {
   get vel(){ return this.app.progreso.data.velocidad ?? 1; }
   hud(){
     const r = this.run, b = r.base, j = this.mundo.jefe;
-    this.$('oleada').textContent = r.mundo ? `${mundoDe(r.mundo).icon} ${r.mm < 4 ? mundoDe(r.mundo).comandantes[r.mm].name.replace('Comandante ', '') : '👑 ' + mundoDe(r.mundo).soberano.name} · Oleada ${r.oleada}/${OLEADAS}`
-      : `${r.infinito ? '♾️ ' : ''}Misión ${r.mision}${r.infinito ? '' : '/' + MISIONES} · Oleada ${r.oleada}/${OLEADAS}`;
-    this.$('probs').textContent = `🧮 ${Math.min(this.director.problemasResueltos, this.cfg.problemas)}/${this.cfg.problemas}`;
+    const pon = (n, v) => { const e = this.$(n); v = String(v); if (e.dataset.v !== v){ e.dataset.v = v; e.textContent = v; } };   // solo si cambia (rehace su rótulo 3D)
+    pon('oleada', r.mundo ? `${mundoDe(r.mundo).icon} ${r.mm < 4 ? mundoDe(r.mundo).comandantes[r.mm].name.replace('Comandante ', '') : '👑 ' + mundoDe(r.mundo).soberano.name} · Oleada ${r.oleada}/${OLEADAS}`
+      : `${r.infinito ? '♾️ ' : ''}Misión ${r.mision}${r.infinito ? '' : '/' + MISIONES} · Oleada ${r.oleada}/${OLEADAS}`);
+    pon('probs', `${vitrina3D() ? '' : '🧮 '}${Math.min(this.director.problemasResueltos, this.cfg.problemas)}/${this.cfg.problemas}`);
     const tipos = [...new Set([...this.mundo.tiposSoldado, ...Object.keys(r.xpTipo ?? {})])].filter(t => SOLDADOS[t]);
     const firma = tipos.map(t => `${t}${r.nivelTipo?.[t] ?? 1}`).join();
     if (this.$('tipos').dataset.f !== firma){ this.$('tipos').dataset.f = firma;
-      this.$('tipos').innerHTML = tipos.map(t => `<span class="flex items-center gap-1"><span>${SOLDADOS[t].icon}</span><b>${r.nivelTipo?.[t] ?? 1}</b><span class="h-1.5 w-12 overflow-hidden rounded bg-zinc-800"><span data-xt="${t}" class="block h-full bg-emerald-400"></span></span>${r.potPend?.[t] ? `<b class="text-amber-300">+${r.potPend[t]}⚡</b>` : ''}</span>`).join('') + (r.tacPend ? `<b class="text-sky-300">+${r.tacPend} 🧠</b>` : ''); }
+      this.$('tipos').innerHTML = tipos.map(t => `<span class="flex items-center gap-1"><span data-i3d="${ICONO_TROPA[t]}" class="inline-block h-5 w-5">${SOLDADOS[t].icon}</span><b>${r.nivelTipo?.[t] ?? 1}</b><span data-barra3d="#34d399" class="h-1.5 w-12 overflow-hidden rounded bg-zinc-800"><span data-xt="${t}" class="block h-full bg-emerald-400"></span></span>${r.potPend?.[t] ? `<b class="text-amber-300">+${r.potPend[t]}⚡</b>` : ''}</span>`).join('') + (r.tacPend ? `<b class="text-sky-300">+${r.tacPend} 🧠</b>` : ''); }
     for (const t of tipos){ const el = this.$('tipos').querySelector(`[data-xt="${t}"]`); if (el) el.style.width = `${100 * (r.xpTipo?.[t] ?? 0) / xpTipoSiguiente(r.nivelTipo?.[t] ?? 1)}%`; }
-    const pr = this.progresoOleada(); this.$('ola').style.width = `${pr}%`; this.$('olaN').textContent = `${pr} %`;
-    this.$('vel').textContent = `×${this.vel}`;
-    this.$('nivel').textContent = r.nivel;
-    this.$('clima').textContent = `${this.mundo.clima.icon} ${this.mundo.clima.name}`;
+    const pr = this.progresoOleada(); this.$('ola').style.width = `${pr}%`; pon('olaN', `${pr} %`);
+    pon('vel', `×${this.vel}`);
+    pon('nivel', r.nivel);
+    pon('clima', vitrina3D() ? this.mundo.clima.name : `${this.mundo.clima.icon} ${this.mundo.clima.name}`);
+    const climaI = this.$('climaI'), idClima = Object.keys(CLIMAS).find(k => CLIMAS[k] === this.mundo.clima);
+    if (climaI && climaI.dataset.i3d !== ICONO_CLIMA[idClima]) climaI.dataset.i3d = ICONO_CLIMA[idClima] ?? 'luna';   // icono 3D del clima
     this.$('xp').style.width = `${100 * r.xp / r.xpSiguiente}%`;
     this.$('vida').style.width = `${100 * b.vida / b.vidaMax}%`;
     this.$('energia').style.width = `${r.energia.valor}%`;
-    this.$('energiaN').textContent = Math.floor(r.energia.valor);
+    pon('energiaN', Math.floor(r.energia.valor));
     this.$('energia').classList.toggle('animate-pulse', this.mundo.sinEnergia);
     this.$('jefe').classList.toggle('hidden', !j);
     if (j){ this.$('jefeN').textContent = `👹 ${j.name}`; this.$('jefeV').style.width = `${100 * Math.max(0, j.vida) / j.vidaMax}%`;
@@ -438,6 +443,7 @@ class BattleScene extends Scene {
       const extras = pts.detalle.map(d => `${d.nombre} ×${d.mult.toFixed(1)}`).join(' · ');
       this.mensaje(`+${Math.round(energia)} ⚡ ${extras ? `<span class="text-sky-300">(${extras})</span>` : ''}`, 'emerald');
       this.mundo.texto(this.mundo.base.cx, this.mundo.base.cy - 30, `+${Math.round(energia)}⚡`, '#fde047');
+      FX3D.en(this.$('expr'), 'acierto');
     } else {
       this.combo = 0;
       this.mensaje(repetido ? '↩️ Volviste a un paso anterior: sin energía.' : 'Paso válido, pero no te acerca al resultado: sin energía.', 'zinc');
@@ -455,6 +461,7 @@ class BattleScene extends Scene {
     this.director.problemasResueltos++;
     this.mundo.debilitarJefes();
     this.dibujarProblema(); this.$('mano').innerHTML = ''; this.$('quiz').classList.add('hidden');
+    FX3D.en(this.$('expr'), 'resuelto');
     this.mensaje(`✅ ¡Resuelto en ${this.pasos} pasos!${bono.eficiente ? ' <b class="text-sky-300">Eficiencia máxima</b>' : ''} +${bono.xp} XP`, 'emerald');
     this.resuelto = true;
     // Si la oleada ya terminó, la siguiente trae el problema nuevo; si no, llega uno nuevo (nunca reemplaza a uno sin resolver)

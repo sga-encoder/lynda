@@ -166,6 +166,8 @@ class WaveDirector {
 /* ---------- Mundo ---------- */
 class World {
   enemigos = []; soldados = []; balas = []; balasEnemigas = []; particulas = []; rayos = []; textos = [];
+  eventos = [];   // disparos y explosiones para el dibujo 3D (fogonazos, luces); el dibujo 2D no los usa (tope de 60)
+  evento(e){ if (this.eventos.length < 60) this.eventos.push(e); }
   #balas = new Pool(() => ({})); #parts = new Pool(() => ({}));
   constructor({bus, loadout, energia, base, extraSoldados = 0, mej = () => 0, torreta = 0, peloton = null, soldadosOk = () => true, perfil = null, titular = null, potencia = () => null, fx = () => null, fusionesDe = () => 0}){
     this.fusionesDe = fusionesDe;                    // cuántas fusiones activas tiene un arma (encienden las activas)
@@ -485,10 +487,10 @@ class World {
   disparar(o){
     const b = this.#balas.tomar({muerta:false, guiado:false, parabola:false, fx:null, hist:null, tx:o.obj.x, ty:o.obj.cy, ...o});
     if (b.parabola){ b.x0 = b.x; b.y0 = b.y; b.u = 0; b.dist = Math.max(40, Math.hypot(b.tx - b.x, b.ty - b.y)); }
-    this.balas.push(b);
+    this.balas.push(b); this.evento({tipo:'disparo', x:b.x, y:b.y, color:b.color ?? '#fde047'});
   }
   rayo(desde, objs, color){ this.rayos.push({puntos:[desde, ...objs.map(e => ({x:e.x, y:e.cy}))], t:0.2, color}); }
-  explosion(x, y, color, n){ for (let i = 0; i < n; i++){ const a = Math.random() * 6.28, v = 30 + Math.random() * 60; this.particulas.push(this.#parts.tomar({x, y, vx:Math.cos(a) * v, vy:Math.sin(a) * v - 30, t:0.5 + Math.random() * 0.4, color, r:1 + Math.random() * 1.6})); } }
+  explosion(x, y, color, n){ if (n >= 8) this.evento({tipo:'boom', x, y, color, n}); for (let i = 0; i < n; i++){ const a = Math.random() * 6.28, v = 30 + Math.random() * 60; this.particulas.push(this.#parts.tomar({x, y, vx:Math.cos(a) * v, vy:Math.sin(a) * v - 30, t:0.5 + Math.random() * 0.4, color, r:1 + Math.random() * 1.6})); } }
   chispas(x, y, color, n){ for (let i = 0; i < n; i++){ const a = Math.random() * 6.28, v = 20 + Math.random() * 40; this.particulas.push(this.#parts.tomar({x, y, vx:Math.cos(a) * v, vy:Math.sin(a) * v - 20, t:0.18 + Math.random() * 0.2, color, r:0.6 + Math.random() * 0.8})); } }
   polvo(x, y){ this.explosion(x, y - 1, '#a8a29e', 5); }
   texto(x, y, txt, color, t = 0.9){ this.textos.push({x, y, txt, color, t}); }

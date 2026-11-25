@@ -83,6 +83,11 @@ const FX_ARMA = {
   'escopeta-matriz':{color:'#fbbf24', forma:'perdigon'}, 'martillo-tensor':{color:'#fb923c', forma:'onda'}, 'lanza-ion':{color:'#67e8f9', forma:'rayo'},
   'lanzagranadas-pi':{color:'#fb923c', forma:'granada'}, 'mortero-raiz':{color:'#f97316', forma:'granada'}, 'granada-plasma':{color:'#e879f9', forma:'orbe'},
 };
+/** Potenciadores que muestra una ficha del catálogo: uno al máximo, o los 6 a la vez («todos»). */
+function potenciadoresMuestra(it){
+  if (it.pot === 'todos') return Object.fromEntries(PLANTILLAS_POT.map(p => [`${it.arma}:${p.k}`, MAX_POT]));
+  return it.pot ? {[it.pot]:MAX_POT} : {};
+}
 /** Aspecto del disparo según el arma y sus potenciadores (tamaño, estela, color, chispas…). */
 function fxDisparo(run, armaId){
   const f = {color:'#e5e7eb', forma:'bala', ...(FX_ARMA[armaId] ?? {})}, pot = run?.potenciadores ?? {}, n = k => pot[`${armaId}:${k}`] ?? 0;

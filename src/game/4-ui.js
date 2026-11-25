@@ -423,7 +423,7 @@ class BattleScene extends Scene {
     if (avance > 0){
       this.combo++;
       const pts = this.puntuador.puntuar({avance, segundos, combo:this.combo - 1, libre, cadena, ventana:r.loadout.efecto('ventana', 0) + r.ventanaExtra});
-      const energia = pts.energia * r.loadout.energiaMult * r.energiaPaso;
+      const energia = BALANCE.energiaPaso * pts.energia * r.loadout.energiaMult * r.energiaPaso;
       r.energia.agregar(energia); this.ganarXP(pts.xp * r.xpMult * NIVELES_AYUDA[this.ayuda].xp);
       const extras = pts.detalle.map(d => `${d.nombre} ×${d.mult.toFixed(1)}`).join(' · ');
       this.mensaje(`+${Math.round(energia)} ⚡ ${extras ? `<span class="text-sky-300">(${extras})</span>` : ''}`, 'emerald');

@@ -155,7 +155,7 @@ class WaveDirector {
     const aire = esAire(id), grupo = Math.min(24 - m.enemigos.length, 1 + this.rng.int(0, Math.floor(t / 2)));   // llegan en grupos (desde la 2.ª misión)
     for (let g = 0; g < grupo; g++){
       const e = ENEMIGOS[id](aire ? 24 + this.rng.int(0, 50) : this.rng.int(200, MUNDO.W - 12), this.cfg);
-      if (!e.armas.length && !e.jefe && this.rng.next() < Math.min(0.65, 0.2 + 0.05 * t))   // los comunes también disparan (más a medida que avanzas)
+      if (!e.armas.length && !e.jefe && this.rng.next() < Math.min(0.65, BALANCE.disparan + 0.05 * t))   // los comunes también disparan (más a medida que avanzas)
         e.armas = [{t:1.5 + this.rng.next() * 2, tipo:'acido', rango:e.vuela ? 170 : 130, cd:2.6 + this.rng.next(), dmg:+(0.9 * Math.sqrt(this.cfg.vida)).toFixed(2), objetivo:this.rng.next() < 0.5 ? 'base' : 'soldados'}];
       e.x += g * 9; m.enemigos.push(e); if (g) this.generados++;
     }
@@ -197,6 +197,8 @@ class World {
     // Base: regeneración y reclutamiento cuando hay espacio
     this.base.vida = Math.min(this.base.vidaMax, this.base.vida + L.efecto('regen', 0) * dt);
     if (this.soldados.length < this.capacidad && (this.reclutarT -= dt) <= 0){
+      if (this.reclutados >= this.capacidad && !this.energia.gastar(BALANCE.costoRecluta)){ this.reclutarT = 0.5; this.sinEnergia = true; }   // el pelotón inicial es gratis; los reemplazos cuestan energía
+      else {
       this.reclutarT = 2.2 * L.efecto('reclutar', 1);
       const libre = [...Array(this.capacidad).keys()].find(i => !this.soldados.some(s => s.i === i));
       const orden = this.peloton?.orden?.length ? this.peloton.orden : ORDEN_RECLUTA;
@@ -209,7 +211,7 @@ class World {
       const ep = perfil && this.potencia(perfil.armaId); if (ep){ nuevo.vidaMax *= 1 + ep.vida; nuevo.regenExtra = ep.regen; }   // Formación Euler
       nuevo.vida = nuevo.vidaMax; this.soldados.push(nuevo); this.tiposSoldado.add(tipo);
       this.texto(this.base.derecha + 8, MUNDO.suelo - 24, `+${SOLDADOS[tipo].icon}`, '#bbf7d0');
-    }
+    } }
     for (const s of this.soldados){ const rg = (s.perfil?.regen ?? 0) + (s.regenExtra ?? 0); if (rg) s.vida = Math.min(s.vidaMax, s.vida + rg * dt); }   // blindajes regenerativos
     const curar = L.efecto('curar', 0);
     if (curar) this.soldados.forEach(s => s.vida = Math.min(s.vidaMax, s.vida + curar * dt));

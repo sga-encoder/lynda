@@ -1046,6 +1046,8 @@ class Combo {
   }
 }
 const MAX_CARTAS_COMBO = 5;
+/** Ajuste de dificultad (calibrado con jugadores simulados: más lento al resolver → menos energía). */
+const BALANCE = {energiaPaso:0.7, costoRecluta:4, disparan:0.5};
 
 /* ---------- Modo asistido (3 niveles) ---------- */
 const NIVELES_AYUDA = [
@@ -1158,7 +1160,7 @@ function configOleada(mision, oleada){
   return {
     t,
     problemas: 1 + Math.floor(t / 4) + (oleada === OLEADAS && mision > 1 ? 1 : 0),
-    jefeVida: mision === 1 ? 0.55 : mision === 2 ? 0.8 : 1,        // los primeros jefes son más suaves
+    jefeVida: mision === 1 ? 0.65 : mision === 2 ? 0.85 : 1,        // los primeros jefes son más suaves
     minimo: 7 + Math.round(t * 2),                      // la primera misión es suave y luego crece
     intervalo: Math.max(0.6, 3.0 - t * 0.2),            // aparecen más seguido a medida que avanzas
     velocidad: 1 + t * 0.07,
@@ -1325,7 +1327,7 @@ class WaveDirector {
     const aire = esAire(id), grupo = Math.min(24 - m.enemigos.length, 1 + this.rng.int(0, Math.floor(t / 2)));   // llegan en grupos (desde la 2.ª misión)
     for (let g = 0; g < grupo; g++){
       const e = ENEMIGOS[id](aire ? 24 + this.rng.int(0, 50) : this.rng.int(200, MUNDO.W - 12), this.cfg);
-      if (!e.armas.length && !e.jefe && this.rng.next() < Math.min(0.65, 0.2 + 0.05 * t))   // los comunes también disparan (más a medida que avanzas)
+      if (!e.armas.length && !e.jefe && this.rng.next() < Math.min(0.65, BALANCE.disparan + 0.05 * t))   // los comunes también disparan (más a medida que avanzas)
         e.armas = [{t:1.5 + this.rng.next() * 2, tipo:'acido', rango:e.vuela ? 170 : 130, cd:2.6 + this.rng.next(), dmg:+(0.9 * Math.sqrt(this.cfg.vida)).toFixed(2), objetivo:this.rng.next() < 0.5 ? 'base' : 'soldados'}];
       e.x += g * 9; m.enemigos.push(e); if (g) this.generados++;
     }
@@ -1367,6 +1369,8 @@ class World {
     // Base: regeneración y reclutamiento cuando hay espacio
     this.base.vida = Math.min(this.base.vidaMax, this.base.vida + L.efecto('regen', 0) * dt);
     if (this.soldados.length < this.capacidad && (this.reclutarT -= dt) <= 0){
+      if (this.reclutados >= this.capacidad && !this.energia.gastar(BALANCE.costoRecluta)){ this.reclutarT = 0.5; this.sinEnergia = true; }   // el pelotón inicial es gratis; los reemplazos cuestan energía
+      else {
       this.reclutarT = 2.2 * L.efecto('reclutar', 1);
       const libre = [...Array(this.capacidad).keys()].find(i => !this.soldados.some(s => s.i === i));
       const orden = this.peloton?.orden?.length ? this.peloton.orden : ORDEN_RECLUTA;
@@ -1379,7 +1383,7 @@ class World {
       const ep = perfil && this.potencia(perfil.armaId); if (ep){ nuevo.vidaMax *= 1 + ep.vida; nuevo.regenExtra = ep.regen; }   // Formación Euler
       nuevo.vida = nuevo.vidaMax; this.soldados.push(nuevo); this.tiposSoldado.add(tipo);
       this.texto(this.base.derecha + 8, MUNDO.suelo - 24, `+${SOLDADOS[tipo].icon}`, '#bbf7d0');
-    }
+    } }
     for (const s of this.soldados){ const rg = (s.perfil?.regen ?? 0) + (s.regenExtra ?? 0); if (rg) s.vida = Math.min(s.vidaMax, s.vida + rg * dt); }   // blindajes regenerativos
     const curar = L.efecto('curar', 0);
     if (curar) this.soldados.forEach(s => s.vida = Math.min(s.vidaMax, s.vida + curar * dt));
@@ -2449,7 +2453,7 @@ class BattleScene extends Scene {
     if (avance > 0){
       this.combo++;
       const pts = this.puntuador.puntuar({avance, segundos, combo:this.combo - 1, libre, cadena, ventana:r.loadout.efecto('ventana', 0) + r.ventanaExtra});
-      const energia = pts.energia * r.loadout.energiaMult * r.energiaPaso;
+      const energia = BALANCE.energiaPaso * pts.energia * r.loadout.energiaMult * r.energiaPaso;
       r.energia.agregar(energia); this.ganarXP(pts.xp * r.xpMult * NIVELES_AYUDA[this.ayuda].xp);
       const extras = pts.detalle.map(d => `${d.nombre} ×${d.mult.toFixed(1)}`).join(' · ');
       this.mensaje(`+${Math.round(energia)} ⚡ ${extras ? `<span class="text-sky-300">(${extras})</span>` : ''}`, 'emerald');

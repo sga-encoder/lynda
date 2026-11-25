@@ -169,6 +169,8 @@ class Combo {
   }
 }
 const MAX_CARTAS_COMBO = 5;
+/** Ajuste de dificultad (calibrado con jugadores simulados: más lento al resolver → menos energía). */
+const BALANCE = {energiaPaso:0.7, costoRecluta:4, disparan:0.5};
 
 /* ---------- Modo asistido (3 niveles) ---------- */
 const NIVELES_AYUDA = [
@@ -281,7 +283,7 @@ function configOleada(mision, oleada){
   return {
     t,
     problemas: 1 + Math.floor(t / 4) + (oleada === OLEADAS && mision > 1 ? 1 : 0),
-    jefeVida: mision === 1 ? 0.55 : mision === 2 ? 0.8 : 1,        // los primeros jefes son más suaves
+    jefeVida: mision === 1 ? 0.65 : mision === 2 ? 0.85 : 1,        // los primeros jefes son más suaves
     minimo: 7 + Math.round(t * 2),                      // la primera misión es suave y luego crece
     intervalo: Math.max(0.6, 3.0 - t * 0.2),            // aparecen más seguido a medida que avanzas
     velocidad: 1 + t * 0.07,

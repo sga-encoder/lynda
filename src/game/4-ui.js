@@ -468,7 +468,7 @@ class BattleScene extends Scene {
     setTimeout(() => { if (!this.terminado && this.resuelto && !this.director.terminada(this.mundo)) this.nuevoProblema(); }, 1100);
   }
   ganarXP(n){
-    const r = this.run; r.xp += n; r.xpTotal += n;
+    const r = this.run; n *= r.loadout.efecto('xp', 1);   // táctico Estudio intensivo r.xp += n; r.xpTotal += n;
     while (r.xp >= r.xpSiguiente){ r.xp -= r.xpSiguiente; r.nivel++; r.tacPend = (r.tacPend ?? 0) + 1; this.aviso(`⬆️ Nivel ${r.nivel}: al terminar la oleada eliges un táctico`); }
   }
   /** XP de un tipo de soldado: todos los de ese tipo llenan la misma barra; cada nivel = 1 potenciador al final de la oleada. */

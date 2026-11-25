@@ -119,7 +119,7 @@ class Arma {
       const desde = {x:o === m.base ? m.base.cx : o.x + 4, y:o === m.base ? m.base.cy - 14 : o.cy - 2};
       const primero = m.elegir({alcance:this.p.alcance, prioridad:this.p.prioridad, desde});
       if (!primero){ o.cds[this.id] = 0.2; continue; }
-      if (!m.energia.gastar(this.s.costo)){ o.cds[this.id] = 0.35; m.sinEnergia = true; continue; }
+      if (!m.energia.gastar(this.s.costo * m.loadout.efecto('ahorro', 1))){ o.cds[this.id] = 0.35; m.sinEnergia = true; continue; }
       o.cds[this.id] = this.s.cd;
       const golpe = {dmg:this.s.dmg * (1 + 0.1 * m.mej('arma-' + armaBase(this.bonus.id))), dano:o !== m.base && m.peloton?.equipo?.[o.tipo] ? m.peloton.equipo[o.tipo] : this.p.dano, efecto:this.p.efecto, alcance:this.p.alcance, area:this.p.objetivo === 'area' ? this.s.area : 0};   // los fusileros usan la munición equipada
       if (this.p.movimiento === 'rayo'){
@@ -225,6 +225,12 @@ class World {
       const o = this.elegir({alcance:'ambos', prioridad:'cercano', desde:{x:this.base.cx, y:this.base.cy}});
       if (o){ this.base.cd = 1.3; this.disparar({x:this.base.cx, y:this.base.cy - 14, obj:o, golpe:{dmg:1 + this.torreta, dano:'fisico'}, vel:200, color:'#e5e7eb', r:1.4}); }
     }
+    const torre = L.efecto('torreta', 0);                               // táctico Torreta de apoyo
+    if (torre && this.soldados.length && (this.base.cdT = (this.base.cdT ?? 1) - dt) <= 0){
+      const o = this.elegir({alcance:'ambos', prioridad:'cercano', desde:{x:this.base.cx, y:this.base.cy}});
+      this.base.cdT = o ? 1.4 : 0.3;
+      if (o) this.disparar({x:this.base.cx, y:this.base.cy - 14, obj:o, golpe:{dmg:torre, dano:'energia'}, vel:230, color:'#7dd3fc', r:1.6, fx:{forma:'orbe', color:'#7dd3fc', estela:1}, hist:[]});
+    }
     this.armas.forEach(a => a.update(dt, this));
     // Clima: rayos de tormenta
     if (C.rayos && (this.rayoT -= dt) <= 0){
@@ -254,6 +260,7 @@ class World {
       this.explosion(e.x, e.cy, COLOR_ENEMIGO[e.tipo] ?? '#86efac', e.jefe ? 60 : e.vuela ? 20 : 12);
       if (e.jefe){ this.sacudir(0.8); this.anuncio = `🏆 ¡${e.name} derrotado!`; }
       if (!e.sinXP) this.bus.emit('enemigo-muerto', {tipo:e.tipo, xp:e.xp, jefe:!!e.jefe, por:e.ultimoGolpe});
+      const iman = this.loadout.efecto('energiaBaja', 0); if (iman){ this.energia.agregar(iman * (e.jefe ? 10 : 1)); this.texto(e.x, e.cy - 18, `+${+(iman * (e.jefe ? 10 : 1)).toFixed(1)}⚡`, '#fde047', 0.6); }   // táctico Imán de energía
     }
     for (const s of this.soldados.filter(s => s.vida <= 0)){ this.bajasPropias++; this.soldados.splice(this.soldados.indexOf(s), 1); this.explosion(s.x, s.cy, '#fca5a5', 8); }
     if (this.base.vida <= 0) this.bus.emit('base-destruida');
@@ -265,6 +272,7 @@ class World {
       const ep = {...((s.perfil && this.potencia(s.perfil.armaId)) || {dmg:0, cd:0, rango:0, area:0, perf:0, crit:0, extra:0, costo:0})};   // potenciadores
       const pas = s.perfil?.pasiva ?? {};                                // pasiva propia del soldado
       for (const k of ['dmg', 'cd', 'rango', 'area', 'perf', 'crit', 'costo']) ep[k] = (ep[k] ?? 0) + (pas[k] ?? 0);
+      ep.crit += this.loadout.efecto('critico', 0);                       // táctico Calculadora táctica
       if (pas.congelaProb && Math.random() < pas.congelaProb) ep.congela = true;
       if (s.furiaT > 0){ s.furiaT -= dt; ep.cd -= 0.5; }                // activa «Furia»: el doble de rápido
       if (s.escudoT > 0) s.escudoT -= dt;
@@ -273,7 +281,7 @@ class World {
         const alc = d.ataque.parabola ? 'tierra' : 'ambos';             // las armas de disparo recto también derriban naves
         const o = this.elegir({alcance:alc, prioridad:d.ataque.parabola ? 'cercano' : 'aire', desde:{x:s.x, y:s.cy}});
         if (!o || o.x - s.x > d.ataque.rango * (1 + ep.rango) * (this.clima.rango ?? 1)){ s.apoyoT = 0.3; continue; }
-        if (!this.energia.gastar(d.ataque.costo * Math.max(0.2, 1 + ep.costo))){ s.apoyoT = 0.4; this.sinEnergia = true; continue; }
+        if (!this.energia.gastar(d.ataque.costo * Math.max(0.2, 1 + ep.costo) * this.loadout.efecto('ahorro', 1))){ s.apoyoT = 0.4; this.sinEnergia = true; continue; }
         s.apoyoT = d.ataque.cd * Math.max(0.35, 1 + ep.cd);
         const eq = s.perfil ? d.ataque.dano : this.equipoDe(s.tipo), Q = s.perfil ? {} : EQUIPO[eq] ?? {};   // con perfil, el tipo de daño lo da el arma equipada
         const critico = Math.random() < ep.crit, dmg = d.ataque.dmg * (s.mult ?? 1) * (eq === d.ataque.dano ? 1 : Q.mult ?? 1) * (1 + ep.dmg) * (critico ? 2 : 1);
@@ -440,9 +448,10 @@ class World {
     if ((DEBILIDAD[e.tipo] ?? DEBILIDAD[e.forma]) === dano) d *= MULT_DEBIL;
     if (e.blindadoT > 0) d *= 0.4;                                  // armadura temporal de un Comandante               // debilidad: la estrategia del pelotón importa
     if (efecto === 'congelar' && !e.jefe) e.congelado = 2.5;
+    else if (!e.jefe && Math.random() < this.loadout.efecto('congelaProb', 0)) e.congelado = 1.5;   // táctico Campo criogénico
     e.vida -= d; this.texto(e.x, e.cy - 10 * e.escala, `-${Math.round(d * 10) / 10}${d > dmg ? '!' : ''}`, d < dmg ? '#cbd5e1' : d > dmg ? '#fde047' : '#fecaca', 0.5);
   }
-  dañarSoldado(s, n){ if (s.escudoT > 0) return; s.vida -= n * (1 - (s.perfil?.reduccion ?? 0)); }   // el blindaje reduce el daño; un escudo activo lo anula
+  dañarSoldado(s, n){ if (s.escudoT > 0) return; s.vida -= n * (1 - Math.min(0.8, (s.perfil?.reduccion ?? 0) + this.loadout.efecto('reduccionSold', 0))); }   // blindaje propio + táctico Blindaje reactivo   // el blindaje reduce el daño; un escudo activo lo anula
   /** Habilidades activas del soldado: la 1.ª se enciende con 1 fusión activa de su arma y la 2.ª con 2. */
   activas(s, dt){
     const A = s.perfil?.activas; if (!A?.length) return;

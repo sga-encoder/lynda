@@ -5627,6 +5627,20 @@ const BONUS_DEFS = {
             niveles:[{ventana:2}, {ventana:4}, {ventana:6}]},
   botiquin:{tipo:'tactico', icon:'⛑️', name:'Botiquín', desc:'Soldados con más vida que se curan.', props:{afecta:'soldados', modo:'pasivo'},
             niveles:[{vidaSoldado:3, curar:0.3}, {vidaSoldado:6, curar:0.6}, {vidaSoldado:9, curar:1}]},
+  torreta: {tipo:'tactico', icon:'🗼', name:'Torreta de apoyo', desc:'La base dispara sola, también con soldados en el campo.', props:{afecta:'base', modo:'aura'},
+            niveles:[{torreta:1.5}, {torreta:2.5}, {torreta:3.5}]},
+  estudio: {tipo:'tactico', icon:'📖', name:'Estudio intensivo', desc:'Más experiencia por cada paso y cada problema.', props:{afecta:'cartas', modo:'pasivo'},
+            niveles:[{xp:1.2}, {xp:1.4}, {xp:1.6}]},
+  reactivo:{tipo:'tactico', icon:'🧱', name:'Blindaje reactivo', desc:'Tus soldados reciben menos daño.', props:{afecta:'soldados', modo:'pasivo'},
+            niveles:[{reduccionSold:0.12}, {reduccionSold:0.22}, {reduccionSold:0.32}]},
+  criogenico:{tipo:'tactico', icon:'❄️', name:'Campo criogénico', desc:'Cada golpe puede congelar al enemigo.', props:{afecta:'enemigos', modo:'aura'},
+            niveles:[{congelaProb:0.08}, {congelaProb:0.14}, {congelaProb:0.2}]},
+  calculadora:{tipo:'tactico', icon:'🧮', name:'Calculadora táctica', desc:'Más probabilidad de daño doble en los soldados.', props:{afecta:'armas', modo:'pasivo'},
+            niveles:[{critico:0.08}, {critico:0.15}, {critico:0.22}]},
+  reciclaje:{tipo:'tactico', icon:'♻️', name:'Reciclaje', desc:'Los disparos y apoyos cuestan menos energía.', props:{afecta:'energia', modo:'pasivo'},
+            niveles:[{ahorro:0.88}, {ahorro:0.78}, {ahorro:0.68}]},
+  iman:    {tipo:'tactico', icon:'🧲', name:'Imán de energía', desc:'Cada alienígena derrotado da energía.', props:{afecta:'energia', modo:'aura'},
+            niveles:[{energiaBaja:0.6}, {energiaBaja:1}, {energiaBaja:1.5}]},
   // Fusiones táctico + táctico (liberan un espacio de táctico)
   fortaleza:{tipo:'tactico', fusion:true, icon:'🏯', name:'Fortaleza', desc:'Base y soldados mucho más resistentes y con curación.', props:{afecta:'base', modo:'aura'},
             niveles:[null, null, null, {vida:110, regen:2.5, vidaSoldado:12, curar:1.4}]},
@@ -5974,7 +5988,7 @@ class Arma {
       const desde = {x:o === m.base ? m.base.cx : o.x + 4, y:o === m.base ? m.base.cy - 14 : o.cy - 2};
       const primero = m.elegir({alcance:this.p.alcance, prioridad:this.p.prioridad, desde});
       if (!primero){ o.cds[this.id] = 0.2; continue; }
-      if (!m.energia.gastar(this.s.costo)){ o.cds[this.id] = 0.35; m.sinEnergia = true; continue; }
+      if (!m.energia.gastar(this.s.costo * m.loadout.efecto('ahorro', 1))){ o.cds[this.id] = 0.35; m.sinEnergia = true; continue; }
       o.cds[this.id] = this.s.cd;
       const golpe = {dmg:this.s.dmg * (1 + 0.1 * m.mej('arma-' + armaBase(this.bonus.id))), dano:o !== m.base && m.peloton?.equipo?.[o.tipo] ? m.peloton.equipo[o.tipo] : this.p.dano, efecto:this.p.efecto, alcance:this.p.alcance, area:this.p.objetivo === 'area' ? this.s.area : 0};   // los fusileros usan la munición equipada
       if (this.p.movimiento === 'rayo'){
@@ -6080,6 +6094,12 @@ class World {
       const o = this.elegir({alcance:'ambos', prioridad:'cercano', desde:{x:this.base.cx, y:this.base.cy}});
       if (o){ this.base.cd = 1.3; this.disparar({x:this.base.cx, y:this.base.cy - 14, obj:o, golpe:{dmg:1 + this.torreta, dano:'fisico'}, vel:200, color:'#e5e7eb', r:1.4}); }
     }
+    const torre = L.efecto('torreta', 0);                               // táctico Torreta de apoyo
+    if (torre && this.soldados.length && (this.base.cdT = (this.base.cdT ?? 1) - dt) <= 0){
+      const o = this.elegir({alcance:'ambos', prioridad:'cercano', desde:{x:this.base.cx, y:this.base.cy}});
+      this.base.cdT = o ? 1.4 : 0.3;
+      if (o) this.disparar({x:this.base.cx, y:this.base.cy - 14, obj:o, golpe:{dmg:torre, dano:'energia'}, vel:230, color:'#7dd3fc', r:1.6, fx:{forma:'orbe', color:'#7dd3fc', estela:1}, hist:[]});
+    }
     this.armas.forEach(a => a.update(dt, this));
     // Clima: rayos de tormenta
     if (C.rayos && (this.rayoT -= dt) <= 0){
@@ -6109,6 +6129,7 @@ class World {
       this.explosion(e.x, e.cy, COLOR_ENEMIGO[e.tipo] ?? '#86efac', e.jefe ? 60 : e.vuela ? 20 : 12);
       if (e.jefe){ this.sacudir(0.8); this.anuncio = `🏆 ¡${e.name} derrotado!`; }
       if (!e.sinXP) this.bus.emit('enemigo-muerto', {tipo:e.tipo, xp:e.xp, jefe:!!e.jefe, por:e.ultimoGolpe});
+      const iman = this.loadout.efecto('energiaBaja', 0); if (iman){ this.energia.agregar(iman * (e.jefe ? 10 : 1)); this.texto(e.x, e.cy - 18, `+${+(iman * (e.jefe ? 10 : 1)).toFixed(1)}⚡`, '#fde047', 0.6); }   // táctico Imán de energía
     }
     for (const s of this.soldados.filter(s => s.vida <= 0)){ this.bajasPropias++; this.soldados.splice(this.soldados.indexOf(s), 1); this.explosion(s.x, s.cy, '#fca5a5', 8); }
     if (this.base.vida <= 0) this.bus.emit('base-destruida');
@@ -6120,6 +6141,7 @@ class World {
       const ep = {...((s.perfil && this.potencia(s.perfil.armaId)) || {dmg:0, cd:0, rango:0, area:0, perf:0, crit:0, extra:0, costo:0})};   // potenciadores
       const pas = s.perfil?.pasiva ?? {};                                // pasiva propia del soldado
       for (const k of ['dmg', 'cd', 'rango', 'area', 'perf', 'crit', 'costo']) ep[k] = (ep[k] ?? 0) + (pas[k] ?? 0);
+      ep.crit += this.loadout.efecto('critico', 0);                       // táctico Calculadora táctica
       if (pas.congelaProb && Math.random() < pas.congelaProb) ep.congela = true;
       if (s.furiaT > 0){ s.furiaT -= dt; ep.cd -= 0.5; }                // activa «Furia»: el doble de rápido
       if (s.escudoT > 0) s.escudoT -= dt;
@@ -6128,7 +6150,7 @@ class World {
         const alc = d.ataque.parabola ? 'tierra' : 'ambos';             // las armas de disparo recto también derriban naves
         const o = this.elegir({alcance:alc, prioridad:d.ataque.parabola ? 'cercano' : 'aire', desde:{x:s.x, y:s.cy}});
         if (!o || o.x - s.x > d.ataque.rango * (1 + ep.rango) * (this.clima.rango ?? 1)){ s.apoyoT = 0.3; continue; }
-        if (!this.energia.gastar(d.ataque.costo * Math.max(0.2, 1 + ep.costo))){ s.apoyoT = 0.4; this.sinEnergia = true; continue; }
+        if (!this.energia.gastar(d.ataque.costo * Math.max(0.2, 1 + ep.costo) * this.loadout.efecto('ahorro', 1))){ s.apoyoT = 0.4; this.sinEnergia = true; continue; }
         s.apoyoT = d.ataque.cd * Math.max(0.35, 1 + ep.cd);
         const eq = s.perfil ? d.ataque.dano : this.equipoDe(s.tipo), Q = s.perfil ? {} : EQUIPO[eq] ?? {};   // con perfil, el tipo de daño lo da el arma equipada
         const critico = Math.random() < ep.crit, dmg = d.ataque.dmg * (s.mult ?? 1) * (eq === d.ataque.dano ? 1 : Q.mult ?? 1) * (1 + ep.dmg) * (critico ? 2 : 1);
@@ -6295,9 +6317,10 @@ class World {
     if ((DEBILIDAD[e.tipo] ?? DEBILIDAD[e.forma]) === dano) d *= MULT_DEBIL;
     if (e.blindadoT > 0) d *= 0.4;                                  // armadura temporal de un Comandante               // debilidad: la estrategia del pelotón importa
     if (efecto === 'congelar' && !e.jefe) e.congelado = 2.5;
+    else if (!e.jefe && Math.random() < this.loadout.efecto('congelaProb', 0)) e.congelado = 1.5;   // táctico Campo criogénico
     e.vida -= d; this.texto(e.x, e.cy - 10 * e.escala, `-${Math.round(d * 10) / 10}${d > dmg ? '!' : ''}`, d < dmg ? '#cbd5e1' : d > dmg ? '#fde047' : '#fecaca', 0.5);
   }
-  dañarSoldado(s, n){ if (s.escudoT > 0) return; s.vida -= n * (1 - (s.perfil?.reduccion ?? 0)); }   // el blindaje reduce el daño; un escudo activo lo anula
+  dañarSoldado(s, n){ if (s.escudoT > 0) return; s.vida -= n * (1 - Math.min(0.8, (s.perfil?.reduccion ?? 0) + this.loadout.efecto('reduccionSold', 0))); }   // blindaje propio + táctico Blindaje reactivo   // el blindaje reduce el daño; un escudo activo lo anula
   /** Habilidades activas del soldado: la 1.ª se enciende con 1 fusión activa de su arma y la 2.ª con 2. */
   activas(s, dt){
     const A = s.perfil?.activas; if (!A?.length) return;
@@ -6795,11 +6818,21 @@ const PLANTILLAS_FUSION = {
   municion:    {icon:'🔩', sufijo:'Perforador',   desc:'Ignora 50 % de armadura y escudo; +10 % de daño.', ef:{perf:0.5, dmg:0.1}, fx:{perfora:true, color:'#e2e8f0'}},
   concentracion:{icon:'🎯', sufijo:'Certero',     desc:'+30 % de daño doble y +15 % de alcance.', ef:{crit:0.3, rango:0.15}, fx:{chispas:true, estela:1}},
   botiquin:    {icon:'💚', sufijo:'Vital',        desc:'Sus soldados regeneran mucha vida (+20 % de vida).', ef:{regen:0.8, vida:0.2}, fx:{color:'#86efac', anillo:1}},
+  // Con los tácticos nuevos
+  torreta:     {icon:'🗼', sufijo:'Centinela',    desc:'+25 % de alcance y +20 % de daño.', ef:{rango:0.25, dmg:0.2}, fx:{color:'#7dd3fc', estela:2}},
+  estudio:     {icon:'📖', sufijo:'Erudito',      desc:'+20 % de daño doble y disparos 10 % más rápidos.', ef:{crit:0.2, cd:-0.1}, fx:{chispas:true, color:'#fde68a'}},
+  reactivo:    {icon:'🧱', sufijo:'Bastión',      desc:'Sus soldados: +40 % de vida y regeneración.', ef:{vida:0.4, regen:0.5}, fx:{color:'#cbd5e1', anillo:2}},
+  criogenico:  {icon:'❄️', sufijo:'Glacial',      desc:'Sus disparos congelan; +12 de área.', ef:{congela:true, area:12}, fx:{color:'#a5f3fc', anillo:1, estela:1}},
+  calculadora: {icon:'🧮', sufijo:'Calculado',    desc:'+35 % de daño doble.', ef:{crit:0.35}, fx:{chispas:true, perfora:true, color:'#fef08a'}},
+  reciclaje:   {icon:'♻️', sufijo:'Eficiente',    desc:'Disparos 35 % más baratos.', ef:{costo:-0.35}, fx:{color:'#86efac', estela:1}},
+  iman:        {icon:'🧲', sufijo:'Magnético',    desc:'Cada disparo lanza una bala extra; +10 % de daño.', ef:{extra:1, dmg:0.1}, fx:{color:'#f0abfc', estela:2}},
 };
+/** Tácticos de las fusiones originales y de las nuevas (cada arma tiene 3 de cada grupo). */
+const TACS_FUSION = [['amplificador', 'escudo', 'lenta', 'reclutas', 'municion', 'concentracion', 'botiquin'], ['torreta', 'estudio', 'reactivo', 'criogenico', 'calculadora', 'reciclaje', 'iman']];
 const FUSIONES_ARMA = {};          // id → {id, arma, tipo, tactico, icon, nombre, desc, ef, fx}
-{ const tacs = Object.keys(PLANTILLAS_FUSION); let w = 0;
+{ let w = 0;
   for (const tipo of Object.keys(ARMAS_TROPA)) for (const [armaId, armaNombre, armaIcon] of ARMAS_TROPA[tipo]){
-    for (let k = 0; k < 3; k++){ const tac = tacs[(w * 3 + k) % tacs.length], P = PLANTILLAS_FUSION[tac], id = `fus:${armaId}:${tac}`;
+    for (const tacs of TACS_FUSION) for (let k = 0; k < 3; k++){ const tac = tacs[(w * 3 + k) % tacs.length], P = PLANTILLAS_FUSION[tac], id = `fus:${armaId}:${tac}`;   // mismos id que antes para las originales
       FUSIONES_ARMA[id] = {id, arma:armaId, armaNombre, armaIcon, tipo, tactico:tac, icon:P.icon, nombre:`${armaNombre} ${P.sufijo}`, desc:P.desc, ef:P.ef, fx:P.fx}; }
     w++;
   } }
@@ -8267,7 +8300,7 @@ class BattleScene extends Scene {
     setTimeout(() => { if (!this.terminado && this.resuelto && !this.director.terminada(this.mundo)) this.nuevoProblema(); }, 1100);
   }
   ganarXP(n){
-    const r = this.run; r.xp += n; r.xpTotal += n;
+    const r = this.run; n *= r.loadout.efecto('xp', 1);   // táctico Estudio intensivo r.xp += n; r.xpTotal += n;
     while (r.xp >= r.xpSiguiente){ r.xp -= r.xpSiguiente; r.nivel++; r.tacPend = (r.tacPend ?? 0) + 1; this.aviso(`⬆️ Nivel ${r.nivel}: al terminar la oleada eliges un táctico`); }
   }
   /** XP de un tipo de soldado: todos los de ese tipo llenan la misma barra; cada nivel = 1 potenciador al final de la oleada. */
@@ -8708,7 +8741,7 @@ class CatalogoScene extends Scene {
       <p class="mt-1 text-xs text-zinc-400">${this.tab === 'cartas' ? `${ok}/${items.length} cartas disponibles · las demás se desbloquean en la 🗺️ Ruta o avanzando en Aprender`
         : this.tab === 'fusiones' ? `${ok}/${items.length} fusiones descubiertas · existen fusiones entre armas, entre tácticos y entre armas y tácticos. ¿Cuáles? Descúbrelo jugando.`
         : `${ok}/${items.length} descubiertos · se descubren al obtenerlos o verlos en una partida`}</p>
-      <div class="mt-2 grid flex-1 grid-cols-2 content-start gap-2 overflow-y-auto pb-4 sm:grid-cols-3">${items.map((it, i) => (it.grupo && it.grupo !== items[i - 1]?.grupo ? `<div class="col-span-full mt-2 text-sm font-black text-zinc-300">${it.kind === 'potarma' ? `${SOLDADOS[it.tipo].icon} ${it.x.nombre ?? it.name} · ${SOLDADOS[it.tipo].name}` : it.kind === 'pot' ? (it.x.fusionArma ? `⚗️ ${it.x.armaIcon} ${it.x.armaNombre} · ${SOLDADOS[it.tipo].name} (3 fusiones)` : '🌟 Superpotenciadores') : it.kind === 'fusion' ? '⚗️ Fusiones de tácticos' : {soldados:'🪖 Soldados', comun:'👽 Alienígenas · comunes y de cada mundo', comandante:'🎖️ Alienígenas · Comandantes (subjefes)', soberano:'👑 Alienígenas · Soberanos (jefes)'}[it.grupo]}</div>` : '') + this.tile(it, i)).join('')}</div>
+      <div class="mt-2 grid flex-1 grid-cols-2 content-start gap-2 overflow-y-auto pb-4 sm:grid-cols-3">${items.map((it, i) => (it.grupo && it.grupo !== items[i - 1]?.grupo ? `<div class="col-span-full mt-2 text-sm font-black text-zinc-300">${it.kind === 'potarma' ? `${SOLDADOS[it.tipo].icon} ${it.x.nombre ?? it.name} · ${SOLDADOS[it.tipo].name}` : it.kind === 'pot' ? (it.x.fusionArma ? `⚗️ ${it.x.armaIcon} ${it.x.armaNombre} · ${SOLDADOS[it.tipo].name} (${Object.values(FUSIONES_ARMA).filter(F => F.arma === it.x.arma).length} fusiones)` : '🌟 Superpotenciadores') : it.kind === 'fusion' ? '⚗️ Fusiones de tácticos' : {soldados:'🪖 Soldados', comun:'👽 Alienígenas · comunes y de cada mundo', comandante:'🎖️ Alienígenas · Comandantes (subjefes)', soberano:'👑 Alienígenas · Soberanos (jefes)'}[it.grupo]}</div>` : '') + this.tile(it, i)).join('')}</div>
       <div data-h="detalle" class="absolute inset-0 z-20 hidden"></div>
     </div>`).onclick = e => this.click(e);
     this.animar();
@@ -9097,9 +9130,9 @@ const PREMIOS_TEMA = {
   // Antes de «Suma y resta de polinomios» (nivel mínimo para jugar) no se entrega nada del juego
   'f-polinomios':{tipos:['simp1'], ...PRIMER_JUEGO}, 'f-lineales':{tipos:['lin1', 'lin2'], bonus:['laser', 'reclutas'], soldados:['pesado']}, 'f-factorizacion':{tipos:['simp2', 'dist'], bonus:['lenta'], soldados:['granadero']},
   'f-potencias':{tipos:['apot0', 'apot1', 'apot2', 'apot3', 'araiz1', 'araiz2'], soldados:['medico']}, 'f-cuadraticas':{bonus:['municion'], soldados:['ingeniero']}, 'f-racionales':{bonus:['concentracion'], puntos:10},
-  'f-radicales':{puntos:15}, 'f-polinomicas':{bonus:['misil']}, 'f-exponenciales':{tipos:['alog3'], bonus:['mortero']}, 'f-logaritmicas':{tipos:['alog1', 'alog2']},
-  'f-trigonometricas':{tipos:['atrig1', 'atrig2', 'atrig3', 'atrig4'], bonus:['botiquin']}, 'f-inecuaciones':{puntos:20},
-  'd-limites':{puntos:10}, 'd-reglas':{tipos:['dpoli', 'dsqrt', 'dneg']}, 'd-producto':{tipos:['dprod']}, 'd-cadena':{tipos:['dcad', 'dexp2']}, 'd-trascendentes':{tipos:['dtrig', 'dtan', 'dln'], bonus:['tesla']},
+  'f-radicales':{bonus:['torreta'], puntos:15}, 'f-polinomicas':{bonus:['misil']}, 'f-exponenciales':{tipos:['alog3'], bonus:['mortero']}, 'f-logaritmicas':{tipos:['alog1', 'alog2'], bonus:['estudio']},
+  'f-trigonometricas':{tipos:['atrig1', 'atrig2', 'atrig3', 'atrig4'], bonus:['botiquin']}, 'f-inecuaciones':{bonus:['reactivo'], puntos:20},
+  'd-limites':{bonus:['criogenico'], puntos:10}, 'd-reglas':{tipos:['dpoli', 'dsqrt', 'dneg'], bonus:['calculadora']}, 'd-producto':{tipos:['dprod'], bonus:['reciclaje']}, 'd-cadena':{tipos:['dcad', 'dexp2'], bonus:['iman']}, 'd-trascendentes':{tipos:['dtrig', 'dtan', 'dln'], bonus:['tesla']},
   'd-implicita':{tipos:['dcoc']}, 'd-extremos':{tipos:['dsincos']}, 'd-optimizacion':{difs:['veterano'], bonus:['franco']}, 'd-lhopital':{puntos:25},
   'l1':{tipos:['ipoli', 'isqrt', 'ineg']}, 'l2':{tipos:['itrig', 'ilin', 'irecip']}, 'l7':{difs:['leyenda'], puntos:40},
 };

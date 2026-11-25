@@ -38,11 +38,21 @@ const PLANTILLAS_FUSION = {
   municion:    {icon:'🔩', sufijo:'Perforador',   desc:'Ignora 50 % de armadura y escudo; +10 % de daño.', ef:{perf:0.5, dmg:0.1}, fx:{perfora:true, color:'#e2e8f0'}},
   concentracion:{icon:'🎯', sufijo:'Certero',     desc:'+30 % de daño doble y +15 % de alcance.', ef:{crit:0.3, rango:0.15}, fx:{chispas:true, estela:1}},
   botiquin:    {icon:'💚', sufijo:'Vital',        desc:'Sus soldados regeneran mucha vida (+20 % de vida).', ef:{regen:0.8, vida:0.2}, fx:{color:'#86efac', anillo:1}},
+  // Con los tácticos nuevos
+  torreta:     {icon:'🗼', sufijo:'Centinela',    desc:'+25 % de alcance y +20 % de daño.', ef:{rango:0.25, dmg:0.2}, fx:{color:'#7dd3fc', estela:2}},
+  estudio:     {icon:'📖', sufijo:'Erudito',      desc:'+20 % de daño doble y disparos 10 % más rápidos.', ef:{crit:0.2, cd:-0.1}, fx:{chispas:true, color:'#fde68a'}},
+  reactivo:    {icon:'🧱', sufijo:'Bastión',      desc:'Sus soldados: +40 % de vida y regeneración.', ef:{vida:0.4, regen:0.5}, fx:{color:'#cbd5e1', anillo:2}},
+  criogenico:  {icon:'❄️', sufijo:'Glacial',      desc:'Sus disparos congelan; +12 de área.', ef:{congela:true, area:12}, fx:{color:'#a5f3fc', anillo:1, estela:1}},
+  calculadora: {icon:'🧮', sufijo:'Calculado',    desc:'+35 % de daño doble.', ef:{crit:0.35}, fx:{chispas:true, perfora:true, color:'#fef08a'}},
+  reciclaje:   {icon:'♻️', sufijo:'Eficiente',    desc:'Disparos 35 % más baratos.', ef:{costo:-0.35}, fx:{color:'#86efac', estela:1}},
+  iman:        {icon:'🧲', sufijo:'Magnético',    desc:'Cada disparo lanza una bala extra; +10 % de daño.', ef:{extra:1, dmg:0.1}, fx:{color:'#f0abfc', estela:2}},
 };
+/** Tácticos de las fusiones originales y de las nuevas (cada arma tiene 3 de cada grupo). */
+const TACS_FUSION = [['amplificador', 'escudo', 'lenta', 'reclutas', 'municion', 'concentracion', 'botiquin'], ['torreta', 'estudio', 'reactivo', 'criogenico', 'calculadora', 'reciclaje', 'iman']];
 const FUSIONES_ARMA = {};          // id → {id, arma, tipo, tactico, icon, nombre, desc, ef, fx}
-{ const tacs = Object.keys(PLANTILLAS_FUSION); let w = 0;
+{ let w = 0;
   for (const tipo of Object.keys(ARMAS_TROPA)) for (const [armaId, armaNombre, armaIcon] of ARMAS_TROPA[tipo]){
-    for (let k = 0; k < 3; k++){ const tac = tacs[(w * 3 + k) % tacs.length], P = PLANTILLAS_FUSION[tac], id = `fus:${armaId}:${tac}`;
+    for (const tacs of TACS_FUSION) for (let k = 0; k < 3; k++){ const tac = tacs[(w * 3 + k) % tacs.length], P = PLANTILLAS_FUSION[tac], id = `fus:${armaId}:${tac}`;   // mismos id que antes para las originales
       FUSIONES_ARMA[id] = {id, arma:armaId, armaNombre, armaIcon, tipo, tactico:tac, icon:P.icon, nombre:`${armaNombre} ${P.sufijo}`, desc:P.desc, ef:P.ef, fx:P.fx}; }
     w++;
   } }

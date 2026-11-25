@@ -2481,7 +2481,7 @@ class BattleScene extends Scene {
     if (c.free) return this.abrirLibre();
     const objs = c.targets(this.raiz);
     if (!objs.length){ this.combo = 0; return this.mensaje(`${c.icon} <b>${c.name}</b> no se puede aplicar aquí.`, 'rose'); }
-    if (objs.length === 1) return this.resultadoDe(c, objs[0]);
+    if (objs.length === 1 && c.id !== 'dist') return this.resultadoDe(c, objs[0]);   // la distributiva siempre pide tocar el polinomio
     this.carta = c; this.objetivos = objs;
     this.dibujarProblema(); this.dibujarMano();
     this.mensaje(c.id === 'seme' ? 'Elige qué grupo juntar: toca uno de sus términos (se resaltan juntos).' : c.id === 'dist' ? 'Toca el <b>polinomio</b> (el paréntesis marcado) al que aplicas la distributiva.' : `Toca en la expresión dónde aplicar <b>${c.name}</b>.`, 'amber');
@@ -2552,6 +2552,8 @@ class BattleScene extends Scene {
       const carta = this.dom.cartas.get(C.cb.cartas[C.i++]); if (!carta) continue;
       let objs = carta.targets(this.raiz); if (!objs.length) continue;
       if (carta.id === 'div' && this.raiz instanceof Eq){ C.hechos++; return this.resultadoDe(carta, objs[0]); }   // pregunta el signo
+      if (carta.id === 'dist'){ C.hechos++; this.carta = carta; this.objetivos = objs; this.dibujarProblema(); this.dibujarMano();   // tocar el polinomio
+        return this.mensaje(`🔗 <b>${C.cb.nombre}</b> · paso ${C.i}/${C.cb.cartas.length}: toca el <b>polinomio</b> al que aplicas la distributiva.`, 'amber'); }
       if (carta.id === 'mover' && this.raiz instanceof Eq){
         const conX = n => [...walk(n)].some(([m]) => m instanceof X);
         const utiles = objs.filter(([sd, k]) => { const t = this.raiz.children[sd].terms[k]; return conX(t) ? sd === 1 : conX(this.raiz.children[sd]); });
@@ -3671,7 +3673,7 @@ class PracticaPropiedades {
   click(e){
     const u = e.target.closest('[data-usar]'), op = e.target.closest('[data-op]'), t = e.target.closest('[data-t]'), otra = e.target.closest('[data-otra]');
     if (u){ const i = +u.dataset.usar, ex = this.lista[i], st = this.estado[i]; st.msg = null;
-      if (ex.objetivos.length === 1) return this.elegirLugar(i, 0);
+      if (ex.objetivos.length === 1 && this.carta.id !== 'dist') return this.elegirLugar(i, 0);   // la distributiva siempre pide tocar el polinomio
       st.fase = 1; return this.render(); }
     if (t){ const i = +t.closest('[data-expr]').dataset.expr; if (this.estado[i].fase === 1) return this.elegirLugar(i, +t.dataset.t); }
     if (op){ const [i, j] = op.dataset.op.split('|').map(Number), st = this.estado[i], ex = this.lista[i];

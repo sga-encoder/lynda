@@ -123,8 +123,10 @@ class BattleScene extends Scene {
     <div class="relative flex h-full flex-col bg-zinc-950 text-zinc-100">
       <div class="flex items-center gap-2 px-3 pb-1.5 pt-[max(0.5rem,env(safe-area-inset-top))] text-xs">
         <button data-a="pausa" class="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-700 text-base" aria-label="Pausa">⏸</button>
+        <button data-a="vel" data-h="vel" class="flex h-9 min-w-11 items-center justify-center rounded-xl border border-zinc-700 px-1.5 text-sm font-black" aria-label="Velocidad del juego">×1</button>
         <div class="flex-1"><div class="flex justify-between gap-2"><b data-h="oleada"></b><span data-h="probs"></span></div>
-          <div class="mt-1 flex items-center gap-1.5"><span>Nv <b data-h="nivel"></b></span><div class="h-1.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="xp" class="h-full bg-sky-400"></div></div><span data-h="clima" class="rounded-full bg-zinc-800 px-2 py-0.5"></span></div></div>
+          <div class="mt-1 flex items-center gap-1.5"><span>Nv <b data-h="nivel"></b></span><div class="h-1.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="xp" class="h-full bg-sky-400"></div></div><span data-h="clima" class="rounded-full bg-zinc-800 px-2 py-0.5"></span></div>
+          <div class="mt-1 flex items-center gap-1.5"><span>🌊</span><div class="h-2 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="ola" class="h-full rounded bg-gradient-to-r from-violet-500 to-fuchsia-400 transition-[width] duration-300"></div></div><b data-h="olaN" class="w-9 text-right tabular-nums">0 %</b></div></div>
       </div>
       <div class="relative mx-auto w-full max-w-3xl"><canvas data-h="cv" class="block aspect-[360/200] max-h-[38vh] w-full"></canvas>
         <div data-h="jefe" class="pointer-events-none absolute inset-x-3 top-1.5 hidden"><div class="flex justify-between text-[10px] font-bold text-rose-200"><span data-h="jefeN"></span><span data-h="jefeE"></span></div><div class="h-1.5 overflow-hidden rounded bg-black/60"><div data-h="jefeV" class="h-full bg-rose-500"></div></div></div>
@@ -203,7 +205,10 @@ class BattleScene extends Scene {
     const dt = Math.min(0.05, (now - this.ultimo) / 1000); this.ultimo = now;
     if (!this.pausado && !this.terminado){
       const lento = this.app.piezas.abierto ? 0.5 : 1;            // el mundo va más lento mientras escribes un paso libre
-      this.t += dt; this.mundo.update(dt * lento, this.director);
+      for (let k = 0; k < this.vel && !this.terminado; k++){        // ×2, ×3, ×4: varias actualizaciones por cuadro (estable)
+        this.t += dt; this.mundo.update(dt * lento, this.director);
+        if (this.director.terminada(this.mundo)) break;
+      }
       if (this.mundo.anuncio){ this.aviso(this.mundo.anuncio); this.mundo.anuncio = null; }
       if (this.director.terminada(this.mundo)){
         if (this.resuelto) this.oleadaTerminada();                 // solo se pasa de oleada con el problema resuelto
@@ -215,11 +220,23 @@ class BattleScene extends Scene {
     this.renderer.draw(this.mundo, this.t); this.hud();
     this.raf = requestAnimationFrame(this.loop);
   }
+  /** Avance de la oleada (0–100): 70 % enemigos eliminados + 30 % problemas resueltos; no llega a 100 con el jefe vivo o el problema sin terminar. */
+  progresoOleada(){
+    const d = this.director, c = this.cfg, vivos = this.mundo.enemigos.filter(e => !e.jefe).length;
+    const total = Math.max(c.minimo, d.generados), eliminados = Math.max(0, d.generados - vivos);
+    let p = 0.7 * Math.min(1, eliminados / total) + 0.3 * Math.min(1, d.problemasResueltos / c.problemas);
+    if (c.jefe && (d.jefeT !== null || this.mundo.jefe)) p = Math.min(p, 0.9);
+    if (!this.resuelto || this.mundo.enemigos.length) p = Math.min(p, 0.98);
+    return Math.round(100 * p);
+  }
+  get vel(){ return this.app.progreso.data.velocidad ?? 1; }
   hud(){
     const r = this.run, b = r.base, j = this.mundo.jefe;
     this.$('oleada').textContent = r.mundo ? `${mundoDe(r.mundo).icon} ${r.mm < 4 ? mundoDe(r.mundo).comandantes[r.mm].name.replace('Comandante ', '') : '👑 ' + mundoDe(r.mundo).soberano.name} · Oleada ${r.oleada}/${OLEADAS}`
       : `${r.infinito ? '♾️ ' : ''}Misión ${r.mision}${r.infinito ? '' : '/' + MISIONES} · Oleada ${r.oleada}/${OLEADAS}`;
     this.$('probs').textContent = `🧮 ${Math.min(this.director.problemasResueltos, this.cfg.problemas)}/${this.cfg.problemas}`;
+    const pr = this.progresoOleada(); this.$('ola').style.width = `${pr}%`; this.$('olaN').textContent = `${pr} %`;
+    this.$('vel').textContent = `×${this.vel}`;
     this.$('nivel').textContent = r.nivel;
     this.$('clima').textContent = `${this.mundo.clima.icon} ${this.mundo.clima.name}`;
     this.$('xp').style.width = `${100 * r.xp / r.xpSiguiente}%`;
@@ -274,6 +291,7 @@ class BattleScene extends Scene {
   click(e){
     const a = e.target.closest('[data-a]')?.dataset.a;
     if (a === 'pausa') return this.mostrarPausa();
+    if (a === 'vel'){ const P = this.app.progreso; P.data.velocidad = this.vel % 4 + 1; P.guardar(); return this.hud(); }   // ×1 → ×2 → ×3 → ×4 → ×1
     if (a === 'pista'){ this.pistaMostrada = true; return this.mostrarPista(); }
     if (a === 'quiz-no'){ this.quiz = null; this.carta = null; this.cadena = null; this.dibujarProblema(); this.dibujarMano(); return this.mensaje(''); }
     const op = e.target.closest('[data-opcion]')?.dataset.opcion;

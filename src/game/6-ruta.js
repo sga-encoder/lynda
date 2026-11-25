@@ -371,7 +371,7 @@ class PracticaPropiedades {
   click(e){
     const u = e.target.closest('[data-usar]'), op = e.target.closest('[data-op]'), t = e.target.closest('[data-t]'), otra = e.target.closest('[data-otra]');
     if (u){ const i = +u.dataset.usar, ex = this.lista[i], st = this.estado[i]; st.msg = null;
-      if (ex.objetivos.length === 1) return this.elegirLugar(i, 0);
+      if (ex.objetivos.length === 1 && this.carta.id !== 'dist') return this.elegirLugar(i, 0);   // la distributiva siempre pide tocar el polinomio
       st.fase = 1; return this.render(); }
     if (t){ const i = +t.closest('[data-expr]').dataset.expr; if (this.estado[i].fase === 1) return this.elegirLugar(i, +t.dataset.t); }
     if (op){ const [i, j] = op.dataset.op.split('|').map(Number), st = this.estado[i], ex = this.lista[i];

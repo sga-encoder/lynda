@@ -28,7 +28,8 @@ class MenuScene extends PartidasScene {
     if (!paso) cuerpo = `
       <div class="text-center"><div class="text-6xl">👽🛸</div><h2 class="mt-1 text-3xl font-black tracking-tight">Defensa Algebraica</h2>
         <p class="mt-1 text-sm text-zinc-400">Resuelve con cartas de propiedades para dar energía a tus soldados.</p></div>
-      <button data-j="jugar" class="${UI.btnP} !min-h-16 text-xl">▶ Jugar</button>`;
+      <button data-j="jugar" class="${UI.btnP} !min-h-16 text-xl">▶ Jugar</button>
+      ${d.todo ? `<button data-j="lab" class="${UI.btn} !min-h-14 border-amber-400/70 text-amber-300">🧪 Laboratorio (modo desarrollador)</button>` : ''}`;
     else if (paso === 'modo') cuerpo = `
       <div class="flex items-center gap-2"><button data-j="atras" class="${UI.btn} !min-h-10 !px-3">◂</button><b class="text-lg">1 · Elige un mundo</b></div>
       <div class="grid gap-2">${MUNDOS_JUEGO.map(M => { const libre = ok.some(t => t.dominio.id === M.dominio), pm = d.mundos?.[M.id] ?? {vencidos:0, soberano:false};
@@ -85,6 +86,7 @@ class MenuScene extends PartidasScene {
     const d = this.app.progreso.data, P = this.app.progreso;
     const j = e.target.closest('[data-j]')?.dataset.j;
     if (j === 'jugar'){ this.paso = 'modo'; this.sel = {}; return this.pintar(); }
+    if (j === 'lab' && d.todo) return this.app.go(new LabScene(this.app));
     if (j === 'atras'){ this.paso = this.paso === 'dif' ? (this.sel.infinito ? 'ops' : this.sel.mundo ? 'mision' : 'modo') : (this.paso === 'ops' || this.paso === 'mision') ? 'modo' : null; return this.pintar(); }
     const mundo = e.target.closest('[data-mundo]')?.dataset.mundo;
     if (mundo){ this.sel = {mundo}; this.paso = 'mision'; return this.pintar(); }
@@ -202,6 +204,85 @@ class ConfigScene extends Scene {
 }
 
 /* ---------- Más ---------- */
+/* ---------- 🧪 Laboratorio (solo con el modo desarrollador) ----------
+   Entra a una oleada concreta de cualquier mundo con un nivel de XP promedio. Ese nivel fija el TOPE:
+   cada tipo de soldado tiene (nivel − 1) elecciones de potenciador/fusión y el nivel general (nivel − 1)
+   de tácticos/superpotenciadores, igual que si los hubieras ganado jugando. */
+class LabScene extends Scene {
+  enter(){
+    this.c ??= {mundo:'abaco', mm:0, oleada:1, nivel:4, pot:{}, fus:[], sup:[], tac:{}, tipo:TIPOS_TROPA[0]};
+    this.pintar();
+  }
+  armaDe(tipo){ return tropaDe(this.app.progreso).equipo[tipo]?.arma; }
+  usadosTipo(tipo){ const a = this.armaDe(tipo); return PLANTILLAS_POT.reduce((t, p) => t + (this.c.pot[`${a}:${p.k}`] ?? 0), 0) + this.c.fus.filter(id => FUSIONES_ARMA[id].arma === a).length; }
+  usadosTac(){ return Object.values(this.c.tac).reduce((t, n) => t + n, 0) + this.c.sup.length; }
+  get tope(){ return Math.max(0, this.c.nivel - 1); }
+  pintar(msg = ''){
+    const c = this.c, M = MUNDOS_JUEGO.find(m => m.id === c.mundo), tope = this.tope, a = this.armaDe(c.tipo), libresT = tope - this.usadosTipo(c.tipo), libresG = tope - this.usadosTac();
+    const chip = (attr, on, txt, off = false) => `<button ${attr} ${off ? 'disabled' : ''} class="rounded-full border px-3 py-1.5 text-xs touch-manipulation disabled:opacity-40 ${on ? 'border-amber-400 bg-amber-400/15 text-amber-200' : 'border-zinc-700 bg-zinc-900'}">${txt}</button>`;
+    const mm = (k, n, max, min = 0) => `<span class="flex items-center gap-1"><button data-mas="${k}|-1" class="${UI.btn} !min-h-8 !px-2.5 !py-0" ${n <= min ? 'disabled' : ''}>−</button><b class="w-5 text-center">${n}</b><button data-mas="${k}|1" class="${UI.btn} !min-h-8 !px-2.5 !py-0" ${n >= max ? 'disabled' : ''}>+</button></span>`;
+    const fila = (icon, nombre, desc, ctrl) => `<div class="${UI.card} flex items-center gap-2 !p-2"><span class="text-2xl">${icon}</span><span class="min-w-0 flex-1"><b class="text-sm">${nombre}</b><span class="block text-[11px] text-zinc-400">${desc}</span></span>${ctrl}</div>`;
+    const tacs = Object.entries(BONUS_DEFS).filter(([, d]) => d.tipo === 'tactico' && !d.fusion), nTacs = Object.values(c.tac).filter(n => n > 0).length;
+    this.app.html(`
+    <div class="mx-auto flex h-full max-w-xl flex-col gap-3 overflow-y-auto px-4 pb-6 pt-4">
+      <div class="flex items-center justify-between">${btnVolver}<span class="text-xs text-amber-300">🧪 Solo en modo desarrollador</span></div>
+      <h2 class="text-2xl font-black">🧪 Laboratorio</h2>
+      <p class="text-xs text-zinc-400">Entra a una oleada concreta para probar soldados, fusiones y enemigos. El <b>nivel de XP</b> fija el tope: cada tipo de soldado tiene ${tope} elección(es) de potenciador o fusión y tú ${tope} de tácticos o superpotenciadores. No guarda avance en la Ruta.</p>
+      ${msg ? `<p class="rounded-xl bg-zinc-900 px-3 py-2 text-sm text-emerald-300">${msg}</p>` : ''}
+      <b class="text-sm">1 · Dónde</b>
+      <div class="flex flex-wrap gap-1.5">${MUNDOS_JUEGO.map(m => chip(`data-mundo="${m.id}"`, c.mundo === m.id, `${m.icon} ${m.nombre}`)).join('')}</div>
+      <div class="flex flex-wrap gap-1.5">${[...M.comandantes, M.soberano].map((C, k) => chip(`data-mm="${k}"`, c.mm === k, `${k < 4 ? '🎖️' : '👑'} ${C.name.replace('Comandante ', '')}`)).join('')}</div>
+      <div class="flex items-center justify-between ${UI.card} !p-2"><span class="text-sm">🌊 Oleada (5 = jefe)</span>${mm('oleada', c.oleada, OLEADAS, 1)}</div>
+      <b class="text-sm">2 · Nivel de XP promedio</b>
+      <div class="flex items-center justify-between ${UI.card} !p-2"><span class="text-sm">⭐ Nivel de cada tipo y general</span>${mm('nivel', c.nivel, 12, 1)}</div>
+      <b class="text-sm">3 · Potenciadores por tipo de soldado</b>
+      <div class="flex flex-wrap gap-1.5">${TIPOS_TROPA.map(t => chip(`data-tipo="${t}"`, c.tipo === t, `${SOLDADOS[t].icon} ${SOLDADOS[t].name} ${this.usadosTipo(t)}/${tope}`)).join('')}</div>
+      <p class="text-xs text-zinc-400">Arma equipada: <b>${POTENCIADORES[`${a}:dano`]?.armaIcon ?? ''} ${POTENCIADORES[`${a}:dano`]?.armaNombre ?? a}</b> (se cambia en 🪖 Pelotón) · te quedan <b class="${libresT ? 'text-emerald-300' : 'text-rose-300'}">${libresT}</b></p>
+      <div class="grid gap-1.5">${PLANTILLAS_POT.map(p => { const id = `${a}:${p.k}`, n = c.pot[id] ?? 0; return fila(p.icon, p.nombre, p.desc, mm('pot:' + id, n, Math.min(MAX_POT, n + libresT))); }).join('')}
+        ${Object.values(FUSIONES_ARMA).filter(f => f.arma === a).map(f => { const on = c.fus.includes(f.id); return fila(f.icon, `⚗️ ${f.nombre}`, `${f.desc} (con ${BONUS_DEFS[f.tactico].icon} ${BONUS_DEFS[f.tactico].name})`, chip(`data-fus="${f.id}"`, on, on ? '✓ Activa' : 'Activar', !on && libresT <= 0)); }).join('')}</div>
+      <b class="text-sm">4 · Tácticos y superpotenciadores</b><p class="-mt-2 text-xs text-zinc-400">Máximo ${ESPACIOS.tactico} tácticos distintos · te quedan <b class="${libresG ? 'text-emerald-300' : 'text-rose-300'}">${libresG}</b></p>
+      <div class="grid gap-1.5">${tacs.map(([id, d]) => { const n = c.tac[id] ?? 0; return fila(d.icon, d.name, d.desc, mm('tac:' + id, n, n ? Math.min(MAX_NIVEL, n + libresG) : (nTacs < ESPACIOS.tactico && libresG > 0 ? 1 : 0))); }).join('')}
+        ${Object.entries(SUPERPOTENCIADORES).map(([id, x]) => { const on = c.sup.includes(id); return fila(x.icon, `🌟 ${x.nombre}`, x.desc, chip(`data-sup="${id}"`, on, on ? '✓ Activo' : 'Activar', !on && libresG <= 0)); }).join('')}</div>
+      <button data-a="probar" class="${UI.btnP} !min-h-14 text-lg">▶ Probar en la oleada ${c.oleada}</button>
+    </div>`).onclick = e => this.click(e);
+  }
+  click(e){
+    const c = this.c;
+    if (e.target.closest('[data-a="volver"]')) return this.app.go(new MenuScene(this.app));
+    const m = e.target.closest('[data-mundo]')?.dataset.mundo; if (m){ c.mundo = m; return this.pintar(); }
+    const k = e.target.closest('[data-mm]')?.dataset.mm; if (k != null){ c.mm = +k; return this.pintar(); }
+    const t = e.target.closest('[data-tipo]')?.dataset.tipo; if (t){ c.tipo = t; return this.pintar(); }
+    const f = e.target.closest('[data-fus]')?.dataset.fus; if (f){ c.fus = c.fus.includes(f) ? c.fus.filter(x => x !== f) : [...c.fus, f]; return this.pintar(); }
+    const sp = e.target.closest('[data-sup]')?.dataset.sup; if (sp){ c.sup = c.sup.includes(sp) ? c.sup.filter(x => x !== sp) : [...c.sup, sp]; return this.pintar(); }
+    const ms = e.target.closest('[data-mas]')?.dataset.mas;
+    if (ms){ const i = ms.lastIndexOf('|'), clave = ms.slice(0, i), d = +ms.slice(i + 1);
+      if (clave === 'oleada') c.oleada = Math.max(1, Math.min(OLEADAS, c.oleada + d));
+      else if (clave === 'nivel'){ c.nivel = Math.max(1, Math.min(12, c.nivel + d)); this.recortar(); }
+      else if (clave.startsWith('pot:')){ const id = clave.slice(4); c.pot[id] = Math.max(0, (c.pot[id] ?? 0) + d); }
+      else if (clave.startsWith('tac:')){ const id = clave.slice(4); c.tac[id] = Math.max(0, (c.tac[id] ?? 0) + d); }
+      return this.pintar(); }
+    if (e.target.closest('[data-a="probar"]')) return this.probar();
+  }
+  /** Al bajar el nivel, se quitan elecciones hasta respetar el tope. */
+  recortar(){
+    const c = this.c, tope = this.tope;
+    for (const tipo of TIPOS_TROPA){ const a = this.armaDe(tipo);
+      while (this.usadosTipo(tipo) > tope){ const f = c.fus.findLast(id => FUSIONES_ARMA[id].arma === a); if (f){ c.fus = c.fus.filter(x => x !== f); continue; }
+        const p = PLANTILLAS_POT.map(p => `${a}:${p.k}`).findLast(id => c.pot[id] > 0); if (!p) break; c.pot[p]--; } }
+    while (this.usadosTac() > tope){ if (c.sup.length){ c.sup.pop(); continue; } const id = Object.keys(c.tac).findLast(id => c.tac[id] > 0); if (!id) break; c.tac[id]--; }
+  }
+  probar(){
+    const c = this.c, run = new Run(this.app);
+    run.mundo = c.mundo; run.mm = c.mm; run.mision = c.mm + 1; run.oleada = c.oleada; run.lab = true;
+    run.nivel = c.nivel; run.nivelTipo = Object.fromEntries(TIPOS_TROPA.map(t => [t, c.nivel]));
+    run.potenciadores = Object.fromEntries(Object.entries(c.pot).filter(([, n]) => n > 0)); run.fusionesArma = [...c.fus]; run.supers = [...c.sup];
+    for (const [id, n] of Object.entries(c.tac)) if (n > 0){ run.loadout.aplicar({accion:'nuevo', id}); const b = run.loadout.tiene(id); for (let k = 1; k < n; k++) b.subir(); }
+    const b = run.base, max = run.vidaBase + run.loadout.efecto('vida', 0); b.vidaMax = max; b.vida = max;
+    this.app.progreso.data.modo = MUNDOS_JUEGO.find(m => m.id === c.mundo).dominio;
+    this.app.go(new BattleScene(this.app, run));
+  }
+}
+
 /* ---------- Juego bloqueado hasta el nivel mínimo de la Ruta ---------- */
 class BloqueoScene extends Scene {
   enter(){

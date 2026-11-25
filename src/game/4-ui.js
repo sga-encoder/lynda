@@ -108,7 +108,7 @@ function comboHTML(cb, dom){
   const iconos = cb.cartas.map(id => dom.cartas.get(id)?.icon ?? '?').join('<span class="text-zinc-500">›</span>');
   return `<button data-combo="${cb.id}" data-arte class="relative h-[9.6rem] w-[6.7rem] shrink-0 rounded-2xl bg-gradient-to-br ${GRAD.combo} p-[2px] text-left shadow-lg shadow-black/50 touch-manipulation select-none transition-transform active:scale-95 ">
     <span class="flex h-full flex-col rounded-[14px] bg-zinc-950/95 p-1.5">
-      <span class="text-[9.5px] font-black uppercase leading-tight tracking-wide text-amber-200">🔗 ${cb.nombre}</span>
+      <span class="text-[9.5px] font-black uppercase leading-tight tracking-wide text-amber-500">🔗 ${cb.nombre}</span>
       ${vitrina3D() ? (Emblemas.vigilar(), `<canvas data-emblema="🔗" data-color="${COLOR_AREA.combo}" aria-hidden="true" class="mx-auto block h-12 w-12"></canvas>`) : ''}
       <span class="mt-1 flex flex-wrap items-center justify-center gap-0.5 text-base leading-none">${iconos}</span>
       <span class="mt-auto text-center text-[8px] leading-tight text-zinc-400">🃏 Carta compuesta · sin límite</span>
@@ -144,10 +144,13 @@ class BattleScene extends Scene {
           <div data-h="expr" class="mt-1 flex min-h-16 items-center justify-center overflow-x-auto rounded-2xl bg-zinc-900 px-2 text-xl text-white [&_[data-mejor]]:!bg-emerald-400/40 [&_[data-mejor]]:!outline-emerald-300 [&_[data-t]]:cursor-pointer [&_[data-t]]:rounded-md [&_[data-t]]:bg-amber-400/30 [&_[data-t]]:outline [&_[data-t]]:outline-2 [&_[data-t]]:outline-amber-300 [&_[data-t='1']]:bg-sky-400/30 [&_[data-t='1']]:outline-sky-300 [&_[data-t='2']]:bg-fuchsia-400/30 [&_[data-t='2']]:outline-fuchsia-300 [&_[data-t='3']]:bg-lime-400/30 [&_[data-t='3']]:outline-lime-300"></div>
           <div data-h="msg" class="min-h-9 py-1 text-center text-sm"></div>
         </div>
-        <div data-h="quiz" class="hidden px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"></div>
-        <div data-h="mano" class="flex gap-2 overflow-x-auto px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-4 [scrollbar-width:none]"></div>
+        <div data-h="quiz" class="hidden px-3 pb-2"></div>
+        <div data-h="mano" class="flex min-h-[10.5rem] gap-2 overflow-x-auto px-3 pb-2 pt-4 [scrollbar-width:none]"></div>
         <div data-h="libre" class="absolute inset-0 z-10 hidden"></div>
       </div>
+      <nav data-h="tabsj" class="grid shrink-0 grid-cols-3 gap-1.5 border-t border-zinc-800 bg-zinc-950 px-3 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))]" aria-label="Herramientas para resolver">
+        ${[['props', '🃏', 'Propiedades'], ['mazo', '📚', 'Mazo'], ['libre', '🪄', 'Paso libre']].map(([id, e, t]) => `<button data-tabj="${id}" class="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-2xl border-2 text-xs font-bold touch-manipulation transition-colors active:scale-95">
+          ${vitrina3D() ? icono3D(e, 'block h-7 w-7') : `<span class="text-xl">${e}</span>`}${t}</button>`).join('')}</nav>
       <div data-h="capa" class="absolute inset-0 z-20 hidden"></div>
     </div>`);
     this.$ = n => this.app.root.querySelector(`[data-h="${n}"]`);
@@ -272,18 +275,31 @@ class BattleScene extends Scene {
     this.$('tipo').textContent = (this.director.generando ? '' : '⭐ Extra · ') + `${this.dom.icon} ${this.dom.consigna(this.raiz)}`;   // consigna neutra: no revela el método
     this.$('pasos').textContent = `Pasos ${this.pasos} · mínimo ${this.par}`;
   }
+  /** Menú inferior de la batalla: 🃏 Propiedades · 📚 Mazo (cartas compuestas) · 🪄 Paso libre. */
+  ponerTab(t){
+    this.tabJ = t;
+    this.$('tabsj')?.querySelectorAll('[data-tabj]').forEach(b => { const on = b.dataset.tabj === t;
+      b.classList.toggle('border-emerald-400', on); b.classList.toggle('bg-emerald-400/15', on); b.classList.toggle('text-emerald-200', on); b.classList.toggle('border-zinc-800', !on); b.classList.toggle('text-zinc-300', !on); });
+    if (t === 'libre'){ if (this.resuelto) return this.ponerTab('props'); this.carta = null; return this.abrirLibre(); }
+    this.app.piezas.cerrar(); this.dibujarMano();
+  }
   dibujarMano(){
-    const quiz = !!this.quiz;
+    const quiz = !!this.quiz, tab = this.tabJ ??= 'props';
+    if (!this.$('tabsj').dataset.listo){ this.$('tabsj').dataset.listo = '1'; this.ponerTab(tab); return; }
     this.$('quiz').classList.toggle('hidden', !quiz); this.$('mano').classList.toggle('hidden', quiz);
     if (quiz) return this.dibujarQuiz();
-    this.$('mano').innerHTML =
-      this.manoConAyuda().join('') +
-      this.run.combosDe(this.dom.id).map(cb => comboHTML(cb, this.dom)).join('');   // las cartas compuestas se arman solo en 🃏 Mazo
+    if (tab === 'mazo'){                                              // cartas compuestas (se arman en 🃏 Mazo, fuera de la partida)
+      const combos = this.run.combosDe(this.dom.id);
+      this.$('mano').innerHTML = combos.length ? combos.map(cb => comboHTML(cb, this.dom)).join('')
+        : `<div class="m-auto max-w-xs py-4 text-center text-sm text-zinc-400">No tienes cartas compuestas de esta área. Créalas en <b>🃏 Mazo</b> desde el menú del juego (fuera de la partida).</div>`;
+      return;
+    }
+    this.$('mano').innerHTML = this.manoConAyuda().filter(Boolean).join('');
   }
   /** Sin ayuda todas las cartas se ven igual; con ayuda media se iluminan las que sirven y con alta se marca la mejor. */
   manoConAyuda(){
     const aplica = this.ayuda >= 2 ? this.dom.aplicables(this.raiz) : null, mejor = this.ayuda >= 3 ? this.dom.mejorJugada(this.raiz) : null;
-    return this.dom.mano(this.raiz).filter(c => c.free || this.app.cartaDesbloqueada(c.id)).map(c => cartaHTML(c, this.dom, {sel:this.carta === c, marca: mejor?.carta === c ? 'mejor' : aplica?.has(c.id) ? 'aplica' : null}));
+    return this.dom.mano(this.raiz).filter(c => !c.free && this.app.cartaDesbloqueada(c.id)).map(c => cartaHTML(c, this.dom, {sel:this.carta === c, marca: mejor?.carta === c ? 'mejor' : aplica?.has(c.id) ? 'aplica' : null}));
   }
   mostrarPista(){
     if (!this.ayuda || this.resuelto) return;
@@ -302,6 +318,7 @@ class BattleScene extends Scene {
 
   click(e){
     const a = e.target.closest('[data-a]')?.dataset.a;
+    const tj = e.target.closest('[data-tabj]')?.dataset.tabj; if (tj) return this.ponerTab(tj);
     if (a === 'pausa') return this.mostrarPausa();
     if (a === 'vel'){ const P = this.app.progreso; P.data.velocidad = this.vel % 4 + 1; P.guardar(); return this.hud(); }   // ×1 → ×2 → ×3 → ×4 → ×1
     if (a === 'pista'){ this.pistaMostrada = true; return this.mostrarPista(); }
@@ -415,7 +432,7 @@ class BattleScene extends Scene {
     this.app.piezas.abrir({
       expr: this.dom.tex(this.raiz), piezas: this.dom.piezas(this.raiz), ayuda: this.dom.ayudaLibre(this.raiz),
       prellenar: this.dom.prellenar(this.raiz), vista: src => this.dom.vista(src),
-      confirmar: src => this.pasoLibre(src), cancelar: () => {},
+      confirmar: src => { const err = this.pasoLibre(src); if (!err) setTimeout(() => this.ponerTab('props')); return err; }, cancelar: () => this.ponerTab('props'),
     });
   }
   /** Devuelve un mensaje de error o null si el paso libre fue aceptado. */
@@ -481,12 +498,12 @@ class BattleScene extends Scene {
 
   /* ---- Capas: subir de nivel, taller, pausa ---- */
   abrirCapa(html, onclick){
-    this.capaAbierta = true; this.pausado = true; this.app.piezas.cerrar();
+    this.capaAbierta = true; this.pausado = true; this.app.piezas.cerrar(); if (this.tabJ === 'libre') this.tabJ = 'props';
     const capa = this.$('capa'); capa.classList.remove('hidden');
     capa.innerHTML = `<div class="flex h-full flex-col overflow-y-auto bg-zinc-950/90 px-4 backdrop-blur-md pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">${html}</div>`;
     capa.onclick = e => { e.stopPropagation(); onclick(e); };
   }
-  cerrarCapa(){ this.capaAbierta = false; this.pausado = false; this.$('capa').classList.add('hidden'); this.ultimo = performance.now(); }
+  cerrarCapa(){ this.capaAbierta = false; this.pausado = false; this.$('capa').classList.add('hidden'); this.ultimo = performance.now(); if (this.$('tabsj')) this.ponerTab(this.tabJ ?? 'props'); }
 
   /** Final de la oleada: por cada nivel que subió un tipo de soldado se elige 1 potenciador (uno a uno, tipo por tipo)
       y por cada nivel general, 1 táctico. Después sigue la partida. */

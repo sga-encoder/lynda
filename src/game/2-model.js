@@ -170,7 +170,7 @@ class Combo {
 }
 const MAX_CARTAS_COMBO = 5;
 /** Ajuste de dificultad (calibrado con jugadores simulados: más lento al resolver → menos energía). */
-const BALANCE = {energiaPaso:0.7, costoRecluta:4, disparan:0.5};
+const BALANCE = {energiaPaso:0.85, costoRecluta:3, disparan:0.5, presionMision:0.08, esperaExtra:2.5, bonoProblema:35};
 
 /* ---------- Modo asistido (3 niveles) ---------- */
 const NIVELES_AYUDA = [
@@ -221,7 +221,7 @@ class Puntuador {
     return {energia: base * calidad, xp: base * calidad, calidad, detalle};
   }
   /** Bono al terminar un problema: eficiencia (pasos vs. par). */
-  bonoProblema(pasos, par){ const eficiente = pasos <= par; return {xp: eficiente ? 30 : 15, energia: 20, eficiente}; }
+  bonoProblema(pasos, par){ const eficiente = pasos <= par; return {xp: eficiente ? 30 : 15, energia: BALANCE.bonoProblema, eficiente}; }
 }
 
 /* ---------- Mejoras permanentes (fuera de la partida) ----------
@@ -279,15 +279,19 @@ class Progreso {
 const MISIONES = 4, OLEADAS = 5;   // cada misión tiene 5 oleadas; la última trae al Comandante o al Soberano
 const CLIMAS_ROTACION = ['despejado', 'lluvia', 'niebla', 'nieve', 'tormenta', 'viento'];
 function configOleada(mision, oleada){
-  const t = Math.round(((mision - 1) * OLEADAS + (oleada - 1)) * 0.45);    // sube poco a poco: misión 1 → 0..2, misión 2 → 2..4…
+  // Dos ejes: «t» = variedad (qué tipos de alienígena aparecen, crece con el avance) y «q» = presión
+  // (cuántos, cuánta vida y qué tan rápido). La presión crece sobre todo dentro de la misión: la dificultad
+  // entre misiones la ponen los cálculos (problemas más largos), no enemigos mucho más fuertes.
+  const t = Math.round(((mision - 1) * OLEADAS + (oleada - 1)) * 0.45);
+  const q = Math.min(oleada - 1, OLEADAS - 2) * 0.45 + Math.min(mision - 1, 6) * BALANCE.presionMision;   // la oleada del jefe no trae más comunes que la anterior
   return {
-    t,
-    problemas: 1 + Math.floor(t / 4) + (oleada === OLEADAS && mision > 1 ? 1 : 0),
-    jefeVida: mision === 1 ? 0.65 : mision === 2 ? 0.85 : 1,        // los primeros jefes son más suaves
-    minimo: 7 + Math.round(t * 2),                      // la primera misión es suave y luego crece
-    intervalo: Math.max(0.6, 3.0 - t * 0.2),            // aparecen más seguido a medida que avanzas
-    velocidad: 1 + t * 0.07,
-    vida: 1 + t * 0.14,
+    t, q,
+    problemas: 1 + (oleada === OLEADAS && mision > 1 ? 1 : 0),
+    minimo: 7 + Math.round(q * 2),
+    intervalo: Math.max(0.6, 3.0 - q * 0.2),
+    velocidad: 1 + q * 0.07,
+    vida: 1 + q * 0.14,
+    jefeVida: mision === 1 ? 0.55 : 0.6,                            // el primer jefe es más suave
     jefe: oleada === OLEADAS ? JEFES[(mision - 1) % JEFES.length] : null, // un jefe al final de cada misión (en modo infinito se repiten)
   };
 }

@@ -81,13 +81,13 @@ for (const [mi, M] of MUNDOS_JUEGO.entries()){
       INFO_EXTRA[id] = {name, desc, mundo:M.id, grupo:'comun'}; FORMA_DE[id] = base;
       COLOR_ENEMIGO[id] = C.color;
     }
-    const nivel = 1 + mi * 0.6 + ci * 0.15;
+    const nivel = 1 + mi * 0.08 + ci * 0.1;                             // los jefes crecen poco: lo difícil son los cálculos
     ENEMIGOS[C.id] = variante(C.id, C.forma, c => ({jefe:true, comandante:true, name:C.name, color:C.color, vida:90 * nivel * jv(c), escala:2.1, xp:45, armas:[{...C.ataque.arma}, {tipo:'acido', rango:110, cd:3, dmg:1.5 * nivel, objetivo:'soldados'}]}));
     INFO_EXTRA[C.id] = {name:C.name, desc:`${C.ataque.nombre}: ${C.ataque.desc}`, mundo:M.id, grupo:'comandante'};
     COLOR_ENEMIGO[C.id] = C.color;
   });
-  const S = M.soberano, nivel = 1.6 + mi * 0.7;
-  ENEMIGOS[S.id] = variante(S.id, S.forma, c => ({jefe:true, soberano:true, name:S.name, color:S.color, vida:160 * nivel * jv(c), escala:2.8, xp:120, armas:M.comandantes.map(C => ({...C.ataque.arma, cd:C.ataque.arma.cd * 1.3}))}));
+  const S = M.soberano, nivel = 1.3 + mi * 0.1;
+  ENEMIGOS[S.id] = variante(S.id, S.forma, c => ({jefe:true, soberano:true, name:S.name, color:S.color, vida:115 * nivel * jv(c), escala:2.8, xp:120, armas:M.comandantes.map(C => ({...C.ataque.arma, cd:C.ataque.arma.cd * 1.9}))}));
   INFO_EXTRA[S.id] = {name:S.name, desc:S.desc, mundo:M.id, grupo:'soberano'};
   COLOR_ENEMIGO[S.id] = S.color;
 }

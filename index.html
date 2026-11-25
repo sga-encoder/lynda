@@ -4703,7 +4703,7 @@ class Combo {
 }
 const MAX_CARTAS_COMBO = 5;
 /** Ajuste de dificultad (calibrado con jugadores simulados: más lento al resolver → menos energía). */
-const BALANCE = {energiaPaso:0.7, costoRecluta:4, disparan:0.5};
+const BALANCE = {energiaPaso:0.85, costoRecluta:3, disparan:0.5, presionMision:0.08, esperaExtra:2.5, bonoProblema:35};
 
 /* ---------- Modo asistido (3 niveles) ---------- */
 const NIVELES_AYUDA = [
@@ -4754,7 +4754,7 @@ class Puntuador {
     return {energia: base * calidad, xp: base * calidad, calidad, detalle};
   }
   /** Bono al terminar un problema: eficiencia (pasos vs. par). */
-  bonoProblema(pasos, par){ const eficiente = pasos <= par; return {xp: eficiente ? 30 : 15, energia: 20, eficiente}; }
+  bonoProblema(pasos, par){ const eficiente = pasos <= par; return {xp: eficiente ? 30 : 15, energia: BALANCE.bonoProblema, eficiente}; }
 }
 
 /* ---------- Mejoras permanentes (fuera de la partida) ----------
@@ -4812,15 +4812,19 @@ class Progreso {
 const MISIONES = 4, OLEADAS = 5;   // cada misión tiene 5 oleadas; la última trae al Comandante o al Soberano
 const CLIMAS_ROTACION = ['despejado', 'lluvia', 'niebla', 'nieve', 'tormenta', 'viento'];
 function configOleada(mision, oleada){
-  const t = Math.round(((mision - 1) * OLEADAS + (oleada - 1)) * 0.45);    // sube poco a poco: misión 1 → 0..2, misión 2 → 2..4…
+  // Dos ejes: «t» = variedad (qué tipos de alienígena aparecen, crece con el avance) y «q» = presión
+  // (cuántos, cuánta vida y qué tan rápido). La presión crece sobre todo dentro de la misión: la dificultad
+  // entre misiones la ponen los cálculos (problemas más largos), no enemigos mucho más fuertes.
+  const t = Math.round(((mision - 1) * OLEADAS + (oleada - 1)) * 0.45);
+  const q = Math.min(oleada - 1, OLEADAS - 2) * 0.45 + Math.min(mision - 1, 6) * BALANCE.presionMision;   // la oleada del jefe no trae más comunes que la anterior
   return {
-    t,
-    problemas: 1 + Math.floor(t / 4) + (oleada === OLEADAS && mision > 1 ? 1 : 0),
-    jefeVida: mision === 1 ? 0.65 : mision === 2 ? 0.85 : 1,        // los primeros jefes son más suaves
-    minimo: 7 + Math.round(t * 2),                      // la primera misión es suave y luego crece
-    intervalo: Math.max(0.6, 3.0 - t * 0.2),            // aparecen más seguido a medida que avanzas
-    velocidad: 1 + t * 0.07,
-    vida: 1 + t * 0.14,
+    t, q,
+    problemas: 1 + (oleada === OLEADAS && mision > 1 ? 1 : 0),
+    minimo: 7 + Math.round(q * 2),
+    intervalo: Math.max(0.6, 3.0 - q * 0.2),
+    velocidad: 1 + q * 0.07,
+    vida: 1 + q * 0.14,
+    jefeVida: mision === 1 ? 0.55 : 0.6,                            // el primer jefe es más suave
     jefe: oleada === OLEADAS ? JEFES[(mision - 1) % JEFES.length] : null, // un jefe al final de cada misión (en modo infinito se repiten)
   };
 }
@@ -4972,7 +4976,7 @@ class WaveDirector {
       m.enemigos.push(ENEMIGOS[this.cfg.jefe](0, this.cfg)); m.anuncio = `👹 ¡${ENEMIGOS[this.cfg.jefe](0, this.cfg).name}!`; m.sacudir(0.6); this.jefeT = null;
     }
     if (!(this.problemasResueltos < this.cfg.problemas || this.generados < this.cfg.minimo) || (this.t -= dt) > 0) return;
-    this.t = this.cfg.intervalo * (0.7 + this.rng.next() * 0.6);
+    this.t = this.cfg.intervalo * (0.7 + this.rng.next() * 0.6) * (this.generados >= this.cfg.minimo ? BALANCE.esperaExtra : 1);   // cumplido el mínimo, llegan más espaciados mientras terminas el cálculo
     if (m.enemigos.length >= 24) return;                              // límite en pantalla (batallas más llenas)
     this.generados++;
     const t = this.cfg.t, voladores = m.enemigos.filter(e => e.vuela).length;
@@ -4980,10 +4984,10 @@ class WaveDirector {
     const opciones = [...TABLA_APARICION, ...(this.cfg.extra ?? [])].filter(([id, desde]) => t >= desde && (voladores < 7 || !esAire(id)));
     let r = this.rng.next() * opciones.reduce((s, o) => s + o[2], 0), id = opciones[0][0];
     for (const [k, , w] of opciones){ if ((r -= w) <= 0){ id = k; break; } }
-    const aire = esAire(id), grupo = Math.min(24 - m.enemigos.length, 1 + this.rng.int(0, Math.floor(t / 2)));   // llegan en grupos (desde la 2.ª misión)
+    const aire = esAire(id), grupo = Math.min(24 - m.enemigos.length, 1 + this.rng.int(0, Math.floor((this.cfg.q ?? t) / 2)));   // llegan en grupos (desde la 2.ª misión)
     for (let g = 0; g < grupo; g++){
       const e = ENEMIGOS[id](aire ? 24 + this.rng.int(0, 50) : this.rng.int(200, MUNDO.W - 12), this.cfg);
-      if (!e.armas.length && !e.jefe && this.rng.next() < Math.min(0.65, BALANCE.disparan + 0.05 * t))   // los comunes también disparan (más a medida que avanzas)
+      if (!e.armas.length && !e.jefe && this.rng.next() < Math.min(0.65, BALANCE.disparan + 0.05 * (this.cfg.q ?? t)))   // los comunes también disparan (más a medida que avanzas)
         e.armas = [{t:1.5 + this.rng.next() * 2, tipo:'acido', rango:e.vuela ? 170 : 130, cd:2.6 + this.rng.next(), dmg:+(0.9 * Math.sqrt(this.cfg.vida)).toFixed(2), objetivo:this.rng.next() < 0.5 ? 'base' : 'soldados'}];
       e.x += g * 9; m.enemigos.push(e); if (g) this.generados++;
     }
@@ -5058,6 +5062,13 @@ class World {
       if (v){ this.rayos.push({puntos:[{x:v.x + 10, y:0}, {x:v.x - 6, y:(v.cy ?? MUNDO.suelo) / 2}, {x:v.x, y:v.cy ?? MUNDO.suelo - 9}], t:0.25, color:'#fef9c3'});
         if (v instanceof Soldado) this.dañarSoldado(v, 3); else this.golpear(v, {dmg:4, dano:'energia'}); }
     }
+    // Red de seguridad: si ya no llegan más y nadie recibe daño en 20 s, los que quedan avanzan (la oleada nunca se queda trabada)
+    if (!director.generando && this.enemigos.length){
+      const hp = this.enemigos.reduce((t, e) => t + e.vida, 0);
+      if (hp < (this.hpPrevio ?? Infinity) - 0.01){ this.hpPrevio = hp; this.quietoT = 0; }
+      else if ((this.quietoT = (this.quietoT ?? 0) + dt) > 20){ this.quietoT = 0; this.hpPrevio = hp;
+        for (const e of this.enemigos){ if (e.para) e.para = this.base.derecha + 40; if (e.flota) e.flota = this.base.derecha + 40; e.esperaT = 99; e.bajoTierra = false; } }
+    } else { this.hpPrevio = Infinity; this.quietoT = 0; }
     this.moverEnemigos(dt, lento);
     this.moverProyectiles(dt);
     // Efectos
@@ -5142,7 +5153,10 @@ class World {
       const conSoldados = this.soldados.length && !e.paso;
       const limite = conSoldados ? frente + 7 * e.escala : this.base.derecha + 2 + 4 * e.escala;
       if (e.bajoTierra && e.x <= limite + 30){ e.bajoTierra = false; this.polvo(e.x, MUNDO.suelo); this.explosion(e.x, MUNDO.suelo - 3, '#a16207', 10); }
-      if (e.para && e.x <= e.para) continue;                             // la reina se queda lejos invocando
+      if (e.para && e.x <= e.para){                                      // la reina se queda lejos invocando…
+        if ((e.esperaT = (e.esperaT ?? 0) + dt) > 8){ e.esperaT = 0; e.para = Math.max(this.base.derecha + 60, e.para * 0.8); }   // …pero se acerca poco a poco (con niebla no se la vería)
+        continue;
+      }
       if (e.armas.some(a => a.rango && a.objetivo === 'soldados') && conSoldados && e.x - frente <= e.armas.find(a => a.rango).rango * 0.9 * (C.rango ?? 1)
           && (e.esperaT = (e.esperaT ?? 0) + dt) < 6) continue;            // dispara a distancia un rato y luego avanza (si no, la oleada podría no terminar)
       if (e.x > limite){ e.x -= vel * dt; continue; }
@@ -5497,13 +5511,13 @@ for (const [mi, M] of MUNDOS_JUEGO.entries()){
       INFO_EXTRA[id] = {name, desc, mundo:M.id, grupo:'comun'}; FORMA_DE[id] = base;
       COLOR_ENEMIGO[id] = C.color;
     }
-    const nivel = 1 + mi * 0.6 + ci * 0.15;
+    const nivel = 1 + mi * 0.08 + ci * 0.1;                             // los jefes crecen poco: lo difícil son los cálculos
     ENEMIGOS[C.id] = variante(C.id, C.forma, c => ({jefe:true, comandante:true, name:C.name, color:C.color, vida:90 * nivel * jv(c), escala:2.1, xp:45, armas:[{...C.ataque.arma}, {tipo:'acido', rango:110, cd:3, dmg:1.5 * nivel, objetivo:'soldados'}]}));
     INFO_EXTRA[C.id] = {name:C.name, desc:`${C.ataque.nombre}: ${C.ataque.desc}`, mundo:M.id, grupo:'comandante'};
     COLOR_ENEMIGO[C.id] = C.color;
   });
-  const S = M.soberano, nivel = 1.6 + mi * 0.7;
-  ENEMIGOS[S.id] = variante(S.id, S.forma, c => ({jefe:true, soberano:true, name:S.name, color:S.color, vida:160 * nivel * jv(c), escala:2.8, xp:120, armas:M.comandantes.map(C => ({...C.ataque.arma, cd:C.ataque.arma.cd * 1.3}))}));
+  const S = M.soberano, nivel = 1.3 + mi * 0.1;
+  ENEMIGOS[S.id] = variante(S.id, S.forma, c => ({jefe:true, soberano:true, name:S.name, color:S.color, vida:115 * nivel * jv(c), escala:2.8, xp:120, armas:M.comandantes.map(C => ({...C.ataque.arma, cd:C.ataque.arma.cd * 1.9}))}));
   INFO_EXTRA[S.id] = {name:S.name, desc:S.desc, mundo:M.id, grupo:'soberano'};
   COLOR_ENEMIGO[S.id] = S.color;
 }
@@ -5855,7 +5869,7 @@ class BattleScene extends Scene {
       const M = mundoDe(r.mundo), idx = MUNDOS_JUEGO.indexOf(M);
       this.cfg.extra = aparicionMundo(M, r.mm);
       this.cfg.jefe = r.oleada === OLEADAS ? (r.mm < 4 ? M.comandantes[r.mm].id : M.soberano.id) : null;
-      this.cfg.vida *= 1 + idx * 0.25; this.cfg.velocidad *= 1 + idx * 0.05;
+      this.cfg.velocidad *= 1 + idx * 0.03;                           // cada mundo es un poco más ágil; la dificultad la ponen sus cálculos
     }
     Object.assign(this.cfg, {velocidad:this.cfg.velocidad * df.vel, vida:this.cfg.vida * df.vida, minimo:Math.round(this.cfg.minimo * df.cantidad), intervalo:this.cfg.intervalo / df.cantidad});
     this.director = new WaveDirector(this.cfg, this.app.rng);

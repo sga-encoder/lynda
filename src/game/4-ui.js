@@ -169,7 +169,7 @@ class BattleScene extends Scene {
       const M = mundoDe(r.mundo), idx = MUNDOS_JUEGO.indexOf(M);
       this.cfg.extra = aparicionMundo(M, r.mm);
       this.cfg.jefe = r.oleada === OLEADAS ? (r.mm < 4 ? M.comandantes[r.mm].id : M.soberano.id) : null;
-      this.cfg.vida *= 1 + idx * 0.25; this.cfg.velocidad *= 1 + idx * 0.05;
+      this.cfg.velocidad *= 1 + idx * 0.03;                           // cada mundo es un poco más ágil; la dificultad la ponen sus cálculos
     }
     Object.assign(this.cfg, {velocidad:this.cfg.velocidad * df.vel, vida:this.cfg.vida * df.vida, minimo:Math.round(this.cfg.minimo * df.cantidad), intervalo:this.cfg.intervalo / df.cantidad});
     this.director = new WaveDirector(this.cfg, this.app.rng);

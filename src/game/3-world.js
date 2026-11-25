@@ -144,7 +144,7 @@ class WaveDirector {
       m.enemigos.push(ENEMIGOS[this.cfg.jefe](0, this.cfg)); m.anuncio = `👹 ¡${ENEMIGOS[this.cfg.jefe](0, this.cfg).name}!`; m.sacudir(0.6); this.jefeT = null;
     }
     if (!(this.problemasResueltos < this.cfg.problemas || this.generados < this.cfg.minimo) || (this.t -= dt) > 0) return;
-    this.t = this.cfg.intervalo * (0.7 + this.rng.next() * 0.6);
+    this.t = this.cfg.intervalo * (0.7 + this.rng.next() * 0.6) * (this.generados >= this.cfg.minimo ? BALANCE.esperaExtra : 1);   // cumplido el mínimo, llegan más espaciados mientras terminas el cálculo
     if (m.enemigos.length >= 24) return;                              // límite en pantalla (batallas más llenas)
     this.generados++;
     const t = this.cfg.t, voladores = m.enemigos.filter(e => e.vuela).length;
@@ -152,10 +152,10 @@ class WaveDirector {
     const opciones = [...TABLA_APARICION, ...(this.cfg.extra ?? [])].filter(([id, desde]) => t >= desde && (voladores < 7 || !esAire(id)));
     let r = this.rng.next() * opciones.reduce((s, o) => s + o[2], 0), id = opciones[0][0];
     for (const [k, , w] of opciones){ if ((r -= w) <= 0){ id = k; break; } }
-    const aire = esAire(id), grupo = Math.min(24 - m.enemigos.length, 1 + this.rng.int(0, Math.floor(t / 2)));   // llegan en grupos (desde la 2.ª misión)
+    const aire = esAire(id), grupo = Math.min(24 - m.enemigos.length, 1 + this.rng.int(0, Math.floor((this.cfg.q ?? t) / 2)));   // llegan en grupos (desde la 2.ª misión)
     for (let g = 0; g < grupo; g++){
       const e = ENEMIGOS[id](aire ? 24 + this.rng.int(0, 50) : this.rng.int(200, MUNDO.W - 12), this.cfg);
-      if (!e.armas.length && !e.jefe && this.rng.next() < Math.min(0.65, BALANCE.disparan + 0.05 * t))   // los comunes también disparan (más a medida que avanzas)
+      if (!e.armas.length && !e.jefe && this.rng.next() < Math.min(0.65, BALANCE.disparan + 0.05 * (this.cfg.q ?? t)))   // los comunes también disparan (más a medida que avanzas)
         e.armas = [{t:1.5 + this.rng.next() * 2, tipo:'acido', rango:e.vuela ? 170 : 130, cd:2.6 + this.rng.next(), dmg:+(0.9 * Math.sqrt(this.cfg.vida)).toFixed(2), objetivo:this.rng.next() < 0.5 ? 'base' : 'soldados'}];
       e.x += g * 9; m.enemigos.push(e); if (g) this.generados++;
     }
@@ -230,6 +230,13 @@ class World {
       if (v){ this.rayos.push({puntos:[{x:v.x + 10, y:0}, {x:v.x - 6, y:(v.cy ?? MUNDO.suelo) / 2}, {x:v.x, y:v.cy ?? MUNDO.suelo - 9}], t:0.25, color:'#fef9c3'});
         if (v instanceof Soldado) this.dañarSoldado(v, 3); else this.golpear(v, {dmg:4, dano:'energia'}); }
     }
+    // Red de seguridad: si ya no llegan más y nadie recibe daño en 20 s, los que quedan avanzan (la oleada nunca se queda trabada)
+    if (!director.generando && this.enemigos.length){
+      const hp = this.enemigos.reduce((t, e) => t + e.vida, 0);
+      if (hp < (this.hpPrevio ?? Infinity) - 0.01){ this.hpPrevio = hp; this.quietoT = 0; }
+      else if ((this.quietoT = (this.quietoT ?? 0) + dt) > 20){ this.quietoT = 0; this.hpPrevio = hp;
+        for (const e of this.enemigos){ if (e.para) e.para = this.base.derecha + 40; if (e.flota) e.flota = this.base.derecha + 40; e.esperaT = 99; e.bajoTierra = false; } }
+    } else { this.hpPrevio = Infinity; this.quietoT = 0; }
     this.moverEnemigos(dt, lento);
     this.moverProyectiles(dt);
     // Efectos
@@ -314,7 +321,10 @@ class World {
       const conSoldados = this.soldados.length && !e.paso;
       const limite = conSoldados ? frente + 7 * e.escala : this.base.derecha + 2 + 4 * e.escala;
       if (e.bajoTierra && e.x <= limite + 30){ e.bajoTierra = false; this.polvo(e.x, MUNDO.suelo); this.explosion(e.x, MUNDO.suelo - 3, '#a16207', 10); }
-      if (e.para && e.x <= e.para) continue;                             // la reina se queda lejos invocando
+      if (e.para && e.x <= e.para){                                      // la reina se queda lejos invocando…
+        if ((e.esperaT = (e.esperaT ?? 0) + dt) > 8){ e.esperaT = 0; e.para = Math.max(this.base.derecha + 60, e.para * 0.8); }   // …pero se acerca poco a poco (con niebla no se la vería)
+        continue;
+      }
       if (e.armas.some(a => a.rango && a.objetivo === 'soldados') && conSoldados && e.x - frente <= e.armas.find(a => a.rango).rango * 0.9 * (C.rango ?? 1)
           && (e.esperaT = (e.esperaT ?? 0) + dt) < 6) continue;            // dispara a distancia un rato y luego avanza (si no, la oleada podría no terminar)
       if (e.x > limite){ e.x -= vel * dt; continue; }

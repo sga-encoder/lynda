@@ -34,29 +34,20 @@ class GameApp {
     this.scene?.exit(); this.scene = scene;
     // La batalla ocupa toda la pantalla; los menús dejan ver la barra superior y la inferior de la app
     this.root.classList.toggle('juego-menu', !(scene instanceof BattleScene));
-    this.fondo();
     scene.enter();
   }
-  /** Fondo 3D animado detrás de los menús (no en la batalla, ni con gráficos 2D). */
-  fondo(){
-    const quiere = Graficos.es3D && !this.root.classList.contains('hidden') && !(this.scene instanceof BattleScene);
-    if (quiere && !this.fondo3d){ try { this.fondo3d = new Fondo3D(this.root); } catch (err){ console.warn('Fondo 3D no disponible:', err); this.fondo3d = null; } }
-    if (!Graficos.es3D && this.fondo3d){ this.fondo3d.dispose(); this.fondo3d = null; }
-    if (this.fondo3d) this.fondo3d.visible = quiere;
-    this.root.classList.toggle('con-fondo3d', !!(quiere && this.fondo3d));
-  }
-  open(){ this.root.classList.remove('hidden'); if (!this.scene) this.go(new MenuScene(this)); else this.fondo(); }
+  open(){ this.root.classList.remove('hidden'); if (!this.scene) this.go(new MenuScene(this)); }
   /** Empieza una partida normal en la modalidad indicada (o la última usada). */
   nuevaPartida(modo = this.progreso.data.modo){ this.progreso.data.modo = modo; this.progreso.guardar(); this.go(new BattleScene(this, new Run(this))); }
   /** Abre una sección del menú del juego (la elige la barra de navegación de la app). */
   mostrar(seccion){
     const S = {inicio:MenuScene, catalogo:CatalogoScene, mazo:MazoScene, peloton:PelotonScene, mejoras:MejorasScene, ayuda:HelpScene, config:MenuScene, mas:MejorasScene, partidas:MenuScene}[seccion] ?? MenuScene;
-    this.root.classList.remove('hidden'); this.fondo();
+    this.root.classList.remove('hidden');
     if (this.scene instanceof BattleScene && !this.scene.terminado) return;      // no se interrumpe una batalla
     if (!this.ruta.jugable && S !== HelpScene) return this.go(new BloqueoScene(this));   // el juego se abre en el nivel mínimo de la Ruta (el tutorial siempre se ve)
     if (!(this.scene instanceof S) || S === MenuScene) this.go(new S(this));
   }
-  close(){ this.scene?.pause(); this.root.classList.add('hidden'); this.fondo(); }
+  close(){ this.scene?.pause(); this.root.classList.add('hidden'); }
   html(s){ this.root.innerHTML = s; return this.root; }
   /* Desbloqueos: modo desarrollo, Ruta o avance en Aprender */
   tipoDesbloqueado(t){ return !!this.progreso.data.todo || this.ruta.tipos().has(t.id); }   // solo la Ruta (en orden) desbloquea

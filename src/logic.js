@@ -772,7 +772,7 @@ function pintarAjustes(){
     <div class="mt-4"><b class="text-sm">Modo asistido (juego)</b><div class="mt-1.5 flex gap-1.5">${AY.map(([ic,n],i)=>opt(`data-aj-ayuda="${i}"`, (d.asistido ?? 0) === i, `<span class="text-lg">${ic}</span>${n}`)).join('')}</div>
       <p class="mt-1 text-xs text-stone-500 dark:text-zinc-400">Más nivel = más pistas y sugerencias, pero menos XP.</p></div>
     <div class="mt-4"><b class="text-sm">Gráficos (juego y piezas)</b><div class="mt-1.5 flex gap-1.5">${Object.entries(Graficos.NIVELES).map(([id, n]) => opt(`data-aj-graf="${id}" ${id !== '2d' && !Graficos.webgl ? 'disabled' : ''}`, Graficos.nivel === id, `<span class="text-lg">${n.icon}</span>${n.nombre}`)).join('')}</div>
-      <p class="mt-1 text-xs text-stone-500 dark:text-zinc-400">${Graficos.webgl ? Graficos.NIVELES[Graficos.nivel].desc + ' Batalla, personajes, armas, efectos y fondo con Three.js.' : 'Este navegador no tiene WebGL: se usa el dibujo 2D.'}</p></div>
+      <p class="mt-1 text-xs text-stone-500 dark:text-zinc-400">${Graficos.webgl ? Graficos.NIVELES[Graficos.nivel].desc + ' Batalla, personajes, armas, efectos y catálogo con Three.js.' : 'Este navegador no tiene WebGL: se usa el dibujo 2D.'}</p></div>
     <div class="mt-4"><b class="text-sm">Archivos</b><p class="text-xs text-stone-500 dark:text-zinc-400">Todo tu avance (guía, juego, Ruta y partidas) en un archivo JSON.</p>
       <div class="mt-1.5 flex gap-2"><button data-aj="exportar" class="${C.btn} flex-1">⬇ Exportar</button><label class="${C.btn} flex-1">⬆ Importar<input type="file" accept="application/json,.json" data-aj-importar class="hidden"></label></div></div>
     <div class="mt-4 rounded-2xl border border-amber-300 p-3 dark:border-amber-700"><b class="text-sm">🧪 Modo desarrollador</b>
@@ -799,7 +799,7 @@ document.addEventListener('click', e => {
   if (e.target.closest('[data-ajustes]')) return abrirAjustes();
   if (e.target.id === 'ajustes') return cerrarAjustes();
   const gr = e.target.closest('[data-aj-graf]');
-  if (gr && !gr.disabled){ Graficos.nivel = gr.dataset.ajGraf; if (JUEGO){ JUEGO.fondo3d?.dispose(); JUEGO.fondo3d = null; JUEGO.fondo(); } FX3D.en(gr, 'acierto'); return pintarAjustes(); }
+  if (gr && !gr.disabled){ Graficos.nivel = gr.dataset.ajGraf; FX3D.en(gr, 'acierto'); return pintarAjustes(); }
   const ay = e.target.closest('[data-aj-ayuda]');
   if (ay){ const P = progresoJuego(); P.data.asistido = +ay.dataset.ajAyuda; P.guardar(); return pintarAjustes(); }
   const a = e.target.closest('[data-aj]')?.dataset.aj; if (!a) return;

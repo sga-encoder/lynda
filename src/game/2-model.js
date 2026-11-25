@@ -269,7 +269,7 @@ class SaveRepository {                               // patrón Repository: el r
 class Progreso {
   constructor(repo){
     this.repo = repo;
-    this.data = {puntos:0, mejoras:{}, record:0, partidas:0, modo:'fund', todo:false, devDesbloqueado:false, mazoInfinito:[], semi:true, asistido:0, dificultad:'soldado', rutaXP:0, ...repo.load()};
+    this.data = {puntos:0, mejoras:{}, record:0, partidas:0, modo:'fund', todo:false, devDesbloqueado:false, mazoInfinito:[], preguntas:false, asistido:0, dificultad:'soldado', rutaXP:0, ...repo.load()};
     if (!this.data.devDesbloqueado) this.data.todo = false;          // el modo desarrollador exige la contraseña
     this.data.desc = {armas:['rifle'], tacticos:[], enemigos:[], soldados:[], cartas:[], fusiones:[], potenciadores:[], ...(this.data.desc ?? {})};
     this.data.mazo = {fund:[], alg:[], dif:[], int:[], ...(this.data.mazo ?? {})};

@@ -373,7 +373,7 @@ const PROBLEM_TYPES = [
 class ProblemFactory {
   /** @param {Object<string,Dominio>} dominios  @param {Rng} rng */
   constructor(dominios, rng){ this.dominios = dominios; this.rng = rng; }
-  tipos(modo){ return Object.values(this.dominios).filter(d => modo === 'todo' || d.id === modo).flatMap(d => d.tipos); }
+  tipos(modo){ return Object.values(this.dominios).filter(d => modo === 'todo' || d.id === modo || d.mundo === modo).flatMap(d => d.tipos); }
   /** `ok` (opcional) decide si un tipo está desbloqueado (Ruta, Aprender o modo desarrollo). */
   disponibles(modo, doneKeys, todo, ok = t => todo || t.unlocked(doneKeys)){ return this.tipos(modo).filter(ok); }
   /** Problema según el modo; en misiones altas pesan más los tipos difíciles. */

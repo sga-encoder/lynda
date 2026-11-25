@@ -291,7 +291,7 @@ class Vitrina3D {
    hexagonal que gira (con el icono en sus caras) y chispas del color del área.
    Una sola escena compartida: para cada carta solo cambia la textura, el color
    y el giro. Se dibujan solo las cartas visibles, a ~25 cuadros/s. */
-const COLOR_AREA = {fund:'#6366f1', alg:'#f43f5e', dif:'#14b8a6', int:'#a855f7', libre:'#f59e0b', combo:'#fb7185', nuevo:'#71717a'};
+const COLOR_AREA = {fact:'#10b981', fund:'#6366f1', alg:'#f43f5e', dif:'#14b8a6', int:'#a855f7', libre:'#f59e0b', combo:'#fb7185', nuevo:'#71717a'};
 const Emblemas = (() => {
   let listo = false, S, cam, gema, lado, cara, borde, efx, raf = 0, ultimo = 0;
   const vivos = new Set(), visibles = new WeakMap();

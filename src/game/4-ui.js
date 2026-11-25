@@ -88,7 +88,7 @@ class Run {
 }
 
 /* ---------- Cartas (diseño) ---------- */
-const GRAD = {fund:'from-sky-400 to-indigo-500', alg:'from-orange-400 to-rose-500', dif:'from-emerald-400 to-teal-600', int:'from-fuchsia-400 to-violet-600', libre:'from-amber-300 to-orange-500', combo:'from-rose-400 to-amber-400', nuevo:'from-zinc-500 to-zinc-700'};
+const GRAD = {fact:'from-cyan-400 to-emerald-500', fund:'from-sky-400 to-indigo-500', alg:'from-orange-400 to-rose-500', dif:'from-emerald-400 to-teal-600', int:'from-fuchsia-400 to-violet-600', libre:'from-amber-300 to-orange-500', combo:'from-rose-400 to-amber-400', nuevo:'from-zinc-500 to-zinc-700'};
 const ktMini = tex => window.katex ? katex.renderToString(tex, {throwOnError:false, strict:false}) : tex;
 function cartaHTML(c, dom, {sel = false, attr = `data-carta="${c.id}"`, chica = false, marca = null} = {}){
   const tag = attr ? 'button' : 'div';     // sin acción es solo una imagen: un <button> dentro de otro rompe el diseño (catálogo)
@@ -332,32 +332,74 @@ class BattleScene extends Scene {
     const cid = e.target.closest('[data-carta]')?.dataset.carta;
     if (cid) return this.jugarCarta(this.dom.cartas.get(cid));
     const t = e.target.closest('[data-t]');
+    if (a === 'juntar') return this.juntarSemejantes();
+    if (t && this.seme){ const k = +t.dataset.t; this.seme.sel.has(k) ? this.seme.sel.delete(k) : this.seme.sel.add(k); return this.dibujarSemejantes(); }
     if (t && this.carta){ const path = this.objetivos[+t.dataset.t], c = this.carta; this.carta = null; return this.resultadoDe(c, path); }
   }
   jugarCarta(c){
-    this.cadena = null;                                              // tocar otra carta cancela la carta compuesta en curso
+    this.cadena = null; if (this.seme){ this.seme = null; this.$('expr').classList.remove('seme-elige'); }                                              // tocar otra carta cancela la carta compuesta en curso
     if (this.carta === c){ this.carta = null; this.dibujarProblema(); this.dibujarMano(); return this.mensaje(''); }
     if (c.free) return this.abrirLibre();
     const objs = c.targets(this.raiz);
     if (!objs.length){ this.combo = 0; return this.mensaje(`${c.icon} <b>${c.name}</b> no se puede aplicar aquí.`, 'rose'); }
+    if (c.id === 'seme' && this.dom.id === 'fund') return this.elegirSemejantes(c);   // elegir los monomios uno a uno
     if (objs.length === 1 && c.id !== 'dist') return this.resultadoDe(c, objs[0]);   // la distributiva siempre pide tocar el polinomio
     this.carta = c; this.objetivos = objs;
     this.dibujarProblema(); this.dibujarMano();
     this.mensaje(c.id === 'seme' ? 'Elige qué grupo juntar: toca uno de sus términos (se resaltan juntos).' : c.id === 'dist' ? 'Toca el <b>polinomio</b> (el paréntesis marcado) al que aplicas la distributiva.' : `Toca en la expresión dónde aplicar <b>${c.name}</b>.`, 'amber');
   }
-  /** Semiautomático: el jugador elige cuál es el resultado correcto de aplicar la carta. */
+  /** Términos semejantes: se tocan 2 o más monomios (todos se ven igual: el color no dice cuáles van juntos) y se pulsa Juntar. */
+  elegirSemejantes(c){
+    const terms = [...walk(this.raiz)].filter(([n]) => n instanceof Add).flatMap(([n, p]) => n.terms.map((t, i) => ({t, p, i}))).filter(x => likeKey(x.t));
+    this.carta = c; this.seme = {c, terms, sel:new Set()}; this.objetivos = terms.map(x => [...x.p, x.i]);
+    this.dibujarSemejantes();
+  }
+  dibujarSemejantes(){
+    const S = this.seme, marcas = new Map(this.objetivos.map((q, i) => [q.join('.'), S.sel.has(i) ? `${i},sel=1` : `${i}`]));
+    this.$('expr').innerHTML = texJuego(this.dom.tex(this.raiz, marcas)); this.$('expr').classList.add('seme-elige');
+    const n = S.sel.size;
+    this.mensaje(`🧲 Toca <b>dos o más términos semejantes</b> y luego <button data-a="juntar" class="ml-1 rounded-xl bg-emerald-500 px-3 py-1 text-sm font-black text-zinc-950 disabled:opacity-40" ${n >= 2 ? '' : 'disabled'}>Juntar (${n})</button>`, 'amber');
+  }
+  juntarSemejantes(){
+    const S = this.seme; if (!S || S.sel.size < 2) return;
+    const elegidos = [...S.sel].map(i => S.terms[i]), base = elegidos[0].p.join('.'), clase = likeKey(elegidos[0].t);
+    this.seme = null; this.carta = null; this.$('expr').classList.remove('seme-elige');
+    if (elegidos.some(x => x.p.join('.') !== base || likeKey(x.t) !== clase)){
+      this.combo = 0; this.dibujarProblema(); this.dibujarMano();
+      return this.mensaje('❌ Esos términos no son semejantes (o están en lados distintos): solo se juntan los que tienen la misma parte literal.', 'rose'); }
+    const add = nodeAt(this.raiz, elegidos[0].p), idx = new Set(elegidos.map(x => x.i));
+    const suma = elegidos.reduce((q, x) => q.add(coefOf(x.t)), Q.of(0)), termino = q => clase === 'x' ? (q.isZero ? new Num(0) : q.isOne ? new X() : new Mul(q, new X())) : new Num(q);
+    const out = []; let puesto = false;
+    add.terms.forEach((t, i) => { if (!idx.has(i)) return out.push(t); if (puesto) return; puesto = true; if (!suma.isZero) out.push(termino(suma)); });
+    const nueva = normalize(replaceAt(this.raiz, elegidos[0].p, out.length ? new Add(out) : new Num(0)));
+    if (!this.preguntas){ this.aplicar(nueva, {carta:S.c}); return this.seguirCombo(); }
+    const malos = [], vistos = new Set([suma.n + '/' + suma.d]);                 // con preguntas: ¿cuánto da?
+    for (const q of this.app.rng.shuffle([suma.add(1), suma.sub(1), suma.neg(), suma.add(2), suma.mul(2)])){ const k = q.n + '/' + q.d; if (vistos.has(k)) continue; vistos.add(k); malos.push(termino(q)); if (malos.length >= (this.ayuda >= 3 ? 1 : 2)) break; }
+    this.quiz = {carta:S.c, correcto:nueva, cortas:true, opciones:this.app.rng.shuffle([{vista:termino(suma), ok:true}, ...malos.map(v => ({vista:v}))])};
+    this.dibujarProblema(); this.dibujarMano();
+    this.mensaje(`¿Cuánto da juntar los términos que elegiste con <b>🧲 Términos semejantes</b>?`, 'amber');
+  }
+  /** ⚙️ Preguntas de las cartas (apagado por defecto): si está apagado, toda carta se aplica sola al tocar dónde usarla. */
+  get preguntas(){ return !!this.app.progreso.data.preguntas; }
+  /** Con preguntas: el jugador elige cuál es el resultado correcto de aplicar la carta. */
   resultadoDe(c, path){
     // Cartas mecánicas: basta con señalar dónde aplicarlas y se aplican solas (sin preguntar signo ni resultado).
     // «Pasar al otro lado»: el término pasa al lado contrario con el signo cambiado; «Dividir ambos lados»: el número pasa a dividir con su signo.
     if (CARTAS_AUTOMATICAS.has(c.id)){ this.aplicar(c.apply(this.raiz, path), {carta:c}); return this.seguirCombo(); }
     const correcto = c.apply(this.raiz, path);
-    if (c.opcionesCortas && this.app.progreso.data.semi){                // solo el resultado del grupo, no toda la expresión
+    if (c.preguntaFactores){                                          // factorización: SIEMPRE se elige entre 2 tarjetas (factores bien y mal)
+      const T = c.tarjetas(this.raiz, path, this.app.rng), bien = c.apply(this.raiz, path);
+      this.quiz = {carta:c, correcto:bien, cortas:true, path, factores:true, opciones:this.app.rng.shuffle([{vista:T.bien, ok:true}, {vista:T.mal}])};
+      this.dibujarProblema(); this.dibujarMano();
+      return this.mensaje(`${c.icon} <b>${c.name}</b>: ¿cuáles son los factores correctos?`, 'amber');
+    }
+    if (c.opcionesCortas && this.preguntas){                // solo el resultado del grupo, no toda la expresión
       const o = c.opcionesCortas(this.raiz, path, this.app.rng, this.ayuda >= 3 ? 1 : 2);
       this.quiz = {carta:c, correcto, cortas:true, path, opciones:this.app.rng.shuffle([{vista:o.correcta, ok:true}, ...o.distractores.map(v => ({vista:v}))])};
       this.dibujarProblema(); this.dibujarMano();
       return this.mensaje(`¿Cuánto da juntar los términos marcados con <b>${c.icon} ${c.name}</b>?`, 'amber');
     }
-    const distr = this.app.progreso.data.semi ? this.dom.distractores(correcto, this.app.rng, this.ayuda >= 3 ? 1 : 2) : [];
+    const distr = this.preguntas ? this.dom.distractores(correcto, this.app.rng, this.ayuda >= 3 ? 1 : 2) : [];
     if (!distr.length) return this.aplicar(correcto, {carta:c});
     this.quiz = {carta:c, correcto, opciones:this.app.rng.shuffle([correcto, ...distr])};
     this.dibujarProblema(); this.dibujarMano();
@@ -365,9 +407,10 @@ class BattleScene extends Scene {
   }
   dibujarQuiz(){
     const q = this.quiz;
-    this.$('quiz').innerHTML = `<div class="grid gap-2">${q.opciones.map((o, i) => `
-      <button data-opcion="${i}" class="flex min-h-14 items-center justify-center overflow-x-auto rounded-2xl border-2 border-zinc-700 bg-zinc-900 px-3 text-lg touch-manipulation active:scale-[0.98] transition-transform">${o.texto ?? texJuego(this.dom.tex(o.vista ?? o), false)}</button>`).join('')}
-      <button data-a="quiz-no" class="${UI.btn} !min-h-10 text-sm">Cancelar</button></div>`;
+    const fila = q.opciones.length === 2;                               // 2 opciones: tarjetas en fila (como cartas)
+    this.$('quiz').innerHTML = `<div class="grid gap-2 ${fila ? 'grid-cols-2' : ''}">${q.opciones.map((o, i) => `
+      <button data-opcion="${i}" class="flex ${fila ? 'min-h-32 flex-col gap-1 rounded-3xl border-cyan-400/60 bg-gradient-to-b from-zinc-900 to-zinc-950 shadow-lg shadow-black/40' : 'min-h-14 rounded-2xl border-zinc-700 bg-zinc-900'} items-center justify-center overflow-x-auto border-2 px-3 text-lg touch-manipulation active:scale-[0.98] transition-transform">${fila ? `<span class="text-[10px] font-black uppercase tracking-wide text-cyan-300">Opción ${'AB'[i]}</span>` : ''}${o.texto ?? texJuego(this.dom.tex(o.vista ?? o), false)}</button>`).join('')}
+      <button data-a="quiz-no" class="${UI.btn} !min-h-10 text-sm ${fila ? 'col-span-2' : ''}">Cancelar</button></div>`;
   }
   elegirOpcion(i){
     const q = this.quiz; this.quiz = null;

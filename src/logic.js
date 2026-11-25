@@ -827,6 +827,8 @@ function pintarAjustes(){
     <div class="mt-4"><b class="text-sm">Tema</b><div class="mt-1.5 flex gap-2">${opt('data-aj="claro"', !dark, '☀️ Claro')}${opt('data-aj="oscuro"', dark, '🌙 Oscuro')}</div></div>
     <div class="mt-4"><b class="text-sm">🎮 Juego</b>
       <button data-aj="ayuda" class="mt-1.5 flex min-h-12 w-full items-center gap-3 rounded-xl border-2 border-stone-200 px-3 text-left touch-manipulation active:scale-[0.98] dark:border-zinc-700"><span class="text-2xl">❓</span><span class="flex-1"><b class="block text-sm">Cómo jugar</b><span class="text-xs text-stone-500 dark:text-zinc-400">Tutorial del juego paso a paso</span></span><span>▸</span></button></div>
+    <div class="mt-4"><b class="text-sm">Preguntas de las cartas (juego)</b><div class="mt-1.5 flex gap-1.5">${opt('data-aj-preg="0"', !d.preguntas, '<span class="text-lg">⚡</span>Automáticas')}${opt('data-aj-preg="1"', !!d.preguntas, '<span class="text-lg">❓</span>Con preguntas')}</div>
+      <p class="mt-1 text-xs text-stone-500 dark:text-zinc-400">${d.preguntas ? 'Después de usar una carta eliges el resultado correcto.' : 'Las cartas se aplican solas: solo tocas dónde usarlas.'} Las de factorización siempre preguntan.</p></div>
     <div class="mt-4"><b class="text-sm">Modo asistido (juego)</b><div class="mt-1.5 flex gap-1.5">${AY.map(([ic,n],i)=>opt(`data-aj-ayuda="${i}"`, (d.asistido ?? 0) === i, `<span class="text-lg">${ic}</span>${n}`)).join('')}</div>
       <p class="mt-1 text-xs text-stone-500 dark:text-zinc-400">Más nivel = más pistas y sugerencias, pero menos XP.</p></div>
     <div class="mt-4"><b class="text-sm">Gráficos (juego y piezas)</b><div class="mt-1.5 flex gap-1.5">${Object.entries(Graficos.NIVELES).map(([id, n]) => opt(`data-aj-graf="${id}" ${id !== '2d' && !Graficos.webgl ? 'disabled' : ''}`, Graficos.nivel === id, `<span class="text-lg">${n.icon}</span>${n.nombre}`)).join('')}</div>
@@ -858,6 +860,8 @@ document.addEventListener('click', e => {
   if (e.target.id === 'ajustes') return cerrarAjustes();
   const gr = e.target.closest('[data-aj-graf]');
   if (gr && !gr.disabled){ Graficos.nivel = gr.dataset.ajGraf; FX3D.en(gr, 'acierto'); return pintarAjustes(); }
+  const pg = e.target.closest('[data-aj-preg]');
+  if (pg){ const P = progresoJuego(); P.data.preguntas = pg.dataset.ajPreg === '1'; P.guardar(); if (JUEGO) JUEGO.progreso.data.preguntas = P.data.preguntas; return pintarAjustes(); }
   const ay = e.target.closest('[data-aj-ayuda]');
   if (ay){ const P = progresoJuego(); P.data.asistido = +ay.dataset.ajAyuda; P.guardar(); return pintarAjustes(); }
   const a = e.target.closest('[data-aj]')?.dataset.aj; if (!a) return;

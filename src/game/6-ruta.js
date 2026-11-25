@@ -30,6 +30,7 @@ const CARTAS_DE_TIPO = {
   dln:['d-kf', 'd-cad', 'd-suma', 'd-cte', 'd-pot'], dexp2:['d-cad', 'd-kf', 'd-pot'], dsincos:['d-kf', 'd-prod', 'd-tabla'],
   ipoli:['i-suma', 'i-kf', 'i-cte', 'i-pot', 'i-c'], itrig:['i-suma', 'i-kf', 'i-tabla', 'i-c', 'i-ln'], isqrt:['i-suma', 'i-kf', 'i-cte', 'i-pot', 'i-c'],
   ineg:['i-suma', 'i-kf', 'i-pot', 'i-c'], irecip:['i-kf', 'i-sust', 'i-c'], ilin:['i-sust', 'i-c'],
+  fac1:['f-comun'], fac2:['f-difcuad', 'f-comun'], fac3:['f-tcp', 'f-comun'], fac4:['f-trin1', 'f-tcp', 'f-comun'], fac5:['f-trin2', 'f-comun'],   // factorización
 };
 
 /* ---------- Ruta: un nivel por cada hito de aprendizaje ----------
@@ -44,8 +45,8 @@ const BASE_RUTA = {titulo:'Inicio', icon:'🚩'};
 const PRIMER_JUEGO = {difs:['recluta', 'soldado'], bonus:['rifle', 'amplificador', 'escudo'], soldados:['fusilero']};   // llega junto con el nivel mínimo
 const PREMIOS_TEMA = {
   // Antes de «Suma y resta de polinomios» (nivel mínimo para jugar) no se entrega nada del juego
-  'f-polinomios':{tipos:['simp1'], ...PRIMER_JUEGO}, 'f-lineales':{tipos:['lin1', 'lin2'], bonus:['laser', 'reclutas'], soldados:['pesado']}, 'f-factorizacion':{tipos:['simp2', 'dist'], bonus:['lenta'], soldados:['granadero']},
-  'f-potencias':{tipos:['apot0', 'apot1', 'apot2', 'apot3', 'araiz1', 'araiz2'], soldados:['medico']}, 'f-cuadraticas':{bonus:['municion'], soldados:['ingeniero']}, 'f-racionales':{bonus:['concentracion'], puntos:10},
+  'f-polinomios':{tipos:['simp1'], ...PRIMER_JUEGO}, 'f-lineales':{tipos:['lin1', 'lin2'], bonus:['laser', 'reclutas'], soldados:['pesado']}, 'f-factorizacion':{tipos:['simp2', 'dist', 'fac1', 'fac2', 'fac3'], bonus:['lenta'], soldados:['granadero']},
+  'f-potencias':{tipos:['apot0', 'apot1', 'apot2', 'apot3', 'araiz1', 'araiz2'], soldados:['medico']}, 'f-cuadraticas':{tipos:['fac4', 'fac5'], bonus:['municion'], soldados:['ingeniero']}, 'f-racionales':{bonus:['concentracion'], puntos:10},
   'f-radicales':{bonus:['torreta'], puntos:15}, 'f-polinomicas':{bonus:['misil']}, 'f-exponenciales':{tipos:['alog3'], bonus:['mortero']}, 'f-logaritmicas':{tipos:['alog1', 'alog2'], bonus:['estudio']},
   'f-trigonometricas':{tipos:['atrig1', 'atrig2', 'atrig3', 'atrig4'], bonus:['botiquin']}, 'f-inecuaciones':{bonus:['reactivo'], puntos:20},
   'd-limites':{bonus:['criogenico'], puntos:10}, 'd-reglas':{tipos:['dpoli', 'dsqrt', 'dneg'], bonus:['calculadora']}, 'd-producto':{tipos:['dprod'], bonus:['reciclaje']}, 'd-cadena':{tipos:['dcad', 'dexp2'], bonus:['iman']}, 'd-trascendentes':{tipos:['dtrig', 'dtan', 'dln'], bonus:['tesla']},

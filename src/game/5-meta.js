@@ -29,6 +29,7 @@ const ARMA_ENEMIGA = {acido:'🟢 Ácido', laser:'🔴 Láser', rayo:'🟣 Rayo 
 const ETIQUETA_STAT = {dmg:'Daño', cd:'Recarga (s)', costo:'Costo ⚡', area:'Radio', saltos:'Saltos', vel:'Velocidad', energia:'Energía ×', vida:'Vida base +', regen:'Regenera /s',
   lentitud:'Velocidad enemiga ×', soldados:'Soldados +', reclutar:'Reclutar ×', perforacion:'Perforación', ventana:'Segundos de rapidez +', vidaSoldado:'Vida de soldado +', curar:'Curación /s'};
 const EJEMPLO_CARTA = {
+  'f-comun':['6x+9', '3(2x+3)'], 'f-difcuad':['x^{2}-9', '(x+3)(x-3)'], 'f-tcp':['x^{2}+6x+9', '(x+3)^{2}'], 'f-trin1':['x^{2}+5x+6', '(x+2)(x+3)'], 'f-trin2':['2x^{2}+7x+3', '(2x+1)(x+3)'],
   dist:['3(x+2)', '3x+6'], seme:['2x+5x+1', '7x+1'], mover:['x+4=9', 'x=9-4'], div:['3(x-1)=12', 'x-1=\\tfrac{12}{3}'], oper:['\\tfrac{12}{3}', '4'], libre:['2x+4=10', 'x=3'],
   'd-suma':["(x^2+x)'", "(x^2)'+(x)'"], 'd-kf':["(5x^3)'", "5(x^3)'"], 'd-cte':["(7)'", '0'], 'd-pot':["(x^4)'", '4x^3'], 'd-tabla':["(\\sin x)'", '\\cos x'],
   'd-prod':["(x\\sin x)'", '\\sin x+x\\cos x'], 'd-cad':["(\\sin 3x)'", '3\\cos 3x'],

@@ -26,6 +26,17 @@
   .lego-scroll::-webkit-scrollbar-thumb{background:#3b82f6;border-radius:9999px}
   .dark .lego-scroll{scrollbar-color:#60a5fa #27272a}
   .dark .lego-scroll::-webkit-scrollbar-track{background:#27272a}
+  /* ---------- Cartas con estética 3D (Three.js): inclinación, vaivén y brillo holográfico ---------- */
+  @property --ay{syntax:'<angle>';inherits:false;initial-value:0deg}
+  @keyframes carta-vaiven{0%,100%{--ay:-5deg}50%{--ay:5deg}}
+  @keyframes carta-holo{0%{background-position:160% 0}100%{background-position:-60% 0}}
+  html.cartas3d [data-arte]{transform:perspective(520px) rotateX(var(--rx,0deg)) rotateY(calc(var(--ry,0deg) + var(--ay))) ;transform-style:preserve-3d;animation:carta-vaiven 6s ease-in-out infinite;transition:transform .12s ease-out,box-shadow .2s;box-shadow:0 10px 22px -6px rgba(0,0,0,.7),0 0 18px -6px rgba(129,140,248,.55)}
+  html.cartas3d [data-arte]:nth-child(2n){animation-delay:-2s} html.cartas3d [data-arte]:nth-child(3n){animation-delay:-4s}
+  html.cartas3d [data-arte]::after{content:'';position:absolute;inset:0;border-radius:1rem;pointer-events:none;mix-blend-mode:screen;
+    background:linear-gradient(115deg,transparent 32%,rgba(255,255,255,.22) 44%,rgba(125,211,252,.18) 49%,rgba(240,171,252,.2) 54%,transparent 66%);background-size:260% 100%;animation:carta-holo 5.5s linear infinite}
+  html.cartas3d [data-arte]:hover::after{animation-duration:2.2s}
+  html.cartas3d [data-arte] > span:last-child{background-image:radial-gradient(circle at 50% 30%,rgba(129,140,248,.16),transparent 62%),linear-gradient(rgba(148,163,184,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.07) 1px,transparent 1px);background-size:auto,10px 10px,10px 10px}
+  @media (prefers-reduced-motion:reduce){html.cartas3d [data-arte],html.cartas3d [data-arte]::after{animation:none}}
   /* ---------- Tema claro para los menús del juego (la batalla sigue de noche) ---------- */
   html:not(.dark) #juego.juego-menu{background:#f5f5f4;color:#1c1917}
   html:not(.dark) #juego.juego-menu :is(.bg-zinc-950,.bg-zinc-950\/95){background-color:#f5f5f4}

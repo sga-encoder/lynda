@@ -28,6 +28,8 @@ const Graficos = {
   },
   set nivel(v){ try { localStorage.setItem(this.CLAVE, v); } catch {} document.dispatchEvent(new CustomEvent('graficos:cambio', {detail:v})); },
   get es3D(){ return this.nivel !== '2d'; },
+  /** Clase en <html> para el estilo 3D de las cartas (inclinación y brillo holográfico). */
+  marcar(){ document.documentElement.classList.toggle('cartas3d', this.es3D); },
   get alta(){ return this.nivel === 'alta'; },
   /** Resolución de dibujo (la ligera dibuja a menos píxeles). */
   get dpr(){ return Math.min(window.devicePixelRatio || 1, this.alta ? 2 : 1.25); },
@@ -226,3 +228,5 @@ const FX3D = (() => {
   const en = (el, tipo) => { if (!el) return; const r = el.getBoundingClientRect(); estallar({x:r.left + r.width / 2, y:r.top + r.height / 2, tipo}); };
   return {estallar, en};
 })();
+
+Graficos.marcar(); document.addEventListener('graficos:cambio', () => Graficos.marcar());

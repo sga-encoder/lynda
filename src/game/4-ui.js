@@ -98,7 +98,8 @@ function cartaHTML(c, dom, {sel = false, attr = `data-carta="${c.id}"`, chica = 
     ${marca === 'mejor' ? '<span class="absolute -top-2 left-1/2 z-10 -translate-x-1/2 rounded-full bg-amber-300 px-2 text-[9px] font-black text-zinc-950">SIGUIENTE</span>' : ''}
     <span class="flex h-full flex-col rounded-[14px] bg-zinc-950/95 p-1.5">
       <span class="${chica ? 'text-[8px]' : 'text-[9.5px]'} font-black uppercase leading-tight tracking-wide text-white">${c.name}</span>
-      <span class="mx-auto mt-1 flex ${chica ? 'h-8 w-8 text-lg' : 'h-11 w-11 text-2xl'} items-center justify-center rounded-full bg-gradient-to-br ${g} shadow-inner shadow-black/40">${c.icon}</span>
+      ${vitrina3D() ? (Emblemas.vigilar(), `<canvas data-emblema="${c.icon}" data-color="${COLOR_AREA[c.free ? 'libre' : dom.id] ?? '#6366f1'}" aria-label="${c.icon}" class="mx-auto mt-0.5 block ${chica ? 'h-10 w-10' : 'h-14 w-14'} drop-shadow-[0_4px_8px_rgba(0,0,0,.6)]"></canvas>`)   // emblema 3D
+        : `<span class="mx-auto mt-1 flex ${chica ? 'h-8 w-8 text-lg' : 'h-11 w-11 text-2xl'} items-center justify-center rounded-full bg-gradient-to-br ${g} shadow-inner shadow-black/40">${c.icon}</span>`}
       <span class="mt-1 flex min-h-6 items-center justify-center overflow-hidden text-center ${chica ? 'text-[8px]' : 'text-[9.5px]'} text-zinc-100">${ktMini(c.formula ?? '')}</span>
       ${chica ? '' : `<span class="mt-auto text-center text-[8px] leading-tight text-zinc-400">${c.desc}</span>`}
     </span></${tag}>`;
@@ -108,6 +109,7 @@ function comboHTML(cb, dom){
   return `<button data-combo="${cb.id}" data-arte class="relative h-[9.6rem] w-[6.7rem] shrink-0 rounded-2xl bg-gradient-to-br ${GRAD.combo} p-[2px] text-left shadow-lg shadow-black/50 touch-manipulation select-none transition-transform active:scale-95 ">
     <span class="flex h-full flex-col rounded-[14px] bg-zinc-950/95 p-1.5">
       <span class="text-[9.5px] font-black uppercase leading-tight tracking-wide text-amber-200">🔗 ${cb.nombre}</span>
+      ${vitrina3D() ? (Emblemas.vigilar(), `<canvas data-emblema="🔗" data-color="${COLOR_AREA.combo}" aria-hidden="true" class="mx-auto block h-12 w-12"></canvas>`) : ''}
       <span class="mt-1 flex flex-wrap items-center justify-center gap-0.5 text-base leading-none">${iconos}</span>
       <span class="mt-auto text-center text-[8px] leading-tight text-zinc-400">🃏 Carta compuesta · sin límite</span>
     </span></button>`;

@@ -87,7 +87,7 @@ class VistaPrevia extends Renderer {
   armaSoldado(c, it, t){
     const s = new Soldado(0, it.tipo); s.x = 18; this.soldado(c, s);
     const e = ENEMIGOS.explorador(100, {vida:1, velocidad:1}); e.x = 100; e.y = MUNDO.suelo; e.estado = 'camina'; e.fase = t * 6; this.enemigo(c, e, t);
-    const fx = fxDisparo({potenciadores:it.pot ? {[it.pot]:3} : {}}, it.arma), granada = fx.forma === 'granada' || fx.forma === 'orbe' && it.tipo === 'granadero';
+    const fx = fxDisparo({potenciadores:potenciadoresMuestra(it)}, it.arma), granada = fx.forma === 'granada' || fx.forma === 'orbe' && it.tipo === 'granadero';
     for (let k = 0; k < 3; k++){
       const u = ((t * 0.9 + k / 3) % 1), x = 24 + 72 * u, y = MUNDO.suelo - 12 - (granada ? 26 * Math.sin(Math.PI * u) : 0);
       const hist = fx.estela ? Array.from({length:3 + 2 * fx.estela}, (_, j) => [x - (j + 1) * 3, y]).reverse().flat() : null;
@@ -126,7 +126,9 @@ class CatalogoScene extends Scene {
     // Armas = las de los soldados (3 por tipo) y, debajo de cada una, sus 6 potenciadores
     if (this.tab === 'armas') return TIPOS_TROPA.flatMap(tipo => ARMAS_TROPA[tipo].flatMap(([id, name, icon, st, desc], k) => [
       {kind:'potarma', grupo:id, tipo, arma:id, pot:null, id, x:{icon, nombre:name, desc}, ok:this.todo || tropaDesbloqueada(this.app, tipo, 'arma', k), name},
-      ...PLANTILLAS_POT.map(p => { const pid = `${id}:${p.k}`; return {kind:'potarma', grupo:id, tipo, arma:id, pot:pid, id:pid, x:POTENCIADORES[pid], ok:this.conocido('potenciadores', pid), name:POTENCIADORES[pid].nombre}; })]));
+      ...PLANTILLAS_POT.map(p => { const pid = `${id}:${p.k}`; return {kind:'potarma', grupo:id, tipo, arma:id, pot:pid, id:pid, x:POTENCIADORES[pid], ok:this.conocido('potenciadores', pid), name:POTENCIADORES[pid].nombre}; }),
+      {kind:'potarma', grupo:id, tipo, arma:id, pot:'todos', id:`${id}:todos`, ok:this.todo || tropaDesbloqueada(this.app, tipo, 'arma', k), name:`Todos a la vez · ${name}`,   // muestra cómo se mezclan los 6 potenciadores
+        x:{icon:'🌈', nombre:`Todos a la vez · ${name}`, armaNombre:name, desc:'Así dispara con los 6 potenciadores al nivel máximo: los efectos se suman en el mismo disparo.'}}]));
     if (this.tab === 'tacticos') return Object.entries(BONUS_DEFS).filter(([, d]) => d.tipo === 'tactico' && !d.fusion).map(([id, d]) => ({kind:'tactico', id, d, ok:this.conocido('tacticos', id), name:d.name}));
     // Fusiones: se sabe que existen, pero no cómo se consiguen (se descubren jugando)
     // ⚡ Potenciadores: 6 superpotenciadores + 6 por cada una de las 15 armas de los soldados
@@ -218,7 +220,8 @@ class CatalogoScene extends Scene {
     } else if (it.kind === 'potarma'){
       const x = it.x;
       vista = `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl bg-gradient-to-b from-[#0b1023] to-[#312e81]"></canvas>`;
-      cuerpo = `<p class="text-sm text-zinc-300">${x.desc}</p><p class="mt-2 text-xs text-zinc-400">${it.pot ? `Potenciador de <b>${x.armaNombre}</b> (${SOLDADOS[it.tipo].name}): se elige al subir de nivel en la partida, hasta nivel ${MAX_POT}. Mira cómo cambia el disparo.` : `Arma de ${SOLDADOS[it.tipo].name}: se equipa y mejora en 🪖 Pelotón. Tiene 6 potenciadores.`}</p>`;
+      cuerpo = `<p class="text-sm text-zinc-300">${x.desc}</p><p class="mt-2 text-xs text-zinc-400">${it.pot === 'todos' ? `💥 Carga reforzada: bala más grande · ⏩ Mecanismo rápido + 📏 Mira extendida: estela más larga · 🌀 Onda expansiva: anillo alrededor · 🔩 Punta perforante: raya cian delante · 🎯 Golpe certero: chispas. Las fusiones del arma además cambian su color.`
+        : it.pot ? `Potenciador de <b>${x.armaNombre}</b> (${SOLDADOS[it.tipo].name}): se elige al subir de nivel en la partida, hasta nivel ${MAX_POT}. Mira cómo cambia el disparo.` : `Arma de ${SOLDADOS[it.tipo].name}: se equipa y mejora en 🪖 Pelotón. Tiene 6 potenciadores.`}</p>`;
     } else if (it.kind === 'pot'){
       const x = it.x;
       vista = vitrina3D() ? `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl bg-gradient-to-b from-[#0b1023] to-[#312e81]"></canvas>` : `<div class="flex h-36 items-center justify-center"><span class="text-7xl [animation:flotar_2s_ease-in-out_infinite]">${x.icon}</span></div>`;

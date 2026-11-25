@@ -158,7 +158,7 @@ class Vitrina3D {
     const fusionDe = it.kind === 'fusion' ? it.d : null;
     if (it.kind === 'soldado') return this.soldadoDemo(it.id, it.uid ? RASGOS_SOLDADO[it.uid] : null, null);
     if (it.kind === 'enemigo') return this.enemigoDemo(it.id);
-    if (it.kind === 'potarma') return this.soldadoDemo(it.tipo, null, fxDisparo({potenciadores:it.pot ? {[it.pot]:3} : {}}, it.arma), it.pot ? POTENCIADORES[it.pot]?.icon : null, it.arma);
+    if (it.kind === 'potarma') return this.soldadoDemo(it.tipo, null, fxDisparo({potenciadores:potenciadoresMuestra(it)}, it.arma), it.pot ? POTENCIADORES[it.pot]?.icon ?? it.x?.icon : null, it.arma, it.pot === 'todos' ? '#f59e0b' : '#38bdf8');
     if (it.kind === 'pot' && it.x?.fusionArma) return this.soldadoDemo(it.x.tipo, null, fxDisparo({fusionesArma:[it.id]}, it.x.arma), it.x.icon, it.x.arma, '#d946ef');
     if (it.kind === 'arma' || fusionDe?.tipo === 'arma') return this.torretaDemo(it.id, BONUS_DEFS[it.id] ?? fusionDe);
     if (it.kind === 'fusion') return this.fusionDemo(fusionDe?.icon ?? '❔');
@@ -305,3 +305,73 @@ class Vitrina3D {
     });
   }
 }
+
+/* ---------- Emblemas 3D de las cartas de propiedades ----------
+   El círculo del icono de cada carta es un lienzo pequeño con una gema
+   hexagonal que gira (con el icono en sus caras) y chispas del color del área.
+   Una sola escena compartida: para cada carta solo cambia la textura, el color
+   y el giro. Se dibujan solo las cartas visibles, a ~25 cuadros/s. */
+const COLOR_AREA = {fund:'#6366f1', alg:'#f43f5e', dif:'#14b8a6', int:'#a855f7', libre:'#f59e0b', combo:'#fb7185', nuevo:'#71717a'};
+const Emblemas = (() => {
+  let listo = false, S, cam, gema, lado, cara, borde, efx, raf = 0, ultimo = 0;
+  const vivos = new Set(), visibles = new WeakMap();
+  let io = null;
+  function preparar(){
+    const T = THREE; S = new T.Scene(); cam = new T.PerspectiveCamera(30, 1, 1, 200); cam.position.set(0, 0, 46); cam.lookAt(0, 0, 0);
+    S.add(new T.HemisphereLight(0xe0e7ff, 0x1e1b4b, 1.3)); const k = new T.DirectionalLight(0xffffff, 2.6); k.position.set(10, 14, 20); S.add(k);
+    const r = new T.DirectionalLight(0xc084fc, 2.2); r.position.set(-14, -6, -10); S.add(r);
+    lado = new T.MeshStandardMaterial({metalness:0.8, roughness:0.22, flatShading:true, emissiveIntensity:0.3});
+    cara = new T.MeshStandardMaterial({metalness:0.15, roughness:0.3, emissive:0xffffff, emissiveIntensity:0.4});
+    gema = new T.Mesh(new T.CylinderGeometry(9, 9, 3.2, 6), [lado, cara, cara]); gema.rotation.x = Math.PI / 2; S.add(gema);
+    borde = new T.Mesh(new T.TorusGeometry(9.3, 0.45, 6, 6), new T.MeshBasicMaterial({color:0xffffff, toneMapped:false})); S.add(borde);
+    efx = new Kit3D.GlowPoints(80); S.add(efx.obj);
+    io = new IntersectionObserver(es => es.forEach(e => visibles.set(e.target, e.isIntersecting)));
+    listo = true;
+  }
+  function registrar(cv){
+    if (vivos.has(cv)) return; if (!listo) preparar();
+    cv.ctxE = cv.getContext('2d'); cv.faseE = Math.random() * 6.283; vivos.add(cv); io.observe(cv);
+    if (!raf){ ultimo = 0; raf = requestAnimationFrame(paso); }
+  }
+  function paso(now){
+    raf = 0;
+    if (now - ultimo >= 40){ ultimo = now; const t = now / 1000;
+      for (const cv of vivos){
+        if (!cv.isConnected){ vivos.delete(cv); io.unobserve(cv); continue; }
+        if (visibles.get(cv) === false) continue;
+        const b = cv.getBoundingClientRect(); if (!b.width) continue;
+        const px = Math.min(window.devicePixelRatio || 1, 2), w = Math.round(b.width * px), h = Math.round(b.height * px);
+        if (cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; }
+        const col = Kit3D.color(cv.dataset.color), tex = texEmoji(cv.dataset.emblema, cv.dataset.color);
+        if (cara.map !== tex){ cara.map = tex; cara.emissiveMap = tex; cara.needsUpdate = true; }
+        lado.color.copy(col); lado.emissive.copy(col); borde.material.color.copy(col);
+        const f = t * 1.2 + cv.faseE;
+        gema.rotation.y = Math.sin(f) * 0.75 + ((f % 9) < 1 ? (f % 9) * 6.283 : 0);   // se balancea y de vez en cuando da una vuelta completa
+        gema.position.y = borde.position.y = Math.sin(f * 1.7) * 0.6;
+        borde.rotation.z = f * 0.3;
+        efx.begin(); efx.add(0, 0, -4, col, 34, 0.35);
+        for (let i = 0; i < 5; i++){ const a = f * 1.6 + i / 5 * 6.283; efx.add(Math.cos(a) * 12, Math.sin(a) * 4, Math.sin(a) * 12, i % 2 ? '#ffffff' : col, 2.6, 0.95); }
+        efx.end();
+        Escaparate.pintar({cv, ctx:cv.ctxE, S, cam, efx});
+      }
+    }
+    if (vivos.size) raf = requestAnimationFrame(paso);
+  }
+  /** Busca lienzos de emblema nuevos en la página (las cartas se pintan con innerHTML). */
+  function vigilar(){
+    if (vigilar.hecho) return; vigilar.hecho = true;
+    const buscar = n => { if (n.nodeType !== 1) return; if (n.matches?.('canvas[data-emblema]')) registrar(n); n.querySelectorAll?.('canvas[data-emblema]').forEach(registrar); };
+    new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(buscar))).observe(document.body, {childList:true, subtree:true});
+    buscar(document.body);
+  }
+  return {vigilar};
+})();
+
+/* Inclinación 3D de las cartas siguiendo el puntero (y brillo holográfico que se mueve con ella). */
+document.addEventListener('pointermove', e => {
+  if (!document.documentElement.classList.contains('cartas3d')) return;
+  const c = e.target.closest?.('[data-arte]'); if (!c) return;
+  const b = c.getBoundingClientRect(), x = (e.clientX - b.left) / b.width - 0.5, y = (e.clientY - b.top) / b.height - 0.5;
+  c.style.setProperty('--rx', `${(-y * 22).toFixed(1)}deg`); c.style.setProperty('--ry', `${(x * 26).toFixed(1)}deg`); c.style.setProperty('--brillo', `${Math.round((x + 0.5) * 100)}%`);
+}, {passive:true});
+document.addEventListener('pointerout', e => { const c = e.target.closest?.('[data-arte]'); if (c && !c.contains(e.relatedTarget)){ c.style.removeProperty('--rx'); c.style.removeProperty('--ry'); c.style.removeProperty('--brillo'); } }, {passive:true});

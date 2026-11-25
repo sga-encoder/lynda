@@ -169,7 +169,8 @@ class World {
   eventos = [];   // disparos y explosiones para el dibujo 3D (fogonazos, luces); el dibujo 2D no los usa (tope de 60)
   evento(e){ if (this.eventos.length < 60) this.eventos.push(e); }
   #balas = new Pool(() => ({})); #parts = new Pool(() => ({}));
-  constructor({bus, loadout, energia, base, extraSoldados = 0, mej = () => 0, torreta = 0, peloton = null, soldadosOk = () => true, perfil = null, titular = null, potencia = () => null, fx = () => null}){
+  constructor({bus, loadout, energia, base, extraSoldados = 0, mej = () => 0, torreta = 0, peloton = null, soldadosOk = () => true, perfil = null, titular = null, potencia = () => null, fx = () => null, fusionesDe = () => 0}){
+    this.fusionesDe = fusionesDe;                    // cuántas fusiones activas tiene un arma (encienden las activas)
     this.fx = fx;
     this.potencia = potencia;                        // efecto de los potenciadores de la partida para un arma
     this.perfil = perfil; this.titular = titular;   // perfil(uid) → estadísticas del soldado concreto; titular(tipo) → soldado por defecto del tipo
@@ -260,7 +261,13 @@ class World {
   apoyoSoldados(dt){
     for (const s of this.soldados){
       const d = s.def;
-      const ep = (s.perfil && this.potencia(s.perfil.armaId)) || {dmg:0, cd:0, rango:0, area:0, perf:0, crit:0, extra:0, costo:0};   // potenciadores
+      const ep = {...((s.perfil && this.potencia(s.perfil.armaId)) || {dmg:0, cd:0, rango:0, area:0, perf:0, crit:0, extra:0, costo:0})};   // potenciadores
+      const pas = s.perfil?.pasiva ?? {};                                // pasiva propia del soldado
+      for (const k of ['dmg', 'cd', 'rango', 'area', 'perf', 'crit', 'costo']) ep[k] = (ep[k] ?? 0) + (pas[k] ?? 0);
+      if (pas.congelaProb && Math.random() < pas.congelaProb) ep.congela = true;
+      if (s.furiaT > 0){ s.furiaT -= dt; ep.cd -= 0.5; }                // activa «Furia»: el doble de rápido
+      if (s.escudoT > 0) s.escudoT -= dt;
+      this.activas(s, dt);
       if (d.ataque && (s.apoyoT -= dt) <= 0){
         const alc = d.ataque.parabola ? 'tierra' : 'ambos';             // las armas de disparo recto también derriban naves
         const o = this.elegir({alcance:alc, prioridad:d.ataque.parabola ? 'cercano' : 'aire', desde:{x:s.x, y:s.cy}});
@@ -270,7 +277,7 @@ class World {
         const eq = s.perfil ? d.ataque.dano : this.equipoDe(s.tipo), Q = s.perfil ? {} : EQUIPO[eq] ?? {};   // con perfil, el tipo de daño lo da el arma equipada
         const critico = Math.random() < ep.crit, dmg = d.ataque.dmg * (s.mult ?? 1) * (eq === d.ataque.dano ? 1 : Q.mult ?? 1) * (1 + ep.dmg) * (critico ? 2 : 1);
         for (let k = 0; k <= ep.extra; k++)                              // Ráfaga Fibonacci: balas extra
-          { const fx = s.perfil ? this.fx(s.perfil.armaId) : null;          // partículas propias del arma (cambian con sus potenciadores)
+          { const fx = s.perfil ? {...this.fx(s.perfil.armaId), ...(s.perfil.bala ? {color:s.perfil.bala} : {})} : null;   // forma del arma (cambia con potenciadores y fusiones), color propio del soldado
           if (k === 0 && fx) this.chispas(s.x + 6, s.cy - 3, fx.color, 2);   // fogonazo
           this.disparar({x:s.x + 4, y:s.cy - 3 - k * 2, obj:o, golpe:{dmg, dano:eq, area:Math.max(d.ataque.area ?? 0, Q.area ?? 0) + ep.area, alcance:alc, perf:ep.perf, efecto:ep.congela ? 'congelar' : undefined, por:s.tipo}, parabola:!!d.ataque.parabola,
             vel:(d.ataque.parabola ? 120 : 260) * (1 - k * 0.08), fx, hist:fx?.estela ? [] : null, color:critico ? '#fde047' : fx?.color ?? (d.ataque.area ? '#fb923c' : '#e5e7eb'), r:(critico ? 1.6 : 1) * (fx?.r ?? 1) * (d.ataque.area ? 1.8 : 1.1)}); }
@@ -434,7 +441,41 @@ class World {
     if (efecto === 'congelar' && !e.jefe) e.congelado = 2.5;
     e.vida -= d; this.texto(e.x, e.cy - 10 * e.escala, `-${Math.round(d * 10) / 10}${d > dmg ? '!' : ''}`, d < dmg ? '#cbd5e1' : d > dmg ? '#fde047' : '#fecaca', 0.5);
   }
-  dañarSoldado(s, n){ s.vida -= n * (1 - (s.perfil?.reduccion ?? 0)); }   // el blindaje reduce el daño
+  dañarSoldado(s, n){ if (s.escudoT > 0) return; s.vida -= n * (1 - (s.perfil?.reduccion ?? 0)); }   // el blindaje reduce el daño; un escudo activo lo anula
+  /** Habilidades activas del soldado: la 1.ª se enciende con 1 fusión activa de su arma y la 2.ª con 2. */
+  activas(s, dt){
+    const A = s.perfil?.activas; if (!A?.length) return;
+    const n = Math.min(A.length, this.fusionesDe(s.perfil.armaId));
+    for (let k = 0; k < n; k++){
+      const a = A[k]; s.actT ??= [];
+      if ((s.actT[k] = (s.actT[k] ?? a.cd * 0.4) - dt) > 0) continue;
+      s.actT[k] = this.usarActiva(s, a) ? a.cd : 0.5;
+    }
+  }
+  usarActiva(s, a){
+    const P = s.perfil, base = P.ataque?.dmg ?? 1, color = P.bala ?? '#fde047';
+    const o = this.elegir({alcance:'ambos', prioridad:'cercano', desde:{x:s.x, y:s.cy}});
+    const cerca = o && o.x - s.x <= Math.max(150, P.ataque?.rango ?? 0) * (this.clima.rango ?? 1);
+    const tiro = (dmg, k, r) => this.disparar({x:s.x + 4, y:s.cy - 3 - k * 2, obj:o, golpe:{dmg, dano:P.ataque?.dano ?? 'fisico', area:P.ataque?.area ?? 0, alcance:'ambos', por:s.tipo},
+      parabola:!!P.ataque?.parabola, vel:(P.ataque?.parabola ? 120 : 280) * (1 - k * 0.06), color, r, fx:{color, forma:'bala', estela:2}, hist:[]});
+    switch (a.tipo){
+      case 'rafaga': if (!cerca) return false; for (let k = 0; k < a.n; k++) tiro(base, k, 1.3); break;
+      case 'cargado': if (!cerca) return false; tiro(base * a.mult, 0, 2.6); break;
+      case 'granada': if (!cerca) return false;
+        for (const e of [...this.enemigos]) if (!e.bajoTierra && Math.hypot(e.x - o.x, e.cy - o.cy) <= a.area) this.golpear(e, {dmg:a.dmg, dano:'explosivo', por:s.tipo});
+        this.explosion(o.x, o.cy, color, 18); this.sacudir(0.15); break;
+      case 'congelar': { const v = this.enemigos.filter(e => !e.bajoTierra && Math.abs(e.x - s.x) <= a.radio); if (!v.length) return false; v.forEach(e => e.congelado = e.jefe ? a.t / 2 : a.t); break; }
+      case 'furia': if (!cerca) return false; s.furiaT = a.t; break;
+      case 'furiaGrupo': if (!this.enemigos.length) return false; this.soldados.forEach(x => x.furiaT = a.t); break;
+      case 'escudo': if (!cerca) return false; s.escudoT = a.t; break;
+      case 'escudoGrupo': if (!cerca) return false; this.soldados.forEach(x => x.escudoT = a.t); break;
+      case 'curaGrupo': { const h = this.soldados.filter(x => x.vida < x.vidaMax); if (!h.length) return false; h.forEach(x => x.vida = Math.min(x.vidaMax, x.vida + a.v)); break; }
+      case 'reparar': if (this.base.vida >= this.base.vidaMax) return false; this.base.vida = Math.min(this.base.vidaMax, this.base.vida + a.v); break;
+      default: return false;
+    }
+    this.texto(s.x, s.cy - 22, `${a.icon} ${a.nombre}`, color, 1.1);
+    return true;
+  }
   impacto(b, vivo){
     b.muerta = true;
     if (b.fx) this.chispas(b.tx, b.ty, b.color, b.fx.anillo ? 6 : 3);   // chispas del impacto con el color del arma
@@ -539,9 +580,12 @@ class Renderer {
   }
   soldado(c, s){
     const y = MUNDO.suelo, d = s.def;
-    c.fillStyle = d.cuerpo; c.fillRect(s.x - 2, y - 11, s.tipo === 'pesado' ? 6 : 5, 7);
+    if (s.escudoT > 0){ c.strokeStyle = '#93c5fdcc'; c.lineWidth = 1; c.beginPath(); c.arc(s.x + 1, y - 9, 10, 0, 6.28); c.stroke(); }   // escudo activo
+    c.fillStyle = s.perfil?.cuerpo ?? d.cuerpo; c.fillRect(s.x - 2, y - 11, s.tipo === 'pesado' ? 6 : 5, 7);
     c.fillStyle = '#fcd34d'; c.fillRect(s.x - 1.5, y - 15, 4, 4);
-    c.fillStyle = d.casco; c.fillRect(s.x - 2.5, y - 16.5, 6, 2);
+    c.fillStyle = s.perfil?.casco ?? d.casco; c.fillRect(s.x - 2.5, y - 16.5, 6, 2);
+    if (s.perfil?.bala){ c.fillStyle = s.perfil.bala; c.fillRect(s.x - 2.5, y - 17.5, 6, 1); }   // franja con su color de bala
+    if (s.furiaT > 0){ c.fillStyle = '#f9731688'; c.fillRect(s.x - 3, y - 18, 8, 18); }
     if (s.tipo === 'medico'){ c.fillStyle = '#dc2626'; c.fillRect(s.x - 0.5, y - 10, 2, 5); c.fillRect(s.x - 1.5, y - 9, 4, 2); }
     else if (s.tipo === 'ingeniero'){ c.fillStyle = '#9ca3af'; c.fillRect(s.x + 2, y - 9, 4, 1.4); c.fillRect(s.x + 5, y - 10, 1.4, 3); }
     else if (s.tipo === 'pesado'){ c.fillStyle = '#94a3b8'; c.fillRect(s.x + 3, y - 12, 2.5, 9); }

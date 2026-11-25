@@ -751,8 +751,12 @@ document.getElementById('menuBtn').onclick = ()=>{
 /* ---------- Configuración: una sola, la misma en la portada, en Aprender y en Jugar ---------- */
 const AJ = {msg:''};
 function progresoJuego(){ return new DefensaAlgebraica.Progreso(new DefensaAlgebraica.SaveRepository()); }
-function abrirAjustes(){ AJ.msg = ''; pintarAjustes(); const m = document.getElementById('ajustes'); m.classList.remove('hidden'); m.classList.add('flex'); }
-function cerrarAjustes(){ const m = document.getElementById('ajustes'); m.classList.add('hidden'); m.classList.remove('flex'); if (JUEGO){ JUEGO.progreso.data = progresoJuego().data; if (JUEGO.scene && !(JUEGO.scene.run)) JUEGO.scene.enter(); } }
+function abrirAjustes(){ AJ.msg = ''; AJ.devAntes = !!progresoJuego().data.todo; pintarAjustes(); const m = document.getElementById('ajustes'); m.classList.remove('hidden'); m.classList.add('flex'); }
+function cerrarAjustes(){ const m = document.getElementById('ajustes'); m.classList.add('hidden'); m.classList.remove('flex');
+  const dev = !!progresoJuego().data.todo, cambio = dev !== AJ.devAntes; AJ.devAntes = dev;
+  const enBatalla = !!(JUEGO?.scene?.run && !JUEGO.scene.terminado);
+  if (cambio && !enBatalla){ if (JUEGO) JUEGO.progreso.data = progresoJuego().data; return setTimeout(route); }   // cambió el modo desarrollador: se vuelve a pintar la pantalla (desbloqueos)
+  if (JUEGO){ JUEGO.progreso.data = progresoJuego().data; if (JUEGO.scene && !(JUEGO.scene.run)) JUEGO.scene.enter(); } }
 function pintarAjustes(){
   const P = progresoJuego(), d = P.data, dark = document.documentElement.classList.contains('dark');
   const opt = (attr, on, txt) => `<button ${attr} class="flex min-h-12 flex-1 flex-col items-center justify-center rounded-xl border-2 px-1 text-xs font-semibold touch-manipulation ${on ? 'border-blue-600 bg-blue-50 text-blue-800 dark:border-blue-400 dark:bg-blue-950/50 dark:text-blue-200' : 'border-stone-200 dark:border-zinc-700'}">${txt}</button>`;
@@ -760,6 +764,8 @@ function pintarAjustes(){
   document.getElementById('ajustesCuerpo').innerHTML = `
     <div class="flex items-center justify-between"><b class="text-xl">⚙️ Configuración</b><button data-aj="cerrar" class="flex h-10 w-10 items-center justify-center rounded-xl border border-stone-200 dark:border-zinc-700" aria-label="Cerrar">✕</button></div>
     ${AJ.msg ? `<p class="mt-2 rounded-xl bg-stone-100 px-3 py-2 text-sm dark:bg-zinc-800">${AJ.msg}</p>` : ''}
+    ${window.__almacenamiento === 'memoria' ? `<p class="mt-2 rounded-xl bg-amber-100 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950/50 dark:text-amber-200">⚠️ Este navegador no deja guardar datos aquí (por ejemplo, si abriste el archivo dentro de otra app). Todo funciona, pero <b>se perderá al cerrar</b>. Ábrelo en Chrome, Safari o Edge, o usa <b>⬇ Exportar</b> para no perder tu avance.</p>`
+      : window.__almacenLleno ? `<p class="mt-2 rounded-xl bg-amber-100 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950/50 dark:text-amber-200">⚠️ El almacenamiento del navegador está lleno: borra partidas guardadas viejas o usa <b>⬇ Exportar</b>.</p>` : ''}
     <div class="mt-4"><b class="text-sm">Tema</b><div class="mt-1.5 flex gap-2">${opt('data-aj="claro"', !dark, '☀️ Claro')}${opt('data-aj="oscuro"', dark, '🌙 Oscuro')}</div></div>
     <div class="mt-4"><b class="text-sm">🎮 Juego</b>
       <button data-aj="ayuda" class="mt-1.5 flex min-h-12 w-full items-center gap-3 rounded-xl border-2 border-stone-200 px-3 text-left touch-manipulation active:scale-[0.98] dark:border-zinc-700"><span class="text-2xl">❓</span><span class="flex-1"><b class="block text-sm">Cómo jugar</b><span class="text-xs text-stone-500 dark:text-zinc-400">Tutorial del juego paso a paso</span></span><span>▸</span></button></div>

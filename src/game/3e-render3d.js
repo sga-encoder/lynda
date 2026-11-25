@@ -97,9 +97,10 @@ function armaSoldado3D(tipo, padre){
 }
 
 /* ---------- Soldado ---------- */
-function soldado3D(tipo){
+/** @param {string} tipo  @param {{cuerpo?:string, casco?:string, bala?:string}} [R]  rasgos del soldado concreto (sus colores) */
+function soldado3D(tipo, R = null){
   const {G, mat, pieza, grupo, propio} = M3, d = SOLDADOS[tipo], raiz = grupo(), mats = [];
-  const a = tipo === 'pesado' ? 1.28 : 1, cuerpo = propio(mats, mat(d.cuerpo)), casco = mat(d.casco, {m:0.25, r:0.5}), piel = mat('#f2c79b');
+  const a = tipo === 'pesado' ? 1.28 : 1, cuerpo = propio(mats, mat(R?.cuerpo ?? d.cuerpo)), casco = mat(R?.casco ?? d.casco, {m:0.25, r:0.5}), piel = mat('#f2c79b');
   const pant = mat(tipo === 'medico' ? '#cbd5e1' : tipo === 'ingeniero' ? '#4b5563' : '#1f3b2a'), bota = mat('#111827');
   const piernas = [1.15, -1.15].map(z => { const p = grupo([0, 5, z * a], raiz); pieza(G.caja(), pant, [0, -2.3, 0], [1.7 * a, 4.6, 1.6 * a], null, p); pieza(G.caja(), bota, [0.3, -4.6, 0], [2.3 * a, 0.9, 1.7 * a], null, p); return p; });
   const torso = grupo([0, 5.6, 0], raiz);
@@ -114,13 +115,15 @@ function soldado3D(tipo){
   pieza(G.esfera(), piel, [0, 0, 0], [1.75, 1.85, 1.75], null, cabeza);
   pieza(G.cupula(), casco, [0, 0.35, 0], [2.15, 1.75, 2.15], null, cabeza);
   pieza(G.caja(), casco, [0.6, 0.35, 0], [3.4, 0.3, 3.2], null, cabeza);                                            // ala del casco
+  if (R?.bala) pieza(G.aro(), mat(R.bala, {e:R.bala, ei:0.9}), [0, 0.75, 0], [2.05, 2.05, 2.4], [Math.PI / 2, 0, 0], cabeza);   // franja con su color de bala
   pieza(G.caja(), mat('#0f172a', {e:tipo === 'medico' ? '#f87171' : '#38bdf8', ei:0.9, m:0.6}), [1.55, -0.1, 0], [0.35, 0.6, 2.4], null, cabeza);   // visor luminoso
   if (tipo === 'medico'){ const cr = mat('#dc2626', {e:'#ef4444', ei:0.7}); pieza(G.caja(), cr, [0.4, 2.05, 0], [1.2, 0.12, 0.35], null, cabeza); pieza(G.caja(), cr, [0.4, 2.05, 0], [0.35, 0.12, 1.2], null, cabeza); }
   if (tipo === 'ingeniero') pieza(G.cil(), mat('#facc15', {e:'#fde047', ei:0.6}), [1.6, 1.2, 0], [0.4, 0.4, 0.4], [0, 0, Math.PI / 2], cabeza);   // linterna
   const arma = armaSoldado3D(tipo, raiz);
   pieza(G.caja(), cuerpo, [1.2, 8.6, 1.5 * a], [3, 1.1, 1.1], [0, 0, -0.15], raiz);                                  // brazo que sostiene el arma
   pieza(G.caja(), cuerpo, [1.4, 8.4, -1.5 * a], [3.2, 1.1, 1.1], [0, 0.5, -0.2], raiz);
-  return {raiz, mats, piernas, torso, cabeza, arma, retroceso:0, dano:0, vidaPrev:null};
+  const escudo = pieza(G.esfera(), mat('#93c5fd', {ad:true, op:0.3}), [0.5, 8, 0], [7, 10, 6], null, raiz); escudo.visible = false;   // activa «Escudo»
+  return {raiz, mats, piernas, torso, cabeza, arma, escudo, retroceso:0, dano:0, vidaPrev:null};
 }
 
 /* ---------- Alienígenas ---------- */
@@ -461,11 +464,14 @@ class Renderer3D {
   }
   dibujarSoldados(m, t, dt){
     for (const s of m.soldados){
-      const r = this.ente(s, () => { const x = soldado3D(s.tipo); x.z = ((s.i % 3) - 1) * 5; return x; });
+      const r = this.ente(s, () => { const x = soldado3D(s.tipo, s.perfil); x.z = ((s.i % 3) - 1) * 5; return x; });
       const obj = m.enemigos.reduce((a, e) => !e.bajoTierra && (!a || e.x < a.x) ? e : a, null);
       r.raiz.position.set(this.X(s.x), 0, r.z); r.raiz.scale.setScalar(ESCALA_3D);
       if (r.vidaPrev !== null && s.vida < r.vidaPrev - 0.01) r.dano = 1; r.vidaPrev = s.vida; r.dano = Math.max(0, r.dano - dt * 4);
-      r.mats.forEach(x => x.emissive.setRGB(r.dano * 0.8, 0, 0));
+      const furia = s.furiaT > 0 ? 0.35 + 0.15 * Math.sin(t * 20) : 0;   // activa «Furia»: brilla naranja
+      r.mats.forEach(x => x.emissive.setRGB(r.dano * 0.8 + furia, furia * 0.4, 0));
+      r.escudo.visible = s.escudoT > 0; if (r.escudo.visible) r.escudo.rotation.y = t * 2;
+      if (furia) this.brillos.add(this.X(s.x), 10, r.z, '#f97316', 26, 0.35);
       r.retroceso = Math.max(0, r.retroceso - dt * 9);
       const ang = obj ? Math.max(-0.25, Math.min(1.1, Math.atan2(this.Y(obj.cy) - 9, this.X(obj.x) - this.X(s.x)))) : 0;
       r.arma.g.rotation.z += (ang - r.arma.g.rotation.z) * Math.min(1, dt * 8);
@@ -674,7 +680,7 @@ class VisorModelo3D {
     const ped = this.ped = new T.Mesh(new T.CylinderGeometry(26, 30, 4, 40), new T.MeshStandardMaterial({color:0x1e1b4b, metalness:0.6, roughness:0.3})); ped.position.y = -2; ped.receiveShadow = true; S.add(ped);
     const aro = this.aro = new T.Mesh(new T.TorusGeometry(28, 0.6, 8, 64), new T.MeshBasicMaterial({color:0x38bdf8, toneMapped:false})); aro.rotation.x = Math.PI / 2; aro.position.y = 0.2; S.add(aro);
     let r;
-    if (item.kind === 'soldado') r = soldado3D(item.id);
+    if (item.kind === 'soldado') r = soldado3D(item.id, item.uid ? RASGOS_SOLDADO[item.uid] : null);
     else { const e = ENEMIGOS[item.id](0, {vida:1, velocidad:1}); e.estado = 'camina'; e.fase = 0; r = enemigo3D(e); this.e = e; }
     r.raiz.traverse(m => { if (m.isMesh) m.castShadow = !m.material.transparent; });
     this.r = r; this.modelo = new T.Group(); this.modelo.add(r.raiz); S.add(this.modelo);

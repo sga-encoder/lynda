@@ -96,6 +96,29 @@
   @keyframes flotar{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
 </style>
 <script>
+  // Almacenamiento seguro: si el navegador no deja guardar (archivo abierto dentro de otra app, modo privado)
+  // o el espacio está lleno, todo sigue funcionando en memoria y, si se puede, se libera espacio y se reintenta.
+  (function(){
+    const mem = new Map(); let real = null;
+    try { real = window.localStorage; real.setItem('__prueba', '1'); real.removeItem('__prueba'); } catch(e){ real = null; }
+    const liberar = () => { try {   // las partidas guardadas son lo que más ocupa: se recortan
+      const l = JSON.parse(real.getItem('calcint:partidas') || '[]'); if (!Array.isArray(l) || !l.length) return false;
+      l.pop(); l.forEach(p => { if (Array.isArray(p.proceso)) p.proceso = p.proceso.slice(-60); });
+      real.setItem('calcint:partidas', JSON.stringify(l)); return true; } catch(e){ return false; } };
+    const api = {
+      getItem(k){ if (mem.has(k)) return mem.get(k); try { return real ? real.getItem(k) : null; } catch(e){ return null; } },
+      setItem(k, v){ v = String(v); mem.set(k, v); if (!real) return;
+        for (let n = 0; n < 9; n++){ try { real.setItem(k, v); window.__almacenLleno = false; return; } catch(e){ if (!liberar()) break; } }
+        window.__almacenLleno = true; },
+      removeItem(k){ mem.delete(k); try { real && real.removeItem(k); } catch(e){} },
+      clear(){ mem.clear(); try { real && real.clear(); } catch(e){} },
+      claves(){ const s = new Set(mem.keys()); try { if (real) for (let i = 0; i < real.length; i++) s.add(real.key(i)); } catch(e){} return [...s]; },
+      key(i){ return this.claves()[i] ?? null; },
+      get length(){ return this.claves().length; },
+    };
+    window.__almacenamiento = real ? 'local' : 'memoria';
+    try { Object.defineProperty(window, 'localStorage', {value:api, configurable:true}); } catch(e){}
+  })();
   // Tema claro/oscuro antes de pintar (evita parpadeo)
   (function(){
     let t = null; try { t = JSON.parse(localStorage.getItem('calcint:theme')); } catch(e){}

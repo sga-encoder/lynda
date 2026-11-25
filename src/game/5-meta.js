@@ -58,13 +58,21 @@ class VistaPrevia extends Renderer {
     c.setTransform(s, 0, 0, s, 0, s * (58 - suelo));                  // coordenadas del mundo con el suelo en y = 58
     if (it.kind === 'potarma') return this.armaSoldado(c, it, t);
     if (it.kind === 'arma') return this.arma(c, it.id, t);
-    if (it.kind === 'soldado') return this.soldadoAnim(c, it.id, t);
+    if (it.kind === 'soldado') return this.soldadoAnim(c, it.id, t, it.uid);
     return this.enemigoAnim(c, it.id, t);
   }
-  soldadoAnim(c, tipo, t){
-    const s = new Soldado(0, tipo); s.x = 50; this.soldado(c, s);
-    if (SOLDADOS[tipo].ataque || tipo === 'fusilero'){ const u = (t % 1) / 1; c.fillStyle = '#fde047'; c.beginPath(); c.arc(56 + u * 60, MUNDO.suelo - 10 - (tipo === 'granadero' ? 25 * Math.sin(Math.PI * u) : 0), 1.3, 0, 6.28); c.fill(); }
-    if (SOLDADOS[tipo].apoyo){ c.globalAlpha = 0.5 + 0.5 * Math.sin(t * 4); c.font = 'bold 9px system-ui'; c.textAlign = 'center'; c.fillText(tipo === 'medico' ? '+❤' : '+🔧', 50, MUNDO.suelo - 26 - (t * 10 % 8)); c.globalAlpha = 1; }
+  soldadoAnim(c, tipo, t, uid = null){
+    const s = new Soldado(0, tipo), R = uid ? RASGOS_SOLDADO[uid] : null, y = MUNDO.suelo, bala = R?.bala ?? '#fde047';
+    if (R) s.perfil = {cuerpo:R.cuerpo, casco:R.casco, bala:R.bala};      // aspecto propio del soldado
+    s.x = 26;
+    c.save(); c.translate(26, y); c.scale(2.4, 2.4); c.translate(-26, -y); this.soldado(c, s); c.restore();   // más grande para que se vean sus colores
+    if (SOLDADOS[tipo].ataque || tipo === 'fusilero'){                    // bala con su color y estela
+      const u = t % 1, x0 = 42, by = (k) => y - 22 - (tipo === 'granadero' ? 22 * Math.sin(Math.PI * k) : 0);
+      for (let k = 6; k >= 0; k--){ const v = Math.max(0, u - k * 0.04); c.globalAlpha = k ? 0.12 * (7 - k) / 2 : 1; c.fillStyle = bala;
+        c.beginPath(); c.arc(x0 + v * 70, by(v), k ? 2 : 3, 0, 6.28); c.fill(); }
+      c.globalAlpha = 1;
+    }
+    if (SOLDADOS[tipo].apoyo){ c.globalAlpha = 0.5 + 0.5 * Math.sin(t * 4); c.font = 'bold 11px system-ui'; c.textAlign = 'center'; c.fillStyle = bala; c.fillText(tipo === 'medico' ? '+❤' : '+🔧', 60, y - 30 - (t * 10 % 8)); c.globalAlpha = 1; }
   }
   enemigoAnim(c, id, t){
     const e = ENEMIGOS[id](60, {vida:1, velocidad:1});
@@ -160,9 +168,9 @@ class CatalogoScene extends Scene {
     const vistas = [...this.app.root.querySelectorAll('canvas[data-prev], canvas[data-grande]')].map(cv => {
       const it = cv.dataset.grande != null ? this.detalle : this.lista[+cv.dataset.prev];
       if (cv.dataset.grande != null && Graficos.es3D && (it.kind === 'soldado' || it.kind === 'enemigo')){   // ficha: modelo 3D que gira (arrástralo)
-        try { const v = new VisorModelo3D(cv, {kind:it.kind, id:it.id}); this.visores.push(v); return v; } catch (err){ console.warn('Visor 3D no disponible:', err); }
+        try { const v = new VisorModelo3D(cv, {kind:it.kind, id:it.id, uid:it.uid}); this.visores.push(v); return v; } catch (err){ console.warn('Visor 3D no disponible:', err); }
       }
-      return new VistaPrevia(cv, it.kind === 'potarma' ? it : {kind:it.kind === 'enemigo' ? 'enemigo' : it.kind === 'fusion' ? 'arma' : it.kind, id:it.id});
+      return new VistaPrevia(cv, it.kind === 'potarma' ? it : {kind:it.kind === 'enemigo' ? 'enemigo' : it.kind === 'fusion' ? 'arma' : it.kind, id:it.id, uid:it.uid});   // uid: el soldado concreto (sus colores)
     });
     const t0 = performance.now();
     const paso = now => { const t = (now - t0) / 1000; vistas.forEach(v => v.dibujar(t)); this.raf = requestAnimationFrame(paso); };
@@ -222,7 +230,11 @@ class CatalogoScene extends Scene {
       vista = `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl"></canvas>`;
       const [, , icU, modU = {}, descU] = it.x ?? [], ETQ = {cd:'Recarga', dmg:'Daño', rango:'Alcance', vida:'Vida'};
       const rasgos = Object.entries(modU).map(([kk, v]) => `${ETQ[kk] ?? kk} ×${v}`).join(' · ');
-      cuerpo = `${it.x ? `<p class="text-sm"><b>${icU} ${it.name}</b> · ${d.icon} ${d.name}</p><p class="text-sm text-zinc-300">${descU}${rasgos ? ` <span class="text-xs text-zinc-400">(${rasgos})</span>` : ''}</p>` : ''}<p class="text-sm text-zinc-300">${d.icon} ${d.desc}</p><div class="mt-2">${tablaStats(`
+      const RS = it.uid ? RASGOS_SOLDADO[it.uid] : null;
+      const habil = RS ? `<div class="mt-2 grid gap-1.5 text-sm">
+          <div class="rounded-xl border border-zinc-700 p-2"><span class="inline-block h-3 w-3 rounded-full align-middle" style="background:${RS.bala}"></span> <b>Pasiva · ${RS.pasiva.nombre}</b><br><span class="text-xs text-zinc-400">${RS.pasiva.desc} Siempre activa.</span></div>
+          ${RS.activas.map((a, k) => `<div class="rounded-xl border border-zinc-700 p-2"><b>${a.icon} Activa ${k + 1} · ${a.nombre}</b> <span class="text-xs text-zinc-400">(cada ${a.cd} s)</span><br><span class="text-xs text-zinc-400">${a.desc} Se enciende con ${k + 1} fusión${k ? 'es' : ''} activa${k ? 's' : ''} de su arma.</span></div>`).join('')}</div>` : '';
+      cuerpo = `${it.x ? `<p class="text-sm"><b>${icU} ${it.name}</b> · ${d.icon} ${d.name}</p><p class="text-sm text-zinc-300">${descU}${rasgos ? ` <span class="text-xs text-zinc-400">(${rasgos})</span>` : ''}</p>${habil}` : ''}<p class="text-sm text-zinc-300">${d.icon} ${d.desc}</p><div class="mt-2">${tablaStats(`
         <tr><td>Vida</td><td>${Math.round(d.vida * k)}</td></tr>
         ${d.ataque ? `<tr><td>Ataque</td><td>${(d.ataque.dmg * k).toFixed(1)} de daño ${d.ataque.dano} · recarga ${d.ataque.cd} s · alcance ${d.ataque.rango}${d.ataque.area ? ' · área ' + d.ataque.area : ''}</td></tr><tr><td>Costo</td><td>${d.ataque.costo} ⚡ por disparo</td></tr>` : ''}
         ${d.apoyo ? `<tr><td>Apoyo</td><td>${d.apoyo.curar ? `cura ${(d.apoyo.curar * k).toFixed(1)}` : `repara ${(d.apoyo.reparar * k).toFixed(1)}`} cada ${d.apoyo.cd} s</td></tr><tr><td>Costo</td><td>${d.apoyo.costo} ⚡</td></tr>` : ''}
@@ -367,7 +379,8 @@ class PelotonScene extends Scene {
     const fila = (it, accion) => { const max = it.nivel >= MAX_NIVEL_TROPA, costo = costoTropa(it.nivel);
       return `<div class="${UI.card} !p-2.5 ${it.libre ? '' : 'opacity-50'} ${it.equipado ? 'ring-2 ring-emerald-400' : ''}">
         <div class="flex items-center gap-2"><span class="text-2xl">${it.libre ? it.icon : '🔒'}</span><span class="min-w-0 flex-1"><b class="text-sm">${it.libre ? it.name : 'Bloqueado'}</b> ${it.libre ? pips(it.nivel, MAX_NIVEL_TROPA) : ''}
-          <span class="block text-[11px] text-zinc-400">${it.libre ? it.desc : 'Se desbloquea más adelante en la 🗺️ Ruta.'}</span></span></div>
+          <span class="block text-[11px] text-zinc-400">${it.libre ? it.desc : 'Se desbloquea más adelante en la 🗺️ Ruta.'}</span>
+          ${it.libre && it.clase === 'soldado' && RASGOS_SOLDADO[it.id] ? `<span class="mt-0.5 block text-[11px]"><span class="inline-block h-2.5 w-2.5 rounded-full align-middle" style="background:${RASGOS_SOLDADO[it.id].bala}"></span> <b>${RASGOS_SOLDADO[it.id].pasiva.nombre}:</b> <span class="text-zinc-400">${RASGOS_SOLDADO[it.id].pasiva.desc}</span><br><span class="text-zinc-400">Activas: ${RASGOS_SOLDADO[it.id].activas.map(a => `${a.icon} ${a.nombre}`).join(' · ')} (con fusiones de su arma)</span></span>` : ''}</span></div>
         ${it.libre ? `<div class="mt-2 flex gap-1.5">${accion ?? ''}<button data-subir="${it.id}" class="${UI.btn} !min-h-9 flex-1 !px-2 text-xs" ${max || chat < costo ? 'disabled' : ''}>${max ? 'Nivel máximo' : `⬆ Nivel ${it.nivel + 1} · ⚙️ ${costo}`}</button></div>` : ''}</div>`; };
     const uids = tipos.flatMap(t => SOLDADOS_UNICOS[t].filter((x, k) => tropaDesbloqueada(this.app, t, 'soldado', k)).map(x => x[0]));
     const pl = d.peloton ??= {orden:ORDEN_RECLUTA.slice(0, SLOTS_PELOTON), equipo:{}};

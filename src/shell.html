@@ -26,6 +26,14 @@
   .lego-scroll::-webkit-scrollbar-thumb{background:#3b82f6;border-radius:9999px}
   .dark .lego-scroll{scrollbar-color:#60a5fa #27272a}
   .dark .lego-scroll::-webkit-scrollbar-track{background:#27272a}
+  /* ---------- Paneles y barras 3D (Three.js): lienzo de fondo pintado por Lienzos3D ---------- */
+  html.cartas3d [data-panel3d]{isolation:isolate;background-color:transparent !important;backdrop-filter:none}
+  html.cartas3d [data-panel3d]:not(.fixed):not(.sticky){position:relative}
+  html.cartas3d [data-panel3d] > canvas.lienzo3d{position:absolute;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;border-radius:inherit}
+  html.cartas3d [data-barra3d]{position:relative;background:transparent !important;overflow:visible !important;height:12px !important;border-radius:9999px}
+  html.cartas3d [data-barra3d] > :not(canvas){opacity:0}
+  html.cartas3d [data-barra3d] > canvas.lienzo3d{position:absolute;left:0;top:-1px;width:100%;height:calc(100% + 2px);pointer-events:none}
+  html:not(.cartas3d) canvas.lienzo3d{display:none}
   /* ---------- Cartas con estética 3D (Three.js): inclinación, vaivén y brillo holográfico ---------- */
   @property --ay{syntax:'<angle>';inherits:false;initial-value:0deg}
   @keyframes carta-vaiven{0%,100%{--ay:-5deg}50%{--ay:5deg}}
@@ -136,7 +144,7 @@
 </script>
 </head>
 <body class="bg-stone-50 text-stone-900 antialiased [-webkit-tap-highlight-color:transparent] dark:bg-zinc-950 dark:text-zinc-100 font-sans leading-relaxed">
-<header id="cabecera" class="sticky top-0 z-30 flex items-center gap-2 border-b border-stone-200 bg-white/95 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-4 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
+<header id="cabecera" data-panel3d="hud" class="sticky top-0 z-30 flex items-center gap-2 border-b border-stone-200 bg-white/95 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-4 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
   <button id="menuBtn" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 text-lg touch-manipulation dark:border-zinc-700" aria-label="Temas de la sección">☰</button>
   <a href="#/" class="flex shrink-0 items-center gap-1.5 font-black" aria-label="Inicio"><span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 text-lg text-white shadow">∫</span><span class="hidden sm:inline">Integrando</span></a>
   <div id="selectorModo" class="ml-auto flex rounded-full border border-stone-200 bg-stone-100 p-1 text-sm font-semibold dark:border-zinc-700 dark:bg-zinc-800" role="tablist" aria-label="Modo">
@@ -164,7 +172,7 @@
 <div id="juegoPiezas" class="fixed inset-0 z-[46] hidden bg-black/40"></div>
 
 <!-- Barra de navegación inferior (celular) -->
-<nav id="bottomNav" class="fixed inset-x-0 bottom-0 z-30 border-t border-stone-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95" aria-label="Menú">
+<nav id="bottomNav" data-panel3d="nav" class="fixed inset-x-0 bottom-0 z-30 border-t border-stone-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95" aria-label="Menú">
   <div data-navset="aprender" class="mx-auto flex max-w-xl">
     <a href="#/aprender" data-bn="home" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🏠</span>Inicio</a>
     <a href="#/ruta" data-bn="ruta" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🗺️</span>Ruta</a>

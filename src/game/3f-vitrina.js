@@ -4,34 +4,14 @@
      fusiones, tácticos y superpotenciadores) es una pequeña escena 3D con
      su animación de muestra: disparos con la forma y estela del arma,
      impactos, ataques de los alienígenas, fichas que giran…
-   - Un solo WebGLRenderer compartido (Escaparate) dibuja cada vitrina
+   - Un solo WebGLRenderer compartido (Lienzos3D) dibuja cada vitrina
      visible y la copia a su lienzo: así no se agota el límite de contextos
      WebGL aunque haya ~90 fichas en pantalla.
    - En la ficha grande se puede arrastrar para girar la cámara.
    ===================================================================== */
 
-/** Renderer único compartido por todas las vitrinas. */
-const Escaparate = {
-  R:null, w:0, h:0,
-  get(){
-    if (this.R) return this.R;
-    const T = THREE, cv = document.createElement('canvas');
-    this.R = new T.WebGLRenderer({canvas:cv, antialias:true, alpha:true});
-    this.R.setPixelRatio(1); this.R.outputColorSpace = T.SRGBColorSpace; this.R.toneMapping = T.ACESFilmicToneMapping; this.R.toneMappingExposure = 1.25;
-    this.R.shadowMap.enabled = Graficos.alta; this.R.shadowMap.type = T.PCFSoftShadowMap; this.R.setClearColor(0x000000, 0);
-    return this.R;
-  },
-  /** Dibuja la vitrina en el renderer compartido y copia el resultado a su lienzo 2D. */
-  pintar(v){
-    const R = this.get(), w = v.cv.width, h = v.cv.height;
-    if (w < 2 || h < 2) return;
-    if (w > this.w || h > this.h){ this.w = Math.max(w, this.w); this.h = Math.max(h, this.h); R.setSize(this.w, this.h, false); }
-    R.setViewport(0, 0, w, h); R.setScissor(0, 0, w, h); R.setScissorTest(true); R.clear();
-    v.efx.escala(h, v.cam.fov);
-    R.render(v.S, v.cam);
-    v.ctx.clearRect(0, 0, w, h); v.ctx.drawImage(R.domElement, 0, this.h - h, w, h, 0, 0, w, h);   // el viewport empieza abajo a la izquierda
-  },
-};
+/** Las vitrinas usan el renderer compartido de la interfaz (Lienzos3D, en fx3d.js). */
+const Escaparate = {pintar:v => Lienzos3D.pintarEn(v)};
 
 /* ---------- Texturas y fichas (tokens) con emoji ---------- */
 const TEX_EMOJI = new Map();

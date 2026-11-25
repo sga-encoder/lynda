@@ -123,25 +123,25 @@ class BattleScene extends Scene {
     this.app.progreso.nuevos = [];                                   // novedades de esta partida
     this.app.html(`
     <div class="relative flex h-full flex-col bg-zinc-950 text-zinc-100">
-      <div class="flex items-center gap-2 px-3 pb-1.5 pt-[max(0.5rem,env(safe-area-inset-top))] text-xs">
+      <div data-panel3d="hud" class="flex items-center gap-2 px-3 pb-1.5 pt-[max(0.5rem,env(safe-area-inset-top))] text-xs">
         <button data-a="pausa" class="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-700 text-base" aria-label="Pausa">⏸</button>
         <button data-a="vel" data-h="vel" class="flex h-9 min-w-11 items-center justify-center rounded-xl border border-zinc-700 px-1.5 text-sm font-black" aria-label="Velocidad del juego">×1</button>
         <div class="flex-1"><div class="flex justify-between gap-2"><b data-h="oleada"></b><span data-h="probs"></span></div>
-          <div class="mt-1 flex items-center gap-1.5"><span>Nv <b data-h="nivel"></b></span><div class="h-1.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="xp" class="h-full bg-sky-400"></div></div><span data-h="clima" class="rounded-full bg-zinc-800 px-2 py-0.5"></span></div>
-          <div class="mt-1 flex items-center gap-1.5"><span>🌊</span><div class="h-2 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="ola" class="h-full rounded bg-gradient-to-r from-violet-500 to-fuchsia-400 transition-[width] duration-300"></div></div><b data-h="olaN" class="w-9 text-right tabular-nums">0 %</b></div></div>
+          <div class="mt-1 flex items-center gap-1.5"><span>Nv <b data-h="nivel"></b></span><div data-barra3d="#38bdf8" class="h-1.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="xp" class="h-full bg-sky-400"></div></div><span class="flex items-center gap-0.5 rounded-full bg-zinc-800/80 py-0.5 pl-0.5 pr-2">${vitrina3D() ? (Emblemas.vigilar(), '<canvas data-h="climaG" data-emblema="🌙" data-color="#6366f1" aria-hidden="true" class="-my-1.5 h-7 w-7"></canvas>') : ''}<span data-h="clima"></span></span></div>
+          <div class="mt-1 flex items-center gap-1.5"><span>🌊</span><div data-barra3d="#d946ef" class="h-2 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="ola" class="h-full rounded bg-gradient-to-r from-violet-500 to-fuchsia-400 transition-[width] duration-300"></div></div><b data-h="olaN" class="w-9 text-right tabular-nums">0 %</b></div></div>
       </div>
       <div class="relative mx-auto w-full max-w-3xl"><canvas data-h="cv" class="block aspect-[360/200] max-h-[38vh] w-full"></canvas>
-        <div data-h="jefe" class="pointer-events-none absolute inset-x-3 top-1.5 hidden"><div class="flex justify-between text-[10px] font-bold text-rose-200"><span data-h="jefeN"></span><span data-h="jefeE"></span></div><div class="h-1.5 overflow-hidden rounded bg-black/60"><div data-h="jefeV" class="h-full bg-rose-500"></div></div></div>
+        <div data-h="jefe" class="pointer-events-none absolute inset-x-3 top-1.5 hidden"><div class="flex justify-between text-[10px] font-bold text-rose-200"><span data-h="jefeN"></span><span data-h="jefeE"></span></div><div data-barra3d="#f43f5e" class="h-1.5 overflow-hidden rounded bg-black/60"><div data-h="jefeV" class="h-full bg-rose-500"></div></div></div>
         <div data-h="aviso" class="pointer-events-none absolute inset-x-0 top-1/3 px-2 text-center text-lg font-black text-white drop-shadow"></div></div>
       <div data-h="tipos" class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 pt-1.5 text-[10px]"></div>
       <div class="grid grid-cols-2 gap-2 px-3 pt-1.5 text-xs">
-        <div class="flex items-center gap-1.5">❤<div class="h-2.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="vida" class="h-full bg-emerald-500"></div></div></div>
-        <div class="flex items-center gap-1.5">⚡<div class="h-2.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="energia" class="h-full bg-amber-400"></div></div><b data-h="energiaN" class="w-6 text-right"></b></div>
+        <div class="flex items-center gap-1.5">❤<div data-barra3d="#22c55e" class="h-2.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="vida" class="h-full bg-emerald-500"></div></div></div>
+        <div class="flex items-center gap-1.5">⚡<div data-barra3d="#fbbf24" class="h-2.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="energia" class="h-full bg-amber-400"></div></div><b data-h="energiaN" class="w-6 text-right"></b></div>
       </div>
       <div data-h="zona" class="relative flex min-h-0 flex-1 flex-col">
         <div class="flex min-h-0 flex-1 flex-col px-3 pt-1.5">
           <div class="flex items-center justify-between gap-2 text-xs text-zinc-400"><span data-h="tipo"></span><span class="flex items-center gap-2"><span data-h="pasos"></span><button data-a="pista" data-h="btnPista" class="hidden rounded-full border border-sky-500/60 bg-sky-500/10 px-2 py-1 text-sky-200 touch-manipulation">💡 Pista</button></span></div>
-          <div data-h="expr" class="mt-1 flex min-h-16 items-center justify-center overflow-x-auto rounded-2xl bg-zinc-900 px-2 text-xl text-white [&_[data-mejor]]:!bg-emerald-400/40 [&_[data-mejor]]:!outline-emerald-300 [&_[data-t]]:cursor-pointer [&_[data-t]]:rounded-md [&_[data-t]]:bg-amber-400/30 [&_[data-t]]:outline [&_[data-t]]:outline-2 [&_[data-t]]:outline-amber-300 [&_[data-t='1']]:bg-sky-400/30 [&_[data-t='1']]:outline-sky-300 [&_[data-t='2']]:bg-fuchsia-400/30 [&_[data-t='2']]:outline-fuchsia-300 [&_[data-t='3']]:bg-lime-400/30 [&_[data-t='3']]:outline-lime-300"></div>
+          <div data-h="expr" data-panel3d="rejilla" class="mt-1 flex min-h-16 items-center justify-center overflow-x-auto rounded-2xl bg-zinc-900 px-2 text-xl text-white [&_[data-mejor]]:!bg-emerald-400/40 [&_[data-mejor]]:!outline-emerald-300 [&_[data-t]]:cursor-pointer [&_[data-t]]:rounded-md [&_[data-t]]:bg-amber-400/30 [&_[data-t]]:outline [&_[data-t]]:outline-2 [&_[data-t]]:outline-amber-300 [&_[data-t='1']]:bg-sky-400/30 [&_[data-t='1']]:outline-sky-300 [&_[data-t='2']]:bg-fuchsia-400/30 [&_[data-t='2']]:outline-fuchsia-300 [&_[data-t='3']]:bg-lime-400/30 [&_[data-t='3']]:outline-lime-300"></div>
           <div data-h="msg" class="min-h-9 py-1 text-center text-sm"></div>
         </div>
         <div data-h="quiz" class="hidden px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"></div>
@@ -242,12 +242,13 @@ class BattleScene extends Scene {
     const tipos = [...new Set([...this.mundo.tiposSoldado, ...Object.keys(r.xpTipo ?? {})])].filter(t => SOLDADOS[t]);
     const firma = tipos.map(t => `${t}${r.nivelTipo?.[t] ?? 1}`).join();
     if (this.$('tipos').dataset.f !== firma){ this.$('tipos').dataset.f = firma;
-      this.$('tipos').innerHTML = tipos.map(t => `<span class="flex items-center gap-1"><span>${SOLDADOS[t].icon}</span><b>${r.nivelTipo?.[t] ?? 1}</b><span class="h-1.5 w-12 overflow-hidden rounded bg-zinc-800"><span data-xt="${t}" class="block h-full bg-emerald-400"></span></span>${r.potPend?.[t] ? `<b class="text-amber-300">+${r.potPend[t]}⚡</b>` : ''}</span>`).join('') + (r.tacPend ? `<b class="text-sky-300">+${r.tacPend} 🧠</b>` : ''); }
+      this.$('tipos').innerHTML = tipos.map(t => `<span class="flex items-center gap-1"><span>${SOLDADOS[t].icon}</span><b>${r.nivelTipo?.[t] ?? 1}</b><span data-barra3d="#34d399" class="h-1.5 w-12 overflow-hidden rounded bg-zinc-800"><span data-xt="${t}" class="block h-full bg-emerald-400"></span></span>${r.potPend?.[t] ? `<b class="text-amber-300">+${r.potPend[t]}⚡</b>` : ''}</span>`).join('') + (r.tacPend ? `<b class="text-sky-300">+${r.tacPend} 🧠</b>` : ''); }
     for (const t of tipos){ const el = this.$('tipos').querySelector(`[data-xt="${t}"]`); if (el) el.style.width = `${100 * (r.xpTipo?.[t] ?? 0) / xpTipoSiguiente(r.nivelTipo?.[t] ?? 1)}%`; }
     const pr = this.progresoOleada(); this.$('ola').style.width = `${pr}%`; this.$('olaN').textContent = `${pr} %`;
     this.$('vel').textContent = `×${this.vel}`;
     this.$('nivel').textContent = r.nivel;
-    this.$('clima').textContent = `${this.mundo.clima.icon} ${this.mundo.clima.name}`;
+    this.$('clima').textContent = vitrina3D() ? this.mundo.clima.name : `${this.mundo.clima.icon} ${this.mundo.clima.name}`;
+    if (this.$('climaG')) this.$('climaG').dataset.emblema = this.mundo.clima.icon;   // gema 3D con el icono del clima
     this.$('xp').style.width = `${100 * r.xp / r.xpSiguiente}%`;
     this.$('vida').style.width = `${100 * b.vida / b.vidaMax}%`;
     this.$('energia').style.width = `${r.energia.valor}%`;
@@ -438,7 +439,7 @@ class BattleScene extends Scene {
       const extras = pts.detalle.map(d => `${d.nombre} ×${d.mult.toFixed(1)}`).join(' · ');
       this.mensaje(`+${Math.round(energia)} ⚡ ${extras ? `<span class="text-sky-300">(${extras})</span>` : ''}`, 'emerald');
       this.mundo.texto(this.mundo.base.cx, this.mundo.base.cy - 30, `+${Math.round(energia)}⚡`, '#fde047');
-      FX3D.en(this.$('expr'), 'acierto');
+      FX3D.en(this.$('expr'), 'acierto'); Lienzos3D.pulso();
     } else {
       this.combo = 0;
       this.mensaje(repetido ? '↩️ Volviste a un paso anterior: sin energía.' : 'Paso válido, pero no te acerca al resultado: sin energía.', 'zinc');

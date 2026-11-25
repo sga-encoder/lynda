@@ -751,8 +751,12 @@ document.getElementById('menuBtn').onclick = ()=>{
 /* ---------- Configuración: una sola, la misma en la portada, en Aprender y en Jugar ---------- */
 const AJ = {msg:''};
 function progresoJuego(){ return new DefensaAlgebraica.Progreso(new DefensaAlgebraica.SaveRepository()); }
-function abrirAjustes(){ AJ.msg = ''; pintarAjustes(); const m = document.getElementById('ajustes'); m.classList.remove('hidden'); m.classList.add('flex'); }
-function cerrarAjustes(){ const m = document.getElementById('ajustes'); m.classList.add('hidden'); m.classList.remove('flex'); if (JUEGO){ JUEGO.progreso.data = progresoJuego().data; if (JUEGO.scene && !(JUEGO.scene.run)) JUEGO.scene.enter(); } }
+function abrirAjustes(){ AJ.msg = ''; AJ.devAntes = !!progresoJuego().data.todo; pintarAjustes(); const m = document.getElementById('ajustes'); m.classList.remove('hidden'); m.classList.add('flex'); }
+function cerrarAjustes(){ const m = document.getElementById('ajustes'); m.classList.add('hidden'); m.classList.remove('flex');
+  const dev = !!progresoJuego().data.todo, cambio = dev !== AJ.devAntes; AJ.devAntes = dev;
+  const enBatalla = !!(JUEGO?.scene?.run && !JUEGO.scene.terminado);
+  if (cambio && !enBatalla){ if (JUEGO) JUEGO.progreso.data = progresoJuego().data; return setTimeout(route); }   // cambió el modo desarrollador: se vuelve a pintar la pantalla (desbloqueos)
+  if (JUEGO){ JUEGO.progreso.data = progresoJuego().data; if (JUEGO.scene && !(JUEGO.scene.run)) JUEGO.scene.enter(); } }
 function pintarAjustes(){
   const P = progresoJuego(), d = P.data, dark = document.documentElement.classList.contains('dark');
   const opt = (attr, on, txt) => `<button ${attr} class="flex min-h-12 flex-1 flex-col items-center justify-center rounded-xl border-2 px-1 text-xs font-semibold touch-manipulation ${on ? 'border-blue-600 bg-blue-50 text-blue-800 dark:border-blue-400 dark:bg-blue-950/50 dark:text-blue-200' : 'border-stone-200 dark:border-zinc-700'}">${txt}</button>`;

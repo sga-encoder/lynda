@@ -3663,7 +3663,9 @@ document.addEventListener('pointerdown', e=>{
     const nodo = DRAG.zone[DRAG.i];
     if (!LEGO_HOOKS[key] && (nodo.mono || esCifras(nodo) && nodo.t.length > 1)){          // mantener presionado un número → editar sus cifras
       const d = DRAG;
-      d.timer = setTimeout(() => { if (DRAG !== d || d.moved) return; DRAG = null; legoState(key).editNum = {node:nodo, sel:null}; try { navigator.vibrate?.(20); } catch {} renderLego(key); }, 450);
+      // Mantener presionado y SOLTAR sin mover abre el editor de cifras; si después se mueve, sigue siendo un arrastre
+      // (antes el editor se abría a los 0,45 s y cancelaba el arrastre: en el celular no se podía soltar una ficha sobre otra)
+      d.timer = setTimeout(() => { if (DRAG !== d || d.moved) return; d.editar = nodo; d.el.classList.add('ring-4', 'ring-amber-300'); try { navigator.vibrate?.(20); } catch {} }, 450);
     }
   }
 });
@@ -3709,6 +3711,8 @@ document.addEventListener('pointerup', e=>{
   const d = DRAG; DRAG = null; hideCaret();
   const st = legoState(d.key);
   if (d.ghost) d.ghost.remove();
+  clearTimeout(d.timer); d.el?.classList.remove('ring-4', 'ring-amber-300');
+  if (d.editar && !d.moved){ st.editNum = {node:d.editar, sel:null}; return renderLego(d.key); }   // mantener y soltar: editar cifras
   if (d.src==='cifra'){                                              // cifra sacada del número editado
     if (!d.moved) return;                                            // un toque lo maneja el clic (seleccionar)
     const zEl = zoneAt(e.clientX, e.clientY - d.lift, d.key), ed = st.editNum;
@@ -3791,7 +3795,10 @@ document.addEventListener('pointerup', e=>{
   }
   renderLego(d.key);
 });
-document.addEventListener('pointercancel', ()=>{ if (DRAG?.sobre){ clearTimeout(DRAG.sobre.timer); DRAG.sobre.el.classList.remove('lego-sena'); } if (DRAG && DRAG.ghost) DRAG.ghost.remove(); DRAG=null; hideCaret(); });
+// Mantener presionada una ficha no debe abrir el menú del navegador (en el celular cancelaba el arrastre)
+document.addEventListener('contextmenu', e => { if (e.target.closest?.('[data-n],[data-tok],[data-dig]')) e.preventDefault(); });
+document.addEventListener('pointercancel', ()=>{ const dc = DRAG; if (dc?.editar && !dc.moved){ clearTimeout(dc.timer); dc.el?.classList.remove('ring-4', 'ring-amber-300'); DRAG = null; legoState(dc.key).editNum = {node:dc.editar, sel:null}; return renderLego(dc.key); }   // pulsación larga cancelada: editar cifras
+  if (DRAG?.sobre){ clearTimeout(DRAG.sobre.timer); DRAG.sobre.el.classList.remove('lego-sena'); } if (DRAG && DRAG.ghost) DRAG.ghost.remove(); DRAG=null; hideCaret(); });
 // Teclado: Enter/Espacio sobre una pieza del banco la añade
 document.addEventListener('click', e=>{
   const tokEl = e.target.closest('[data-tok]');

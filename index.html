@@ -6929,7 +6929,10 @@ function ejerciciosDeCarta(domId, cartaId){
   for (let intento = 0; intento < 60 && out.length < 3; intento++){
     let cur; try { cur = dom.normalizar(rng.pick(tipos.length ? tipos : dom.tipos).make(rng)); } catch { continue; }
     for (let paso = 0; paso < 12 && !dom.resuelto(cur); paso++){
-      const objs = carta.targets(cur);
+      const conX = n => [...walk(n)].some(([m]) => m instanceof X);
+      const sucio = ['oper', 'seme'].filter(id => id !== cartaId && dom.cartas.get(id)).some(id => dom.cartas.get(id).targets(cur).length);   // 34 − 10 o −12/3 sin operar
+      let objs = sucio ? [] : carta.targets(cur);
+      if (cartaId === 'mover') objs = objs.filter(([sd, i]) => { const t = cur.children[sd].terms[i]; return conX(t) ? sd === 1 : conX(cur.children[sd]); });   // solo pasos útiles: números lejos de la x
       if (objs.length){
         const k = dom.key(cur);
         if (!vistos.has(k)){

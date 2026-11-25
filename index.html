@@ -109,7 +109,7 @@
     <a href="#/jugar/catalogo" data-bn="j-catalogo" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">📚</span>Catálogo</a>
     <a href="#/jugar/mazo" data-bn="j-mazo" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🃏</span>Mazo</a>
     <a href="#/jugar/peloton" data-bn="j-peloton" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🪖</span>Pelotón</a>
-    <a href="#/jugar/mas" data-bn="j-mas" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">☰</span>Más</a>
+    <a href="#/jugar/mejoras" data-bn="j-mejoras" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🛠</span>Mejoras</a>
   </div>
 </nav>
 
@@ -2513,6 +2513,8 @@ function pintarAjustes(){
     <div class="flex items-center justify-between"><b class="text-xl">⚙️ Configuración</b><button data-aj="cerrar" class="flex h-10 w-10 items-center justify-center rounded-xl border border-stone-200 dark:border-zinc-700" aria-label="Cerrar">✕</button></div>
     ${AJ.msg ? `<p class="mt-2 rounded-xl bg-stone-100 px-3 py-2 text-sm dark:bg-zinc-800">${AJ.msg}</p>` : ''}
     <div class="mt-4"><b class="text-sm">Tema</b><div class="mt-1.5 flex gap-2">${opt('data-aj="claro"', !dark, '☀️ Claro')}${opt('data-aj="oscuro"', dark, '🌙 Oscuro')}</div></div>
+    <div class="mt-4"><b class="text-sm">🎮 Juego</b>
+      <button data-aj="ayuda" class="mt-1.5 flex min-h-12 w-full items-center gap-3 rounded-xl border-2 border-stone-200 px-3 text-left touch-manipulation active:scale-[0.98] dark:border-zinc-700"><span class="text-2xl">❓</span><span class="flex-1"><b class="block text-sm">Cómo jugar</b><span class="text-xs text-stone-500 dark:text-zinc-400">Tutorial del juego paso a paso</span></span><span>▸</span></button></div>
     <div class="mt-4"><b class="text-sm">Modo asistido (juego)</b><div class="mt-1.5 flex gap-1.5">${AY.map(([ic,n],i)=>opt(`data-aj-ayuda="${i}"`, (d.asistido ?? 0) === i, `<span class="text-lg">${ic}</span>${n}`)).join('')}</div>
       <p class="mt-1 text-xs text-stone-500 dark:text-zinc-400">Más nivel = más pistas y sugerencias, pero menos XP.</p></div>
     <div class="mt-4"><b class="text-sm">Archivos</b><p class="text-xs text-stone-500 dark:text-zinc-400">Todo tu avance (guía, juego, Ruta y partidas) en un archivo JSON.</p>
@@ -2544,6 +2546,7 @@ document.addEventListener('click', e => {
   if (ay){ const P = progresoJuego(); P.data.asistido = +ay.dataset.ajAyuda; P.guardar(); return pintarAjustes(); }
   const a = e.target.closest('[data-aj]')?.dataset.aj; if (!a) return;
   if (a === 'cerrar') return cerrarAjustes();
+  if (a === 'ayuda'){ cerrarAjustes(); location.hash = '#/jugar/ayuda'; return; }
   if (a === 'claro' || a === 'oscuro'){ document.documentElement.classList.toggle('dark', a === 'oscuro'); store.set('theme', a === 'oscuro' ? 'dark' : 'light'); return pintarAjustes(); }
   if (a === 'clave') return claveDev(document.querySelector('[data-aj-clave]').value);
   if (a === 'dev'){ const P = progresoJuego(); P.data.todo = e.target.checked; P.guardar(); return pintarAjustes(); }
@@ -5652,10 +5655,10 @@ class GameApp {
   nuevaPartida(modo = this.progreso.data.modo){ this.progreso.data.modo = modo; this.progreso.guardar(); this.go(new BattleScene(this, new Run(this))); }
   /** Abre una sección del menú del juego (la elige la barra de navegación de la app). */
   mostrar(seccion){
-    const S = {inicio:MenuScene, catalogo:CatalogoScene, mazo:MazoScene, peloton:PelotonScene, mejoras:MejorasScene, ayuda:HelpScene, config:MasScene, mas:MasScene, partidas:MenuScene}[seccion] ?? MenuScene;
+    const S = {inicio:MenuScene, catalogo:CatalogoScene, mazo:MazoScene, peloton:PelotonScene, mejoras:MejorasScene, ayuda:HelpScene, config:MenuScene, mas:MejorasScene, partidas:MenuScene}[seccion] ?? MenuScene;
     this.root.classList.remove('hidden');
     if (this.scene instanceof BattleScene && !this.scene.terminado) return;      // no se interrumpe una batalla
-    if (!this.ruta.jugable) return this.go(new BloqueoScene(this));              // el juego se abre en el nivel mínimo de la Ruta
+    if (!this.ruta.jugable && S !== HelpScene) return this.go(new BloqueoScene(this));   // el juego se abre en el nivel mínimo de la Ruta (el tutorial siempre se ve)
     if (!(this.scene instanceof S) || S === MenuScene) this.go(new S(this));
   }
   close(){ this.scene?.pause(); this.root.classList.add('hidden'); }
@@ -7069,7 +7072,6 @@ function cartasLibres(progreso, doneKeys){
    - HelpScene: tutorial del juego en diapositivas animadas.
    - ConfigScene: modo asistido, exportar/importar y modo desarrollador
      (con contraseña).
-   - MasScene: accesos a Pelotón, Mejoras, Cómo jugar y Configuración.
    La barra de navegación de la app abre estas secciones (GameApp.mostrar).
    ===================================================================== */
 const CLAVE_DEV = 'prueba';
@@ -7267,20 +7269,6 @@ class ConfigScene extends Scene {
 }
 
 /* ---------- Más ---------- */
-class MasScene extends Scene {
-  enter(){
-    const disp = this.app.pelotonDisponible(), d = this.app.progreso.data;
-    this.app.html(`
-    <div class="mx-auto flex h-full max-w-xl flex-col gap-2 overflow-y-auto px-4 pb-6 pt-4">
-      <h2 class="text-2xl font-black">☰ Más</h2>
-      ${tarjetaBtn('data-ir="peloton"', '🪖', 'Pelotón', 'Soldados, armas, blindajes y estrategia de reclutamiento.')}
-      ${tarjetaBtn('data-ir="mejoras"', '🛠', 'Mejoras', `Mejoras permanentes · tienes ${d.puntos} 🔬`)}
-      ${tarjetaBtn('data-ir="ayuda"', '❓', 'Cómo jugar', 'Tutorial del juego paso a paso.')}
-      ${tarjetaBtn('data-ir="config"', '⚙️', 'Configuración', 'Modo asistido, archivos y modo desarrollador.')}
-    </div>`).onclick = e => { const s = e.target.closest('[data-ir]')?.dataset.ir; if (!s) return; if (s === 'config') return abrirAjustes(); location.hash = '#/jugar/' + s; };   // la configuración es la misma de toda la app
-  }
-}
-
 /* ---------- Juego bloqueado hasta el nivel mínimo de la Ruta ---------- */
 class BloqueoScene extends Scene {
   enter(){

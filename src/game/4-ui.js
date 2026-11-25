@@ -41,10 +41,10 @@ class GameApp {
   nuevaPartida(modo = this.progreso.data.modo){ this.progreso.data.modo = modo; this.progreso.guardar(); this.go(new BattleScene(this, new Run(this))); }
   /** Abre una sección del menú del juego (la elige la barra de navegación de la app). */
   mostrar(seccion){
-    const S = {inicio:MenuScene, catalogo:CatalogoScene, mazo:MazoScene, peloton:PelotonScene, mejoras:MejorasScene, ayuda:HelpScene, config:MasScene, mas:MasScene, partidas:MenuScene}[seccion] ?? MenuScene;
+    const S = {inicio:MenuScene, catalogo:CatalogoScene, mazo:MazoScene, peloton:PelotonScene, mejoras:MejorasScene, ayuda:HelpScene, config:MenuScene, mas:MejorasScene, partidas:MenuScene}[seccion] ?? MenuScene;
     this.root.classList.remove('hidden');
     if (this.scene instanceof BattleScene && !this.scene.terminado) return;      // no se interrumpe una batalla
-    if (!this.ruta.jugable) return this.go(new BloqueoScene(this));              // el juego se abre en el nivel mínimo de la Ruta
+    if (!this.ruta.jugable && S !== HelpScene) return this.go(new BloqueoScene(this));   // el juego se abre en el nivel mínimo de la Ruta (el tutorial siempre se ve)
     if (!(this.scene instanceof S) || S === MenuScene) this.go(new S(this));
   }
   close(){ this.scene?.pause(); this.root.classList.add('hidden'); }

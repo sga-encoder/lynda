@@ -761,6 +761,8 @@ function pintarAjustes(){
     <div class="flex items-center justify-between"><b class="text-xl">⚙️ Configuración</b><button data-aj="cerrar" class="flex h-10 w-10 items-center justify-center rounded-xl border border-stone-200 dark:border-zinc-700" aria-label="Cerrar">✕</button></div>
     ${AJ.msg ? `<p class="mt-2 rounded-xl bg-stone-100 px-3 py-2 text-sm dark:bg-zinc-800">${AJ.msg}</p>` : ''}
     <div class="mt-4"><b class="text-sm">Tema</b><div class="mt-1.5 flex gap-2">${opt('data-aj="claro"', !dark, '☀️ Claro')}${opt('data-aj="oscuro"', dark, '🌙 Oscuro')}</div></div>
+    <div class="mt-4"><b class="text-sm">🎮 Juego</b>
+      <button data-aj="ayuda" class="mt-1.5 flex min-h-12 w-full items-center gap-3 rounded-xl border-2 border-stone-200 px-3 text-left touch-manipulation active:scale-[0.98] dark:border-zinc-700"><span class="text-2xl">❓</span><span class="flex-1"><b class="block text-sm">Cómo jugar</b><span class="text-xs text-stone-500 dark:text-zinc-400">Tutorial del juego paso a paso</span></span><span>▸</span></button></div>
     <div class="mt-4"><b class="text-sm">Modo asistido (juego)</b><div class="mt-1.5 flex gap-1.5">${AY.map(([ic,n],i)=>opt(`data-aj-ayuda="${i}"`, (d.asistido ?? 0) === i, `<span class="text-lg">${ic}</span>${n}`)).join('')}</div>
       <p class="mt-1 text-xs text-stone-500 dark:text-zinc-400">Más nivel = más pistas y sugerencias, pero menos XP.</p></div>
     <div class="mt-4"><b class="text-sm">Archivos</b><p class="text-xs text-stone-500 dark:text-zinc-400">Todo tu avance (guía, juego, Ruta y partidas) en un archivo JSON.</p>
@@ -792,6 +794,7 @@ document.addEventListener('click', e => {
   if (ay){ const P = progresoJuego(); P.data.asistido = +ay.dataset.ajAyuda; P.guardar(); return pintarAjustes(); }
   const a = e.target.closest('[data-aj]')?.dataset.aj; if (!a) return;
   if (a === 'cerrar') return cerrarAjustes();
+  if (a === 'ayuda'){ cerrarAjustes(); location.hash = '#/jugar/ayuda'; return; }
   if (a === 'claro' || a === 'oscuro'){ document.documentElement.classList.toggle('dark', a === 'oscuro'); store.set('theme', a === 'oscuro' ? 'dark' : 'light'); return pintarAjustes(); }
   if (a === 'clave') return claveDev(document.querySelector('[data-aj-clave]').value);
   if (a === 'dev'){ const P = progresoJuego(); P.data.todo = e.target.checked; P.guardar(); return pintarAjustes(); }

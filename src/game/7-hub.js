@@ -5,7 +5,6 @@
    - HelpScene: tutorial del juego en diapositivas animadas.
    - ConfigScene: modo asistido, exportar/importar y modo desarrollador
      (con contraseña).
-   - MasScene: accesos a Pelotón, Mejoras, Cómo jugar y Configuración.
    La barra de navegación de la app abre estas secciones (GameApp.mostrar).
    ===================================================================== */
 const CLAVE_DEV = 'prueba';
@@ -203,20 +202,6 @@ class ConfigScene extends Scene {
 }
 
 /* ---------- Más ---------- */
-class MasScene extends Scene {
-  enter(){
-    const disp = this.app.pelotonDisponible(), d = this.app.progreso.data;
-    this.app.html(`
-    <div class="mx-auto flex h-full max-w-xl flex-col gap-2 overflow-y-auto px-4 pb-6 pt-4">
-      <h2 class="text-2xl font-black">☰ Más</h2>
-      ${tarjetaBtn('data-ir="peloton"', '🪖', 'Pelotón', 'Soldados, armas, blindajes y estrategia de reclutamiento.')}
-      ${tarjetaBtn('data-ir="mejoras"', '🛠', 'Mejoras', `Mejoras permanentes · tienes ${d.puntos} 🔬`)}
-      ${tarjetaBtn('data-ir="ayuda"', '❓', 'Cómo jugar', 'Tutorial del juego paso a paso.')}
-      ${tarjetaBtn('data-ir="config"', '⚙️', 'Configuración', 'Modo asistido, archivos y modo desarrollador.')}
-    </div>`).onclick = e => { const s = e.target.closest('[data-ir]')?.dataset.ir; if (!s) return; if (s === 'config') return abrirAjustes(); location.hash = '#/jugar/' + s; };   // la configuración es la misma de toda la app
-  }
-}
-
 /* ---------- Juego bloqueado hasta el nivel mínimo de la Ruta ---------- */
 class BloqueoScene extends Scene {
   enter(){

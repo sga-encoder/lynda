@@ -32,12 +32,12 @@ const MUNDOS_JUEGO = [
     comandantes:[
       {id:'radical', name:'Comandante Radical', forma:'acorazado', color:'#c084fc', ataque:{nombre:'Raíz láser', desc:'Láser doble y rápido contra la base.', arma:{tipo:'laser', rango:260, cd:1.6, dmg:2.5, objetivo:'base'}},
         enemigos:[['raiz', 'Raíz', 'excavador', 1.1, 1, {}, 'Crece bajo tierra y emerge.'], ['indice', 'Índice', 'dron', 1, 1.1, {}, 'Pequeño y explosivo.']]},
+      {id:'exponente', name:'Comandante Exponente', forma:'coloso', color:'#f0abfc', ataque:{nombre:'Crecimiento exponencial', desc:'Cura a todos sus aliados cercanos.', arma:{tipo:'curar', rango:120, cd:6, dmg:5}},
+        enemigos:[['cuadrado', 'Cuadrado', 'blindado', 1.4, 0.9, {armadura:0.5}, 'El doble de resistente.'], ['cubo', 'Cubo', 'portadrones', 1.1, 1, {}, 'Nave que se multiplica en drones.']]},
       {id:'logaritmico', name:'Comandante Logarítmico', forma:'mente', color:'#818cf8', ataque:{nombre:'Escala logarítmica', desc:'Roba energía de tus científicos.', arma:{tipo:'drenar', rango:300, cd:5, dmg:8}},
         enemigos:[['mantisa', 'Mantisa', 'caza', 1.1, 1, {}, 'Dispara desde lejos con precisión.'], ['base-e', 'Base e', 'escudero', 1.3, 0.9, {escudo:0.6}, 'Escudo natural contra la energía.']]},
       {id:'senoidal', name:'Comandante Senoidal', forma:'reina', color:'#22d3ee', ataque:{nombre:'Onda seno', desc:'Escupe ácido en ondas sobre tus soldados.', arma:{tipo:'acido', rango:150, cd:1.6, dmg:1.8, objetivo:'soldados'}},
         enemigos:[['coseno', 'Coseno', 'saltador', 1.1, 1.1, {}, 'Va y viene: salta sobre las filas.'], ['tangente', 'Tangente', 'bombardero', 1.1, 1, {}, 'Se dispara al infinito y bombardea.']]},
-      {id:'exponente', name:'Comandante Exponente', forma:'coloso', color:'#f0abfc', ataque:{nombre:'Crecimiento exponencial', desc:'Cura a todos sus aliados cercanos.', arma:{tipo:'curar', rango:120, cd:6, dmg:5}},
-        enemigos:[['cuadrado', 'Cuadrado', 'blindado', 1.4, 0.9, {armadura:0.5}, 'El doble de resistente.'], ['cubo', 'Cubo', 'portadrones', 1.1, 1, {}, 'Nave que se multiplica en drones.']]},
     ]},
   {id:'cinturon', icon:'📈', nombre:'Cinturón Tangente', eje:'Cálculo diferencial', dominio:'dif', cielo:['#052e16', '#0e7490'],
     soberano:{id:'derivante', name:'Señor Derivante', forma:'acorazado', color:'#34d399', desc:'Domina el cambio: ondas límite, rocas de pendiente, láser en cadena y lluvia de extremos.'},
@@ -64,6 +64,14 @@ const MUNDOS_JUEGO = [
         enemigos:[['asintota', 'Asíntota', 'caza', 1.2, 1.1, {}, 'Se acerca sin llegar… y dispara.'], ['divergente', 'Divergente', 'portadrones', 1.2, 1, {}, 'Lanza drones sin fin.']]},
     ]},
 ];
+/** Tema de la Ruta que desbloquea a cada Comandante y Soberano (además de vencer al anterior). */
+const RUTA_COMANDANTES = {
+  sumador:'#/f/signos', divisor:'#/f/multdiv', fraccionario:'#/f/fracciones', factor:'#/f/factorizacion', cifrador:'#/f/cuadraticas',
+  radical:'#/f/radicales', exponente:'#/f/exponenciales', logaritmico:'#/f/logaritmicas', senoidal:'#/f/trigonometricas', potencia:'#/f/inecuaciones',
+  limite:'#/d/limites', pendiente:'#/d/definicion', cadena:'#/d/cadena', extremo:'#/d/extremos', derivante:'#/d/lhopital',
+  primitiva:'#/l1', sustituto:'#/l2', particionador:'#/l6', impropio:'#/l7', acumulador:'#/l7'};
+/** Comandantes y Soberanos que desbloquea un tema de la Ruta. */
+const jefesDeTema = href => MUNDOS_JUEGO.flatMap(M => [...M.comandantes, M.soberano].filter(C => RUTA_COMANDANTES[C.id] === href).map(C => ({C, M})));
 const INFO_EXTRA = {}, FORMA_DE = {};   // se une a INFO_ENEMIGO en el catálogo
 /* Registra los alienígenas propios, los Comandantes y los Soberanos en el catálogo de enemigos. */
 for (const [mi, M] of MUNDOS_JUEGO.entries()){

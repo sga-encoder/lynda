@@ -116,6 +116,12 @@ class Ruta {
   /** Niveles de aprendizaje alcanzados + logros cumplidos (para mostrar «X de N»). */
   get completados(){ return RUTA_HITOS().filter((h, i) => this.alcanzado(h, i)).length; }
   get total(){ return RUTA_HITOS().length; }
+  /** Hito de la Ruta que pide un Comandante/Soberano (o null si ya está libre). */
+  hitoJefe(id){
+    if (this.dev) return null;
+    const h = RUTA_HITOS().find(x => x.href === RUTA_COMANDANTES[id]);
+    return h && !this.cumplido(h) ? h : null;
+  }
   alcanzados(){ return this.hitos().filter(h => h.ok); }
   tipos(){ return new Set(this.alcanzados().flatMap(t => t.tipos ?? [])); }
   difs(){ return new Set(this.alcanzados().flatMap(t => t.difs ?? [])); }
@@ -148,6 +154,7 @@ class Ruta {
             ...(h.difs ?? []).map(id => ({tipo:'dificultad', icon:dificultad(id).icon, nombre:`Dificultad ${dificultad(id).nombre}`})),
             ...(h.bonus ?? []).filter(id => BONUS_DEFS[id].tipo === 'tactico').map(id => ({tipo:'bonus', icon:BONUS_DEFS[id].icon, nombre:BONUS_DEFS[id].name})),
             ...(h.soldados ?? []).map(id => ({tipo:'bonus', icon:SOLDADOS[id].icon, nombre:`Soldado: ${SOLDADOS[id].name}`})),
+            ...(h.href ? jefesDeTema(h.href).map(({C, M}) => ({tipo:'jefe', icon:M.soberano === C ? '👑' : '🎖️', nombre:`${C.name} (${M.nombre})`})) : []),
             ...(h.supers ? [{tipo:'bonus', icon:'⚡', nombre:'Superpotenciadores (6)'}] : []),
             ...(h.peloton ? [{tipo:'bonus', icon:'🪖', nombre:'Estrategia de pelotón (tipos de soldado y munición)'}] : []),
             ...(h.puntos ? [{tipo:'puntos', icon:'🔬', nombre:`+${h.puntos} puntos de investigación`, reclamable:h.ok && !rec.includes(h.i), reclamado:rec.includes(h.i)}] : []),

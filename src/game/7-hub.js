@@ -39,8 +39,11 @@ class MenuScene extends PartidasScene {
       cuerpo = `
       <div class="flex items-center gap-2"><button data-j="atras" class="${UI.btn} !min-h-10 !px-3">◂</button><b class="text-lg">2 · ${M.icon} ${M.nombre}</b></div>
       <p class="text-xs text-zinc-400">Derrota a los 4 Comandantes (una misión de 5 oleadas cada uno) para enfrentar al Soberano.</p>
-      <div class="grid gap-2">${M.comandantes.map((C, i) => tarjetaBtn(`data-mm="${i}"`, i < pm.vencidos ? '✅' : i === pm.vencidos ? '🎖️' : '🔒', C.name, i <= pm.vencidos ? `${C.ataque.nombre}: ${C.ataque.desc}` : 'Vence al Comandante anterior', false, i > pm.vencidos)).join('')}
-        ${tarjetaBtn('data-mm="4"', pm.vencidos >= 4 ? '👑' : '🔒', M.soberano.name, pm.vencidos >= 4 ? M.soberano.desc : 'Derrota a los 4 Comandantes para enfrentarlo', false, pm.vencidos < 4)}</div>`; }
+      <p class="text-xs text-zinc-400">📚 Cada uno también se desbloquea al terminar su tema en la Ruta de aprendizaje.</p>
+      <div class="grid gap-2">${M.comandantes.map((C, i) => { const falta = this.app.ruta.hitoJefe(C.id), libre = i <= pm.vencidos && !falta;
+          return tarjetaBtn(`data-mm="${i}"`, i < pm.vencidos ? '✅' : libre ? '🎖️' : '🔒', C.name, libre || i < pm.vencidos ? `${C.ataque.nombre}: ${C.ataque.desc}` : falta ? `📚 Termina «${falta.titulo.split(': ').pop()}» en la Ruta${i > pm.vencidos ? ' y vence al anterior' : ''}` : 'Vence al Comandante anterior', false, !libre && i >= pm.vencidos); }).join('')}
+        ${(() => { const falta = this.app.ruta.hitoJefe(M.soberano.id), libre = pm.vencidos >= 4 && !falta;
+          return tarjetaBtn('data-mm="4"', libre ? '👑' : '🔒', M.soberano.name, libre ? M.soberano.desc : falta ? `📚 Termina «${falta.titulo.split(': ').pop()}» en la Ruta${pm.vencidos < 4 ? ' y derrota a los 4 Comandantes' : ''}` : 'Derrota a los 4 Comandantes para enfrentarlo', false, !libre); })()}</div>`; }
     else if (paso === 'ops') { const mazo = new Set(d.mazoInfinito ?? []);
       cuerpo = `
       <div class="flex items-center gap-2"><button data-j="atras" class="${UI.btn} !min-h-10 !px-3">◂</button><b class="text-lg">2 · ¿Qué operaciones salen?</b></div>

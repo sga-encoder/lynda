@@ -95,7 +95,7 @@ function cartaHTML(c, dom, {sel = false, attr = `data-carta="${c.id}"`, chica = 
   const tag = attr ? 'button' : 'div';     // sin acción es solo una imagen: un <button> dentro de otro rompe el diseño (catálogo)
   const g = c.free ? GRAD.libre : GRAD[dom.id];
   const ayuda = marca === 'mejor' ? 'ring-4 ring-amber-300 animate-pulse' : marca === 'aplica' ? 'ring-2 ring-emerald-300/80' : '';
-  return `<${tag} ${attr} class="relative ${chica ? 'h-[7.5rem] w-[5.4rem]' : 'h-[9.6rem] w-[6.7rem]'} shrink-0 rounded-2xl bg-gradient-to-br ${g} p-[2px] text-left shadow-lg shadow-black/50 touch-manipulation select-none transition-transform active:scale-95 ${sel ? '-translate-y-2 ring-2 ring-amber-300' : ayuda}">
+  return `<${tag} ${attr} data-arte class="relative ${chica ? 'h-[7.5rem] w-[5.4rem]' : 'h-[9.6rem] w-[6.7rem]'} shrink-0 rounded-2xl bg-gradient-to-br ${g} p-[2px] text-left shadow-lg shadow-black/50 touch-manipulation select-none transition-transform active:scale-95 ${sel ? '-translate-y-2 ring-2 ring-amber-300' : ayuda}">
     ${marca === 'mejor' ? '<span class="absolute -top-2 left-1/2 z-10 -translate-x-1/2 rounded-full bg-amber-300 px-2 text-[9px] font-black text-zinc-950">SIGUIENTE</span>' : ''}
     <span class="flex h-full flex-col rounded-[14px] bg-zinc-950/95 p-1.5">
       <span class="${chica ? 'text-[8px]' : 'text-[9.5px]'} font-black uppercase leading-tight tracking-wide text-white">${c.name}</span>

@@ -415,7 +415,7 @@ function pageTutorial(){
   <div class="mt-3 grid gap-3 md:grid-cols-2">${demos.map((d,i)=>tarjeta(`<div id="demo-${i}" class="flex items-center gap-2"><span class="flex h-10 min-w-10 items-center justify-center rounded-xl bg-violet-100 px-2 font-serif text-lg dark:bg-violet-950">${d.icon}</span><b class="text-lg">${d.titulo}</b><span class="ml-auto text-xs text-stone-500 dark:text-zinc-400">${d.cat}</span></div>
       <p class="!my-2 text-sm">${d.txt}</p><div class="pointer-events-none mb-3 flex flex-wrap gap-1.5">${d.fichas.map(t=>bankPiece('demo', t)).join('')}</div>`, escenas(d.pasos, d.frames, i))).join('')}</div>
   <h3 class="${C.h3}">✔ Verificar, pista y propiedades</h3>
-  ${tarjeta('', `<ul class="text-sm"><li><b>✔ Verificar</b> revisa el paso; si está bien pasas al siguiente.</li><li><b>💡 Pista</b> y <b>👁 Solución</b> ayudan si te atascas.</li><li><b>↶ Deshacer</b> y <b>🗑 Limpiar</b> corrigen el lienzo.</li><li><b>🃏 Propiedades</b> (en Fundamentos) aplica una carta del juego a lo que armaste.</li><li><b>📝 Tu proceso hasta aquí</b>: arriba del lienzo ves los pasos que ya verificaste; con <b>📋 Empezar desde mi paso anterior</b> copias el último.</li></ul>`)}
+  ${tarjeta('', `<ul class="text-sm"><li><b>✔ Verificar</b> revisa el paso; si está bien pasas al siguiente.</li><li><b>💡 Pista</b> y <b>👁 Solución</b> ayudan si te atascas.</li><li><b>↶ Deshacer</b> y <b>🗑 Limpiar</b> corrigen el lienzo.</li><li><b>🃏 Propiedades</b> (en Fundamentos) aplica una carta del juego a lo que armaste.</li><li><b>💻 En computador</b>: arrastra con el mouse; «mantener presionado» es dejar el clic apretado. <kbd>Supr</kbd> elimina la ficha marcada con 🗑 y <kbd>Esc</kbd> la desmarca o cierra el editor.</li><li><b>📝 Tu proceso hasta aquí</b>: arriba del lienzo ves los pasos que ya verificaste; con <b>📋 Empezar desde mi paso anterior</b> copias el último.</li></ul>`)}
   <h3 class="${C.h3}">🗺️ La Ruta y las lecciones</h3>
   ${tarjeta('', `<ul class="text-sm"><li>Las lecciones se abren <b>en orden</b>: para entrar a la siguiente, termina los ejercicios con piezas de la anterior (🔒 = bloqueada).</li><li>En la 🗺️ Ruta, <b>toca un nivel</b>: si ya puedes, te lleva directo a sus ejercicios; si no, te muestra los módulos que te faltan y el botón <b>📚 Empezar a estudiar</b>.</li><li>Cada tema también desbloquea cosas del juego: problemas, cartas y los <b>Comandantes</b> de cada mundo.</li></ul>`)}
   <div class="mt-8 flex justify-end"><a class="${C.btnP}" href="#/f">Practicar en Fundamentos ▸</a></div>`;
@@ -804,6 +804,7 @@ document.addEventListener('click', e => {
     const l = document.createElement('a'); l.href = URL.createObjectURL(blob); l.download = 'integrando-avance.json'; document.body.appendChild(l); l.click(); l.remove();
   }
 });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !document.getElementById('ajustes').classList.contains('hidden')) cerrarAjustes(); });   // Esc cierra la configuración
 window.addEventListener('hashchange', route);
 window.addEventListener('load', route);
 

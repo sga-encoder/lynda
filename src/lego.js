@@ -1011,3 +1011,12 @@ document.addEventListener('click', e=>{
 });
 // Al girar el teléfono o cambiar el tamaño, se vuelve a ajustar el tamaño de las fichas
 addEventListener('resize', () => document.querySelectorAll('[data-lego] [data-ajuste]').forEach(el => { const key = el.closest('[data-lego]').dataset.lego; ajustarLienzo(el, (LEGO[key] && LEGO[key].zoom) || 1); }));
+
+/* Escritorio: Supr / Retroceso eliminan la ficha marcada con 🗑; Esc quita la marca o cierra el editor. */
+document.addEventListener('keydown', e => {
+  if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName ?? '') || e.ctrlKey || e.metaKey) return;
+  for (const k in LEGO){ const st = LEGO[k]; if (k.startsWith('demo-')) continue;
+    if ((e.key === 'Delete' || e.key === 'Backspace') && st.borrar){ e.preventDefault(); borrarSeleccion(st); renderLego(k); return; }
+    if (e.key === 'Escape' && (st.borrar || st.editNum)){ st.borrar = null; st.editNum = null; renderLego(k); return; }
+  }
+});

@@ -115,6 +115,7 @@ function tropaDesbloqueada(app, tipo, clase, k){
 /** Estado guardado de la tropa: niveles y equipo elegido por tipo. */
 function tropaDe(P){
   const t = P.data.tropa ??= {niveles:{}, equipo:{}};
+  t.titular ??= {};                                    // soldado en servicio de cada tipo (uno por tipo)
   for (const tipo of TIPOS_TROPA) t.equipo[tipo] ??= {arma:ARMAS_TROPA[tipo][0][0], blindaje:null};
   return t;
 }
@@ -144,7 +145,11 @@ function itemsTropa(app, tipo){
 }
 
 /** Soldado que entra cuando el orden pide solo un tipo: el primero desbloqueado (el de mayor nivel). */
+/** Soldado en servicio de un tipo: el elegido en el Pelotón (si está desbloqueado) o, si no, el de más nivel. */
 function titularDe(app, tipo){
-  const P = app.progreso, l = SOLDADOS_UNICOS[tipo].filter((s, k) => tropaDesbloqueada(app, tipo, 'soldado', k));
+  const P = app.progreso, l = SOLDADOS_UNICOS[tipo].filter((s, k) => tropaDesbloqueada(app, tipo, 'soldado', k)), elegido = tropaDe(P).titular[tipo];
+  if (elegido && l.some(s => s[0] === elegido)) return elegido;
   return (l.sort((a, b) => nivelTropa(P, b[0]) - nivelTropa(P, a[0]))[0] ?? SOLDADOS_UNICOS[tipo][0])[0];
 }
+/** Tipo al que pertenece un soldado concreto. */
+const tipoDeUid = uid => TIPOS_TROPA.find(t => SOLDADOS_UNICOS[t].some(s => s[0] === uid)) ?? 'fusilero';

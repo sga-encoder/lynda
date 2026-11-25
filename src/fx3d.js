@@ -468,6 +468,13 @@ const Iconos3D = (() => {
     papelera(){ const g = new T.Group(), m = mat('#64748b', {m:0.6, r:0.35});
       g.add(malla(new T.CylinderGeometry(0.65, 0.5, 1.4, 24, 1, true), m, [0, -0.2, 0])); g.add(malla(new T.CylinderGeometry(0.5, 0.5, 0.06, 24), m, [0, -0.9, 0]));
       g.add(malla(new T.CylinderGeometry(0.75, 0.75, 0.15, 24), mat('#475569', {m:0.7}), [0, 0.6, 0])); g.add(malla(new T.TorusGeometry(0.2, 0.05, 8, 16, Math.PI), m, [0, 0.7, 0])); return g; },
+    yunque(){ const g = new T.Group(), hierro = mat('#475569', {m:0.85, r:0.3});
+      g.add(malla(extruir(poli([[-1.2, 0.35], [0.8, 0.35], [1.25, 0.6], [0.8, 0.75], [-1.0, 0.75], [-1.2, 0.6]]), 0.7, 0.05), hierro));
+      g.add(malla(box(0.7, 0.55, 0.55), hierro, [0, 0.0, 0])); g.add(malla(extruir(rect(1.4, 0.3, 0.06), 0.8, 0.04), mat('#334155', {m:0.8}), [0, -0.4, 0]));
+      const m = new T.Group(); m.position.set(0.55, 1.05, 0.2); m.rotation.z = 0.6; g.add(m);
+      m.add(malla(new T.CylinderGeometry(0.07, 0.08, 1.1, 10), mat('#b45309', {r:0.55}), [0, -0.3, 0])); m.add(malla(box(0.55, 0.25, 0.25), mat('#94a3b8', {m:0.9, r:0.2}), [0, 0.3, 0]));
+      g.add(malla(esfera(0.07), mat('#fde047', {e:'#f97316', ei:1.5}), [0.15, 0.85, 0.3])); g.add(malla(esfera(0.05), mat('#fde047', {e:'#f97316', ei:1.5}), [-0.1, 0.95, 0.35]));
+      return g; },
   };
   /** Modelo listo para dibujar: centrado y del mismo tamaño (cabe en 2,2 unidades). */
   /** Gema hexagonal con un símbolo matemático grabado (𝑥, ±, ½, √…): para glifos que no son dibujos. */
@@ -497,7 +504,7 @@ const Iconos3D = (() => {
 const EMOJI_3D = {'🧩':'puzzle', '🧱':'ladrillos', '📈':'grafica', '∫':'integral', '🎮':'mando', '🗺️':'mapa', '🏠':'casa', '📖':'libro', '📚':'libros', '🃏':'cartas',
   '🚩':'bandera', '⚡':'rayo', '🪖':'casco', '🔬':'matraz', '🌱':'planta', '⚔️':'espadas', '🔥':'fuego', '💀':'calavera', '✅':'check', '✓':'check', '🔒':'candado',
   '👽':'alien', '🔫':'rifle', '💣':'bomba', '🛡️':'escudo', '⛑️':'cruz', '🔧':'llave', '❤️':'corazon', '🌊':'ola', '⚙️':'engrane', '🛠':'herramientas', '🏆':'trofeo', '🏅':'medalla', '🧮':'abaco',
-  '🪐':'planeta', '♾️':'infinito', '📌':'chincheta', '🪄':'varita', '💡':'bombilla', '✋':'mano', '🗑':'papelera', '✔':'check', '❓':'bombilla', '🎖️':'medalla'};
+  '🪐':'planeta', '♾️':'infinito', '📌':'chincheta', '🪄':'varita', '💡':'bombilla', '✋':'mano', '🗑':'papelera', '✔':'check', '❓':'bombilla', '🎖️':'medalla', '⚒️':'yunque'};
 /** Nombre del modelo de un emoji (con o sin selector de variación U+FE0F). */
 const nombreIcono3D = e => { const b = String(e).replace(/\uFE0F/g, ''); return EMOJI_3D[e] ?? EMOJI_3D[b] ?? EMOJI_3D[b + '\uFE0F']; };
 /** HTML de un icono: modelo 3D si existe (el emoji queda para 2D), si no el emoji tal cual. */

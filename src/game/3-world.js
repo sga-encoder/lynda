@@ -206,7 +206,8 @@ class World {
       const libre = [...Array(this.capacidad).keys()].find(i => !this.soldados.some(s => s.i === i));
       const orden = this.peloton?.orden?.length ? this.peloton.orden : ORDEN_RECLUTA;
       let quien = orden[this.reclutados++ % orden.length];
-      let perfil = this.perfil ? this.perfil(SOLDADOS[quien] ? this.titular(quien) : quien) : null;   // en el orden puede haber un tipo o un soldado concreto
+      if (!SOLDADOS[quien]) quien = tipoDeUid(quien);                     // un soldado por tipo: siempre recluta al que está en servicio
+      let perfil = this.perfil ? this.perfil(this.titular(quien)) : null;
       let tipo = perfil?.tipo ?? quien;
       if (!this.soldadosOk(tipo)){ tipo = 'fusilero'; perfil = this.perfil ? this.perfil(this.titular('fusilero')) : null; }   // tipos aún bloqueados → fusileros
       const nuevo = new Soldado(libre, tipo, L.efecto('vidaSoldado', 0), perfil); nuevo.mult = 1 + 0.15 * this.mej('sold-' + tipo);   // mejora permanente del tipo

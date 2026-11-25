@@ -1396,7 +1396,8 @@ class World {
       const libre = [...Array(this.capacidad).keys()].find(i => !this.soldados.some(s => s.i === i));
       const orden = this.peloton?.orden?.length ? this.peloton.orden : ORDEN_RECLUTA;
       let quien = orden[this.reclutados++ % orden.length];
-      let perfil = this.perfil ? this.perfil(SOLDADOS[quien] ? this.titular(quien) : quien) : null;   // en el orden puede haber un tipo o un soldado concreto
+      if (!SOLDADOS[quien]) quien = tipoDeUid(quien);                     // un soldado por tipo: siempre recluta al que está en servicio
+      let perfil = this.perfil ? this.perfil(this.titular(quien)) : null;
       let tipo = perfil?.tipo ?? quien;
       if (!this.soldadosOk(tipo)){ tipo = 'fusilero'; perfil = this.perfil ? this.perfil(this.titular('fusilero')) : null; }   // tipos aún bloqueados → fusileros
       const nuevo = new Soldado(libre, tipo, L.efecto('vidaSoldado', 0), perfil); nuevo.mult = 1 + 0.15 * this.mej('sold-' + tipo);   // mejora permanente del tipo
@@ -2050,6 +2051,7 @@ function tropaDesbloqueada(app, tipo, clase, k){
 /** Estado guardado de la tropa: niveles y equipo elegido por tipo. */
 function tropaDe(P){
   const t = P.data.tropa ??= {niveles:{}, equipo:{}};
+  t.titular ??= {};                                    // soldado en servicio de cada tipo (uno por tipo)
   for (const tipo of TIPOS_TROPA) t.equipo[tipo] ??= {arma:ARMAS_TROPA[tipo][0][0], blindaje:null};
   return t;
 }
@@ -2079,10 +2081,14 @@ function itemsTropa(app, tipo){
 }
 
 /** Soldado que entra cuando el orden pide solo un tipo: el primero desbloqueado (el de mayor nivel). */
+/** Soldado en servicio de un tipo: el elegido en el Pelotón (si está desbloqueado) o, si no, el de más nivel. */
 function titularDe(app, tipo){
-  const P = app.progreso, l = SOLDADOS_UNICOS[tipo].filter((s, k) => tropaDesbloqueada(app, tipo, 'soldado', k));
+  const P = app.progreso, l = SOLDADOS_UNICOS[tipo].filter((s, k) => tropaDesbloqueada(app, tipo, 'soldado', k)), elegido = tropaDe(P).titular[tipo];
+  if (elegido && l.some(s => s[0] === elegido)) return elegido;
   return (l.sort((a, b) => nivelTropa(P, b[0]) - nivelTropa(P, a[0]))[0] ?? SOLDADOS_UNICOS[tipo][0])[0];
 }
+/** Tipo al que pertenece un soldado concreto. */
+const tipoDeUid = uid => TIPOS_TROPA.find(t => SOLDADOS_UNICOS[t].some(s => s[0] === uid)) ?? 'fusilero';
 
 /* =====================================================================
    DEFENSA ALGEBRAICA · 3d) Potenciadores de las armas de los soldados
@@ -3169,7 +3175,7 @@ class GameApp {
   nuevaPartida(modo = this.progreso.data.modo){ this.progreso.data.modo = modo; this.progreso.guardar(); this.go(new BattleScene(this, new Run(this))); }
   /** Abre una sección del menú del juego (la elige la barra de navegación de la app). */
   mostrar(seccion){
-    const S = {inicio:MenuScene, catalogo:CatalogoScene, mazo:MazoScene, peloton:PelotonScene, mejoras:MejorasScene, ayuda:HelpScene, config:MenuScene, mas:MejorasScene, partidas:MenuScene}[seccion] ?? MenuScene;
+    const S = {inicio:MenuScene, catalogo:CatalogoScene, mazo:MazoScene, peloton:PelotonScene, armeria:ArmeriaScene, mejoras:MejorasScene, ayuda:HelpScene, config:MenuScene, mas:MejorasScene, partidas:MenuScene}[seccion] ?? MenuScene;
     this.root.classList.remove('hidden');
     if (this.scene instanceof BattleScene && !this.scene.terminado) return;      // no se interrumpe una batalla
     if (!this.ruta.jugable && S !== HelpScene) return this.go(new BloqueoScene(this));   // el juego se abre en el nivel mínimo de la Ruta (el tutorial siempre se ve)
@@ -4234,55 +4240,116 @@ class MazoScene extends Scene {
   }
 }
 
-/* ---------- Pelotón: estrategia con tipos de soldado y munición ----------
-   Se desbloquea en la Ruta. El jugador decide el ORDEN en que la base recluta
-   soldados (qué tipos y cuántos) y la MUNICIÓN de cada tipo; los enemigos son
-   débiles a un tipo de daño, así que conviene adaptar el pelotón. */
+/* ---------- Pelotón y Armería ----------
+   Un soldado por tipo: en cada tipo eliges el soldado «en servicio» y su equipo
+   (arma y blindaje). En la batalla todos los reclutas de ese tipo son ese soldado:
+   la base lo genera las veces que haga falta.
+   - 🪖 Pelotón: ver el equipo, elegir soldado, equipar y ordenar el reclutamiento (por tipos).
+   - ⚒️ Armería: subir de nivel soldados, armas y blindajes con ⚙️ chatarra. */
 const SLOTS_PELOTON = 8;
+/** Tipo de un puesto del orden de reclutamiento (las partidas antiguas guardaban soldados concretos). */
+const tipoDePuesto = q => SOLDADOS[q] ? q : tipoDeUid(q);
+
+/** Vista 3D animada del soldado en servicio (usa las vitrinas del Catálogo). */
+class VistaSoldado3D {
+  constructor(cv, uid){
+    this.v = null; if (!cv || !vitrina3D()) return;
+    try { this.v = new Vitrina3D(cv, {kind:'soldado', id:tipoDeUid(uid), uid}, true); } catch (err){ console.warn('Vista 3D no disponible:', err); return; }
+    const t0 = performance.now(), paso = now => { this.v?.dibujar(Math.max(0, (now - t0) / 1000)); this.raf = requestAnimationFrame(paso); };
+    this.raf = requestAnimationFrame(paso);
+  }
+  dispose(){ cancelAnimationFrame(this.raf); this.v?.dispose(); this.v = null; }
+}
+const icTropa = (t, cls = 'inline-block h-5 w-5') => vitrina3D() ? `<span data-i3d="${ICONO_TROPA[t]}" class="${cls}">${SOLDADOS[t].icon}</span>` : SOLDADOS[t].icon;
+
 class PelotonScene extends Scene {
   enter(){ this.tab ??= 'fusilero'; this.pintar(); }
+  exit(){ this.vista?.dispose(); }
   tipos(){ return TIPOS_TROPA.filter(t => t === 'fusilero' || this.app.soldadoDesbloqueado(t)); }
   pintar(msg = ''){
-    const P = this.app.progreso, d = P.data, tipos = this.tipos(); if (!tipos.includes(this.tab)) this.tab = 'fusilero';
-    const I = itemsTropa(this.app, this.tab), chat = d.chatarra ?? 0, estrategia = this.app.pelotonDisponible();
-    const dev = !!this.app.progreso.data.todo;
-    const fila = (it, accion) => { const max = it.nivel >= MAX_NIVEL_TROPA, costo = costoTropa(it.nivel);
-      return `<div class="${UI.card} !p-2.5 ${it.libre ? '' : 'opacity-50'} ${it.equipado ? 'ring-2 ring-emerald-400' : ''}">
-        <div class="flex items-center gap-2"><span class="text-2xl">${it.libre ? it.icon : '🔒'}</span><span class="min-w-0 flex-1"><b class="text-sm">${it.libre ? it.name : 'Bloqueado'}</b> ${it.libre ? pips(it.nivel, MAX_NIVEL_TROPA) : ''}
-          <span class="block text-[11px] text-zinc-400">${it.libre ? it.desc : 'Se desbloquea más adelante en la 🗺️ Ruta.'}</span>
-          ${it.libre && it.clase === 'soldado' && RASGOS_SOLDADO[it.id] ? `<span class="mt-0.5 block text-[11px]"><span class="inline-block h-2.5 w-2.5 rounded-full align-middle" style="background:${RASGOS_SOLDADO[it.id].bala}"></span> <b>${RASGOS_SOLDADO[it.id].pasiva.nombre}:</b> <span class="text-zinc-400">${RASGOS_SOLDADO[it.id].pasiva.desc}</span><br><span class="text-zinc-400">Activas: ${RASGOS_SOLDADO[it.id].activas.map(a => `${a.icon} ${a.nombre}`).join(' · ')} (con fusiones de su arma)</span></span>` : ''}</span></div>
-        ${it.libre && dev ? `<div class="mt-2 flex gap-1.5">${accion ?? ''}<button data-devniv="${it.id}|-1" class="${UI.btn} !min-h-9 flex-1 !px-2" ${it.nivel <= 1 ? 'disabled' : ''}>− Nivel</button><button data-devniv="${it.id}|1" class="${UI.btn} !min-h-9 flex-1 !px-2" ${max ? 'disabled' : ''}>+ Nivel</button></div>`
-        : it.libre ? `<div class="mt-2 flex gap-1.5">${accion ?? ''}<button data-subir="${it.id}" class="${UI.btn} !min-h-9 flex-1 !px-2 text-xs" ${max || chat < costo ? 'disabled' : ''}>${max ? 'Nivel máximo' : `⬆ Nivel ${it.nivel + 1} · ⚙️ ${costo}`}</button></div>` : ''}</div>`; };
-    const uids = tipos.flatMap(t => SOLDADOS_UNICOS[t].filter((x, k) => tropaDesbloqueada(this.app, t, 'soldado', k)).map(x => x[0]));
+    this.vista?.dispose();
+    const app = this.app, P = app.progreso, d = P.data, T = tropaDe(P), tipos = this.tipos(); if (!tipos.includes(this.tab)) this.tab = 'fusilero';
+    const I = itemsTropa(app, this.tab), titular = titularDe(app, this.tab), pf = perfilSoldado(P, titular), estrategia = app.pelotonDisponible();
     const pl = d.peloton ??= {orden:ORDEN_RECLUTA.slice(0, SLOTS_PELOTON), equipo:{}};
-    const nombreUid = u => SOLDADOS[u] ? `${SOLDADOS[u].icon} ${SOLDADOS[u].name}` : (() => { const pf = perfilSoldado(P, u); return `${pf.icon} ${pf.name.split(' ')[0]}`; })();
+    pl.orden = pl.orden.map(tipoDePuesto);                                   // el orden se guarda por tipos
+    const resumen = TIPOS_TROPA.map(t => { const ok = tipos.includes(t), p = ok ? perfilSoldado(P, titularDe(app, t)) : null;
+      return `<button data-tab="${t}" class="flex min-h-24 min-w-0 flex-col items-center justify-center gap-0.5 rounded-2xl border-2 px-1 py-2 text-center text-[11px] leading-tight touch-manipulation active:scale-95 ${t === this.tab ? 'border-emerald-400 bg-emerald-400/10' : 'border-zinc-800 bg-zinc-900'} ${ok ? '' : 'opacity-40'}">
+        ${ok ? icTropa(t, 'block h-8 w-8') : '<span class="text-2xl">🔒</span>'}<b class="mt-0.5 block w-full truncate">${ok ? p.name.split(' ')[0] : SOLDADOS[t].name}</b><span class="block w-full truncate text-[10px] text-zinc-400">${ok ? p.arma : 'Bloqueado'}</span></button>`; }).join('');
+    const tarjeta = (it, accion, sel) => `<div class="${UI.card} !p-2.5 ${it.libre ? '' : 'opacity-50'} ${sel ? 'ring-2 ring-emerald-400' : ''}">
+      <div class="flex items-center gap-2"><span class="text-2xl">${it.libre ? it.icon : '🔒'}</span><span class="min-w-0 flex-1"><b class="text-sm">${it.libre ? it.name : 'Bloqueado'}</b> ${it.libre ? pips(it.nivel, MAX_NIVEL_TROPA) : ''}
+        <span class="block text-[11px] text-zinc-400">${it.libre ? it.desc : 'Se desbloquea más adelante en la 🗺️ Ruta.'}</span>
+        ${it.libre && it.clase === 'soldado' && RASGOS_SOLDADO[it.id] ? `<span class="mt-0.5 block text-[11px]"><span class="inline-block h-2.5 w-2.5 rounded-full align-middle" style="background:${RASGOS_SOLDADO[it.id].bala}"></span> <b>${RASGOS_SOLDADO[it.id].pasiva.nombre}</b> · <span class="text-zinc-400">${RASGOS_SOLDADO[it.id].activas.map(a => a.icon + ' ' + a.nombre).join(' · ')}</span></span>` : ''}</span></div>
+      ${it.libre && accion ? `<div class="mt-2 flex gap-1.5">${accion}</div>` : ''}</div>`;
     this.app.html(`
     <div class="mx-auto flex h-full max-w-xl flex-col gap-3 overflow-y-auto px-4 pb-6 pt-4 [&>*]:shrink-0">
-      <div class="flex items-center justify-between"><h2 class="text-2xl font-black">🪖 Pelotón</h2><span class="rounded-full bg-zinc-900 px-3 py-1 text-sm font-bold text-sky-300">⚙️ ${chat} chatarra</span></div>
-      <p class="text-xs text-zinc-400">La ⚙️ chatarra se gana en cada partida (aunque pierdas) y al descubrir o usar algo por primera vez. Úsala para subir de nivel soldados, armas y blindajes.</p>
+      <div class="flex items-center justify-between gap-2"><h2 class="text-2xl font-black">${vitrina3D() ? icono3D('🪖') : '🪖'} Pelotón</h2><a href="#/jugar/armeria" class="${UI.btn} !min-h-10 text-sm">⚒️ Armería</a></div>
+      <p class="text-xs text-zinc-400"><b>Un soldado por tipo.</b> Elige quién sirve en cada tipo y su equipo: en la batalla la base lo recluta las veces que haga falta. Para subirlos de nivel ve a la ⚒️ Armería.</p>
       ${msg ? `<p class="rounded-xl bg-zinc-900 px-3 py-2 text-sm text-emerald-300">${msg}</p>` : ''}
-      <div class="shrink-0">${tabs(TIPOS_TROPA.map(t => [t, tipos.includes(t) ? SOLDADOS[t].icon : '🔒', SOLDADOS[t].name]), this.tab)}</div>
-      <b class="text-sm">Soldados</b><div class="grid gap-2 sm:grid-cols-2">${I.soldados.map(it => fila(it)).join('')}</div>
-      <b class="text-sm">${SOLDADOS[this.tab].apoyo ? 'Herramienta' : 'Arma'} del tipo</b><div class="grid gap-2 sm:grid-cols-3">${I.armas.map(it => fila(it, it.equipado ? '<span class="flex items-center px-2 text-xs text-emerald-300">✓ Equipada</span>' : `<button data-equipar="arma|${it.id}" class="${UI.btnP} !min-h-9 !px-2 text-xs">Equipar</button>`)).join('')}</div>
-      <b class="text-sm">Blindaje del tipo</b><div class="grid gap-2 sm:grid-cols-3">${I.blindajes.map(it => fila(it, it.equipado ? `<button data-equipar="blindaje|" class="${UI.btn} !min-h-9 !px-2 text-xs">Quitar</button>` : `<button data-equipar="blindaje|${it.id}" class="${UI.btnP} !min-h-9 !px-2 text-xs">Equipar</button>`)).join('')}</div>
-      <div class="${UI.card}"><b class="text-sm">🧠 Estrategia: orden de reclutamiento</b>
-        ${estrategia ? `<p class="text-xs text-zinc-400">Toca un puesto para elegir qué soldado recluta la base (se repite). Cada enemigo es débil a un tipo de daño (×${MULT_DEBIL}): combina armas de balas, plasma y explosivas.</p>
-          <div class="mt-2 grid grid-cols-4 gap-1.5">${pl.orden.map((u, i) => `<button data-slot="${i}" class="flex min-h-14 flex-col items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 px-1 text-[11px] touch-manipulation active:scale-95"><span class="text-[10px] text-zinc-500">#${i + 1}</span>${nombreUid(u)}</button>`).join('')}</div>`
-          : '<p class="text-xs text-zinc-400">🔒 Se desbloquea en la Ruta al cumplir 3 misiones. Mientras tanto la base recluta en el orden normal con tus mejores soldados.</p>'}</div>
-    </div>`).onclick = e => this.click(e, uids);
+      <div class="grid grid-cols-5 gap-1.5">${resumen}</div>
+      <div class="${UI.card}">
+        <div class="flex items-center gap-2">${icTropa(this.tab, 'inline-block h-6 w-6')}<b class="flex-1">${SOLDADOS[this.tab].name}: ${pf.name}</b><span class="text-xs text-zinc-400">${pf.arma}${pf.blindaje ? ' · ' + pf.blindaje : ''}</span></div>
+        ${vitrina3D() ? `<canvas data-soldado3d class="mt-2 block aspect-[120/70] w-full rounded-2xl bg-gradient-to-b from-[#0b1023] to-[#312e81]"></canvas>` : ''}
+        <div class="mt-2 grid grid-cols-3 gap-1.5 text-center text-[11px]"><span class="rounded-xl bg-zinc-950 py-1.5">❤️ ${Math.round(pf.vida)} vida</span>
+          <span class="rounded-xl bg-zinc-950 py-1.5">${pf.apoyo ? (pf.apoyo.curar ? `💚 cura ${pf.apoyo.curar.toFixed(1)}` : `🔧 repara ${pf.apoyo.reparar.toFixed(1)}`) : `💥 ${pf.ataque.dmg.toFixed(1)} daño`}</span>
+          <span class="rounded-xl bg-zinc-950 py-1.5">🛡 ${Math.round(pf.reduccion * 100)} % menos daño</span></div></div>
+      <b class="text-sm">Soldado en servicio</b>
+      <div class="grid gap-2 sm:grid-cols-2">${I.soldados.map(it => tarjeta(it, it.id === titular ? '<span class="flex items-center px-1 text-xs font-bold text-emerald-300">✓ En servicio</span>' : `<button data-servicio="${it.id}" class="${UI.btnP} !min-h-9 flex-1 !px-2 text-xs">Poner en servicio</button>`, it.id === titular)).join('')}</div>
+      <b class="text-sm">${SOLDADOS[this.tab].apoyo ? 'Herramienta' : 'Arma'}</b>
+      <div class="grid gap-2 sm:grid-cols-3">${I.armas.map(it => tarjeta(it, it.equipado ? '<span class="flex items-center px-1 text-xs font-bold text-emerald-300">✓ Equipada</span>' : `<button data-equipar="arma|${it.id}" class="${UI.btnP} !min-h-9 flex-1 !px-2 text-xs">Equipar</button>`, it.equipado)).join('')}</div>
+      <b class="text-sm">Blindaje</b>
+      <div class="grid gap-2 sm:grid-cols-3">${I.blindajes.map(it => tarjeta(it, it.equipado ? `<button data-equipar="blindaje|" class="${UI.btn} !min-h-9 flex-1 !px-2 text-xs">Quitar</button>` : `<button data-equipar="blindaje|${it.id}" class="${UI.btnP} !min-h-9 flex-1 !px-2 text-xs">Equipar</button>`, it.equipado)).join('')}</div>
+      <div class="${UI.card}"><b class="text-sm">🧠 Orden de reclutamiento</b>
+        ${estrategia ? `<p class="text-xs text-zinc-400">Toca un puesto para cambiar el tipo que recluta la base (el orden se repite). Cada enemigo es débil a un tipo de daño (×${MULT_DEBIL}).</p>
+          <div class="mt-2 grid grid-cols-4 gap-1.5">${pl.orden.map((t, i) => `<button data-slot="${i}" class="flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl border border-zinc-700 bg-zinc-950 px-1 text-[11px] touch-manipulation active:scale-95"><span class="text-[10px] text-zinc-500">#${i + 1}</span>${icTropa(t)}<span class="truncate">${SOLDADOS[t].name}</span></button>`).join('')}</div>`
+          : '<p class="text-xs text-zinc-400">🔒 Se desbloquea en la Ruta al cumplir 3 misiones. Mientras tanto la base recluta en el orden normal con tus soldados en servicio.</p>'}</div>
+    </div>`).onclick = e => this.click(e, tipos);
+    this.vista = new VistaSoldado3D(this.app.root.querySelector('canvas[data-soldado3d]'), titular);
   }
-  click(e, uids){
+  click(e, tipos){
     const P = this.app.progreso, d = P.data, T = tropaDe(P);
-    const tab = e.target.closest('[data-tab]')?.dataset.tab; if (tab && this.tipos().includes(tab)){ this.tab = tab; return this.pintar(); }
-    const dn = e.target.closest('[data-devniv]')?.dataset.devniv;             // 🧪 modo desarrollador: subir o bajar gratis
-    if (dn && P.data.todo){ const [iid, d] = dn.split('|'), T = tropaDe(P); T.niveles[iid] = Math.max(1, Math.min(MAX_NIVEL_TROPA, nivelTropa(P, iid) + +d)); P.guardar(); return this.pintar(); }
-    const sub = e.target.closest('[data-subir]')?.dataset.subir;
-    if (sub){ const n = nivelTropa(P, sub), c = costoTropa(n); if ((d.chatarra ?? 0) < c || n >= MAX_NIVEL_TROPA) return;
-      d.chatarra -= c; T.niveles[sub] = n + 1; P.guardar(); return this.pintar(`⬆ Subió al nivel ${n + 1}.`); }
+    const tab = e.target.closest('[data-tab]')?.dataset.tab; if (tab && tipos.includes(tab)){ this.tab = tab; return this.pintar(); }
+    const sv = e.target.closest('[data-servicio]')?.dataset.servicio;
+    if (sv){ T.titular[this.tab] = sv; P.guardar(); return this.pintar(`✓ ${perfilSoldado(P, sv).name} está en servicio: será el ${SOLDADOS[this.tab].name.toLowerCase()} de tus partidas.`); }
     const eq = e.target.closest('[data-equipar]')?.dataset.equipar;
     if (eq){ const [clase, id] = eq.split('|'); T.equipo[this.tab][clase] = id || null; P.guardar(); return this.pintar(); }
     const sl = e.target.closest('[data-slot]');
-    if (sl){ const pl = d.peloton, i = +sl.dataset.slot, k = uids.indexOf(pl.orden[i]); pl.orden[i] = uids[(k + 1) % uids.length]; P.guardar(); return this.pintar(); }
+    if (sl){ const pl = d.peloton, i = +sl.dataset.slot, k = tipos.indexOf(pl.orden[i]); pl.orden[i] = tipos[(k + 1) % tipos.length]; P.guardar(); return this.pintar(); }
+  }
+}
+
+class ArmeriaScene extends Scene {
+  enter(){ this.tab ??= 'fusilero'; this.pintar(); }
+  tipos(){ return TIPOS_TROPA.filter(t => t === 'fusilero' || this.app.soldadoDesbloqueado(t)); }
+  pintar(msg = ''){
+    const app = this.app, P = app.progreso, d = P.data, tipos = this.tipos(); if (!tipos.includes(this.tab)) this.tab = 'fusilero';
+    const I = itemsTropa(app, this.tab), chat = d.chatarra ?? 0, dev = !!d.todo, titular = titularDe(app, this.tab);
+    const fila = it => { const max = it.nivel >= MAX_NIVEL_TROPA, costo = costoTropa(it.nivel), usado = it.clase === 'soldado' ? it.id === titular : it.equipado;
+      const subir = dev ? `<button data-devniv="${it.id}|-1" class="${UI.btn} !min-h-9 flex-1 !px-2" ${it.nivel <= 1 ? 'disabled' : ''}>− Nivel</button><button data-devniv="${it.id}|1" class="${UI.btn} !min-h-9 flex-1 !px-2" ${max ? 'disabled' : ''}>+ Nivel</button>`
+        : `<button data-subir="${it.id}" class="${UI.btnP} !min-h-9 flex-1 !px-2 text-xs" ${max || chat < costo ? 'disabled' : ''}>${max ? 'Nivel máximo' : `⬆ Nivel ${it.nivel + 1} · ⚙️ ${costo}`}</button>`;
+      return `<div class="${UI.card} !p-2.5 ${it.libre ? '' : 'opacity-50'}">
+        <div class="flex items-center gap-2"><span class="text-2xl">${it.libre ? it.icon : '🔒'}</span><span class="min-w-0 flex-1"><b class="text-sm">${it.libre ? it.name : 'Bloqueado'}</b> ${it.libre ? pips(it.nivel, MAX_NIVEL_TROPA) : ''}
+          ${usado ? `<span class="ml-1 rounded-full bg-emerald-400/15 px-1.5 text-[10px] font-bold text-emerald-300">${it.clase === 'soldado' ? 'EN SERVICIO' : 'EQUIPADO'}</span>` : ''}
+          <span class="block text-[11px] text-zinc-400">${it.libre ? it.desc : 'Se desbloquea más adelante en la 🗺️ Ruta.'}</span></span></div>
+        ${it.libre ? `<div class="mt-2 flex gap-1.5">${subir}</div>` : ''}</div>`; };
+    this.app.html(`
+    <div class="mx-auto flex h-full max-w-xl flex-col gap-3 overflow-y-auto px-4 pb-6 pt-4 [&>*]:shrink-0">
+      <div class="flex items-center justify-between gap-2"><h2 class="text-2xl font-black">${vitrina3D() ? icono3D('⚒️') : '⚒️'} Armería</h2><span class="rounded-full bg-zinc-900 px-3 py-1 text-sm font-bold text-sky-300">⚙️ ${chat} chatarra</span></div>
+      <p class="text-xs text-zinc-400">Mejora tus soldados, armas y blindajes con ⚙️ chatarra (se gana en cada partida, aunque pierdas, y al descubrir algo por primera vez). Para elegir quién sirve y qué equipa, ve al <a href="#/jugar/peloton" class="underline">🪖 Pelotón</a>.</p>
+      ${msg ? `<p class="rounded-xl bg-zinc-900 px-3 py-2 text-sm text-emerald-300">${msg}</p>` : ''}
+      <div class="shrink-0">${tabs(TIPOS_TROPA.map(t => [t, tipos.includes(t) ? SOLDADOS[t].icon : '🔒', SOLDADOS[t].name]), this.tab)}</div>
+      <b class="text-sm">Soldados</b><div class="grid gap-2 sm:grid-cols-2">${I.soldados.map(fila).join('')}</div>
+      <b class="text-sm">${SOLDADOS[this.tab].apoyo ? 'Herramientas' : 'Armas'}</b><div class="grid gap-2 sm:grid-cols-3">${I.armas.map(fila).join('')}</div>
+      <b class="text-sm">Blindajes</b><div class="grid gap-2 sm:grid-cols-3">${I.blindajes.map(fila).join('')}</div>
+    </div>`).onclick = e => this.click(e);
+  }
+  click(e){
+    const P = this.app.progreso, d = P.data, T = tropaDe(P);
+    const tab = e.target.closest('[data-tab]')?.dataset.tab; if (tab && this.tipos().includes(tab)){ this.tab = tab; return this.pintar(); }
+    const dn = e.target.closest('[data-devniv]')?.dataset.devniv;             // 🧪 modo desarrollador: subir o bajar gratis
+    if (dn && d.todo){ const [iid, s] = dn.split('|'); T.niveles[iid] = Math.max(1, Math.min(MAX_NIVEL_TROPA, nivelTropa(P, iid) + +s)); P.guardar(); return this.pintar(); }
+    const sub = e.target.closest('[data-subir]')?.dataset.subir;
+    if (sub){ const n = nivelTropa(P, sub), c = costoTropa(n); if ((d.chatarra ?? 0) < c || n >= MAX_NIVEL_TROPA) return;
+      d.chatarra -= c; T.niveles[sub] = n + 1; P.guardar(); FX3D.en(e.target.closest('[data-subir]'), 'acierto'); return this.pintar(`⬆ Subió al nivel ${n + 1}.`); }
   }
 }
 

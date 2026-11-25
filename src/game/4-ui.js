@@ -34,20 +34,29 @@ class GameApp {
     this.scene?.exit(); this.scene = scene;
     // La batalla ocupa toda la pantalla; los menús dejan ver la barra superior y la inferior de la app
     this.root.classList.toggle('juego-menu', !(scene instanceof BattleScene));
+    this.fondo();
     scene.enter();
   }
-  open(){ this.root.classList.remove('hidden'); if (!this.scene) this.go(new MenuScene(this)); }
+  /** Fondo 3D animado detrás de los menús (no en la batalla, ni con gráficos 2D). */
+  fondo(){
+    const quiere = Graficos.es3D && !this.root.classList.contains('hidden') && !(this.scene instanceof BattleScene);
+    if (quiere && !this.fondo3d){ try { this.fondo3d = new Fondo3D(this.root); } catch (err){ console.warn('Fondo 3D no disponible:', err); this.fondo3d = null; } }
+    if (!Graficos.es3D && this.fondo3d){ this.fondo3d.dispose(); this.fondo3d = null; }
+    if (this.fondo3d) this.fondo3d.visible = quiere;
+    this.root.classList.toggle('con-fondo3d', !!(quiere && this.fondo3d));
+  }
+  open(){ this.root.classList.remove('hidden'); if (!this.scene) this.go(new MenuScene(this)); else this.fondo(); }
   /** Empieza una partida normal en la modalidad indicada (o la última usada). */
   nuevaPartida(modo = this.progreso.data.modo){ this.progreso.data.modo = modo; this.progreso.guardar(); this.go(new BattleScene(this, new Run(this))); }
   /** Abre una sección del menú del juego (la elige la barra de navegación de la app). */
   mostrar(seccion){
     const S = {inicio:MenuScene, catalogo:CatalogoScene, mazo:MazoScene, peloton:PelotonScene, mejoras:MejorasScene, ayuda:HelpScene, config:MenuScene, mas:MejorasScene, partidas:MenuScene}[seccion] ?? MenuScene;
-    this.root.classList.remove('hidden');
+    this.root.classList.remove('hidden'); this.fondo();
     if (this.scene instanceof BattleScene && !this.scene.terminado) return;      // no se interrumpe una batalla
     if (!this.ruta.jugable && S !== HelpScene) return this.go(new BloqueoScene(this));   // el juego se abre en el nivel mínimo de la Ruta (el tutorial siempre se ve)
     if (!(this.scene instanceof S) || S === MenuScene) this.go(new S(this));
   }
-  close(){ this.scene?.pause(); this.root.classList.add('hidden'); }
+  close(){ this.scene?.pause(); this.root.classList.add('hidden'); this.fondo(); }
   html(s){ this.root.innerHTML = s; return this.root; }
   /* Desbloqueos: modo desarrollo, Ruta o avance en Aprender */
   tipoDesbloqueado(t){ return !!this.progreso.data.todo || this.ruta.tipos().has(t.id); }   // solo la Ruta (en orden) desbloquea
@@ -150,7 +159,7 @@ class BattleScene extends Scene {
     </div>`);
     this.$ = n => this.app.root.querySelector(`[data-h="${n}"]`);
     this.app.piezas.host = () => this.$('libre');                  // el paso libre vive dentro de la batalla
-    this.renderer = new Renderer(this.$('cv'));
+    this.renderer = crearRenderer(this.$('cv'));                  // 3D (Three.js) o 2D según ⚙️ Configuración
     this.onResize = () => this.renderer.resize(); window.addEventListener('resize', this.onResize);
     this.bus.on('enemigo-muerto', ({xp, jefe, por}) => { r.bajas++; if (jefe) r.jefes++; if (por) this.ganarXPTipo(por, xp); this.ganarXP(xp * 0.25); });   // la baja da XP al tipo de soldado que la hizo
     this.bus.on('xp-tipo', ({tipo, xp}) => this.ganarXPTipo(tipo, xp));
@@ -160,7 +169,7 @@ class BattleScene extends Scene {
     this.pausado = false; this.ultimo = performance.now(); this.t = 0;
     this.loop = this.loop.bind(this); this.raf = requestAnimationFrame(this.loop);
   }
-  exit(){ this.terminado = true; cancelAnimationFrame(this.raf); window.removeEventListener('resize', this.onResize); this.app.piezas.cerrar(); }
+  exit(){ this.terminado = true; cancelAnimationFrame(this.raf); window.removeEventListener('resize', this.onResize); this.app.piezas.cerrar(); this.renderer.dispose?.(); }
   pause(){ if (!this.terminado && !this.capaAbierta) this.mostrarPausa(); }
 
   iniciarOleada(){
@@ -435,6 +444,7 @@ class BattleScene extends Scene {
       const extras = pts.detalle.map(d => `${d.nombre} ×${d.mult.toFixed(1)}`).join(' · ');
       this.mensaje(`+${Math.round(energia)} ⚡ ${extras ? `<span class="text-sky-300">(${extras})</span>` : ''}`, 'emerald');
       this.mundo.texto(this.mundo.base.cx, this.mundo.base.cy - 30, `+${Math.round(energia)}⚡`, '#fde047');
+      FX3D.en(this.$('expr'), 'acierto');
     } else {
       this.combo = 0;
       this.mensaje(repetido ? '↩️ Volviste a un paso anterior: sin energía.' : 'Paso válido, pero no te acerca al resultado: sin energía.', 'zinc');
@@ -452,6 +462,7 @@ class BattleScene extends Scene {
     this.director.problemasResueltos++;
     this.mundo.debilitarJefes();
     this.dibujarProblema(); this.$('mano').innerHTML = ''; this.$('quiz').classList.add('hidden');
+    FX3D.en(this.$('expr'), 'resuelto');
     this.mensaje(`✅ ¡Resuelto en ${this.pasos} pasos!${bono.eficiente ? ' <b class="text-sky-300">Eficiencia máxima</b>' : ''} +${bono.xp} XP`, 'emerald');
     this.resuelto = true;
     // Si la oleada ya terminó, la siguiente trae el problema nuevo; si no, llega uno nuevo (nunca reemplaza a uno sin resolver)

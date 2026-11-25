@@ -3,14 +3,16 @@
 const fs=require('fs'), {execSync}=require('child_process'), K='node_modules/katex/dist/', S='src/';
 const game=fs.readdirSync(S+'game').filter(f=>f.endsWith('.js')).sort().map(f=>fs.readFileSync(S+'game/'+f,'utf8')).join('\n');
 const gameModule = (exports) => `\n/* ===== Juego: módulo aislado ===== */\nconst DefensaAlgebraica = (() => {\n${game}\nreturn { ${exports} };\n})();\n`;
-const app=['expr.js','data-integral.js','data-fund.js','data-dif.js','data-dict.js','logic.js','lego.js'].map(f=>fs.readFileSync(S+f,'utf8')).join('\n')
-  + gameModule('GameApp, TableroPiezas, Ruta, Progreso, SaveRepository, PracticaPropiedades, cartasPracticables, DOMINIOS, propiedadesParaLienzo, efectoPotencia, opcionesPotencia, tropaDe, cartasLibres');
+const app=['expr.js','data-integral.js','data-fund.js','data-dif.js','data-dict.js','logic.js','lego.js','fx3d.js'].map(f=>fs.readFileSync(S+f,'utf8')).join('\n')
+  + gameModule('GameApp, TableroPiezas, Renderer3D, Fondo3D, VisorModelo3D, Ruta, Progreso, SaveRepository, PracticaPropiedades, cartasPracticables, DOMINIOS, propiedadesParaLienzo, efectoPotencia, opcionesPotencia, tropaDe, cartasLibres');
 fs.writeFileSync('.tw-in.css',`@import "tailwindcss";\n@source "./src/shell.html";\n@source "./src/mockup/shell.html";\n@source "./src/**/*.js";\n@custom-variant dark (&:where(.dark, .dark *));\n`);
 execSync('npx @tailwindcss/cli -i .tw-in.css -o .tw-out.css --minify',{stdio:'pipe'});
 const tw=fs.readFileSync('.tw-out.css','utf8');
 const kcss=fs.readFileSync(K+'katex.min.css','utf8').replace(/src:url\(fonts\/([^)]+)\.woff2\) format\("woff2"\)[^;}]*/g,
   (m,f)=>`src:url(data:font/woff2;base64,${fs.readFileSync(K+'fonts/'+f+'.woff2').toString('base64')}) format("woff2")`);
-const vendor=`<style id="tailwind">\n${tw}\n</style>\n<style id="katex-css">\n${kcss}\n</style>\n<script id="katex-js">\n${fs.readFileSync(K+'katex.min.js','utf8')}\n</script>\n<script id="katex-auto-render">\n${fs.readFileSync(K+'contrib/auto-render.min.js','utf8')}\n</script>`;
+// Three.js (UMD, global THREE) para los gráficos 3D del juego y los efectos de las piezas
+const three=fs.readFileSync('node_modules/three/build/three.min.js','utf8');
+const vendor=`<style id="tailwind">\n${tw}\n</style>\n<style id="katex-css">\n${kcss}\n</style>\n<script id="katex-js">\n${fs.readFileSync(K+'katex.min.js','utf8')}\n</script>\n<script id="katex-auto-render">\n${fs.readFileSync(K+'contrib/auto-render.min.js','utf8')}\n</script>\n<script id="three-js">\n/* el aviso de «build/three.min.js obsoleto» no aplica: se incrusta para funcionar sin internet */\nconsole.__warn=console.warn;console.warn=()=>{};\n${three}\nconsole.warn=console.__warn;delete console.__warn;\n</script>`;
 let html=fs.readFileSync(S+'shell.html','utf8');
 html=html.split('<!--@@VENDOR@@-->').join(vendor).split('<!--@@APP@@-->').join(app);
 fs.writeFileSync('index.html',html);
@@ -18,6 +20,6 @@ console.log('OK',(html.length/1024|0)+' KB');
 
 // Mockup visual del juego (no funcional): mockup-juego.html
 const mock = fs.readFileSync(S+'mockup/shell.html','utf8').split('<!--@@VENDOR@@-->').join(vendor)
-  .split('<!--@@APP@@-->').join(gameModule('Renderer, MUNDO, Base, ENEMIGOS, Soldado') + fs.readFileSync(S+'mockup/mockup.js','utf8'));
+  .split('<!--@@APP@@-->').join(gameModule('Renderer, Renderer3D, crearRenderer, MUNDO, Base, ENEMIGOS, Soldado') + fs.readFileSync(S+'mockup/mockup.js','utf8'));
 fs.writeFileSync('mockup-juego.html', mock);
 console.log('OK mockup', (mock.length/1024|0)+' KB');

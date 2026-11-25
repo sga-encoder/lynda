@@ -107,7 +107,8 @@ class VistaPrevia extends Renderer {
 /* ---------- Catálogo ---------- */
 class CatalogoScene extends Scene {
   enter(){ this.tab ??= 'cartas'; this.todo = !!this.app.progreso.data.todo; this.pintar(); }   // «ver todo» solo existe con el modo desarrollador   // en modo desarrollo se ve todo
-  exit(){ cancelAnimationFrame(this.raf); }
+  exit(){ cancelAnimationFrame(this.raf); this.soltarVisores(); }
+  soltarVisores(){ (this.visores ?? []).forEach(v => v.dispose()); this.visores = []; }
   conocido(cat, id){ return this.todo || this.app.progreso.conocido(cat, id); }
   dominioDisponible(dom){ const d = this.app.progreso.data; return this.todo || dom.tipos.some(t => d.todo || this.app.tipoDesbloqueado(t)); }
   items(){
@@ -155,8 +156,12 @@ class CatalogoScene extends Scene {
     this.animar();
   }
   animar(){
+    this.soltarVisores();
     const vistas = [...this.app.root.querySelectorAll('canvas[data-prev], canvas[data-grande]')].map(cv => {
       const it = cv.dataset.grande != null ? this.detalle : this.lista[+cv.dataset.prev];
+      if (cv.dataset.grande != null && Graficos.es3D && (it.kind === 'soldado' || it.kind === 'enemigo')){   // ficha: modelo 3D que gira (arrástralo)
+        try { const v = new VisorModelo3D(cv, {kind:it.kind, id:it.id}); this.visores.push(v); return v; } catch (err){ console.warn('Visor 3D no disponible:', err); }
+      }
       return new VistaPrevia(cv, it.kind === 'potarma' ? it : {kind:it.kind === 'enemigo' ? 'enemigo' : it.kind === 'fusion' ? 'arma' : it.kind, id:it.id});
     });
     const t0 = performance.now();

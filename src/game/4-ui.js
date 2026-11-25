@@ -302,12 +302,11 @@ class BattleScene extends Scene {
   }
   /** Semiautomático: el jugador elige cuál es el resultado correcto de aplicar la carta. */
   resultadoDe(c, path){
-    if (c.id === 'mover' && !this.ladoElegido && this.raiz instanceof Eq){   // guiado: primero se elige a qué lado pasa
+    if (c.id === 'mover' && this.raiz instanceof Eq){   // guiado: primero se elige a qué lado pasa
       this.quiz = {lado:true, carta:c, path, opciones:[{texto:'⬅ A la izquierda'}, {texto:'A la derecha ➡'}]};
       this.dibujarProblema(); this.dibujarMano();
       return this.mensaje(`🃏 <b>Pasar al otro lado</b>: ¿a qué lado pasa el término marcado?`, 'amber');
     }
-    this.ladoElegido = false;
     const correcto = c.apply(this.raiz, path);
     if (c.opcionesCortas && this.app.progreso.data.semi){                // solo el resultado del grupo, no toda la expresión
       const o = c.opcionesCortas(this.raiz, path, this.app.rng, this.ayuda >= 3 ? 1 : 2);
@@ -330,7 +329,7 @@ class BattleScene extends Scene {
   elegirOpcion(i){
     const q = this.quiz; this.quiz = null;
     if (q.lado){                                                       // elegir el lado: el correcto es el contrario al del término
-      if (i === (q.path[0] === 0 ? 1 : 0)){ this.ladoElegido = true; return this.resultadoDe(q.carta, q.path); }
+      if (i === (q.path[0] === 0 ? 1 : 0)) return this.aplicar(q.carta.apply(this.raiz, q.path), {carta:q.carta});   // el lado ya decide el resultado: se aplica solo
       this.combo = 0; this.dibujarProblema(); this.dibujarMano();
       return this.mensaje('❌ El término ya está de ese lado: se pasa al lado contrario.', 'rose');
     }

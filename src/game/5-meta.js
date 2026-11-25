@@ -62,11 +62,17 @@ class VistaPrevia extends Renderer {
     return this.enemigoAnim(c, it.id, t);
   }
   soldadoAnim(c, tipo, t, uid = null){
-    const s = new Soldado(0, tipo), R = uid ? RASGOS_SOLDADO[uid] : null; s.x = 50;
+    const s = new Soldado(0, tipo), R = uid ? RASGOS_SOLDADO[uid] : null, y = MUNDO.suelo, bala = R?.bala ?? '#fde047';
     if (R) s.perfil = {cuerpo:R.cuerpo, casco:R.casco, bala:R.bala};      // aspecto propio del soldado
-    this.soldado(c, s);
-    if (SOLDADOS[tipo].ataque || tipo === 'fusilero'){ const u = (t % 1) / 1; c.fillStyle = R?.bala ?? '#fde047'; c.beginPath(); c.arc(56 + u * 60, MUNDO.suelo - 10 - (tipo === 'granadero' ? 25 * Math.sin(Math.PI * u) : 0), 1.3, 0, 6.28); c.fill(); }
-    if (SOLDADOS[tipo].apoyo){ c.globalAlpha = 0.5 + 0.5 * Math.sin(t * 4); c.font = 'bold 9px system-ui'; c.textAlign = 'center'; c.fillText(tipo === 'medico' ? '+❤' : '+🔧', 50, MUNDO.suelo - 26 - (t * 10 % 8)); c.globalAlpha = 1; }
+    s.x = 26;
+    c.save(); c.translate(26, y); c.scale(2.4, 2.4); c.translate(-26, -y); this.soldado(c, s); c.restore();   // más grande para que se vean sus colores
+    if (SOLDADOS[tipo].ataque || tipo === 'fusilero'){                    // bala con su color y estela
+      const u = t % 1, x0 = 42, by = (k) => y - 22 - (tipo === 'granadero' ? 22 * Math.sin(Math.PI * k) : 0);
+      for (let k = 6; k >= 0; k--){ const v = Math.max(0, u - k * 0.04); c.globalAlpha = k ? 0.12 * (7 - k) / 2 : 1; c.fillStyle = bala;
+        c.beginPath(); c.arc(x0 + v * 70, by(v), k ? 2 : 3, 0, 6.28); c.fill(); }
+      c.globalAlpha = 1;
+    }
+    if (SOLDADOS[tipo].apoyo){ c.globalAlpha = 0.5 + 0.5 * Math.sin(t * 4); c.font = 'bold 11px system-ui'; c.textAlign = 'center'; c.fillStyle = bala; c.fillText(tipo === 'medico' ? '+❤' : '+🔧', 60, y - 30 - (t * 10 % 8)); c.globalAlpha = 1; }
   }
   enemigoAnim(c, id, t){
     const e = ENEMIGOS[id](60, {vida:1, velocidad:1});
@@ -159,7 +165,7 @@ class CatalogoScene extends Scene {
   animar(){
     const vistas = [...this.app.root.querySelectorAll('canvas[data-prev], canvas[data-grande]')].map(cv => {
       const it = cv.dataset.grande != null ? this.detalle : this.lista[+cv.dataset.prev];
-      return new VistaPrevia(cv, it.kind === 'potarma' ? it : {kind:it.kind === 'enemigo' ? 'enemigo' : it.kind === 'fusion' ? 'arma' : it.kind, id:it.id});
+      return new VistaPrevia(cv, it.kind === 'potarma' ? it : {kind:it.kind === 'enemigo' ? 'enemigo' : it.kind === 'fusion' ? 'arma' : it.kind, id:it.id, uid:it.uid});   // uid: el soldado concreto (sus colores)
     });
     const t0 = performance.now();
     const paso = now => { const t = (now - t0) / 1000; vistas.forEach(v => v.dibujar(t)); this.raf = requestAnimationFrame(paso); };

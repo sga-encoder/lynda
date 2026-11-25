@@ -305,6 +305,42 @@ function lienzoDemo(tree){
   const key = 'demo-' + (DEMO_N++); ZREG[key] = []; legoState(key).active = tree;
   return `<div class="pointer-events-none">${zoneHTML(key, tree, 0)}</div>`;
 }
+/** Lienzo de demostración con estado: ficha seleccionada (🗑 + bloques), editor de cifras, guía de propiedad o aviso extra. */
+function lienzoGesto(tree, o = {}){
+  const key = 'demo-' + (DEMO_N++); ZREG[key] = []; const st = legoState(key);
+  Object.assign(st, {root:tree, active:tree, borrar:o.borrar ?? null, guia:o.guia ?? null, editNum:o.editar ? {node:o.editar, sel:null} : null});
+  const lienzo = zoneHTML(key, tree, 0);
+  return `<div class="pointer-events-none">${o.guia ? guiaHTML(st) : ''}${o.editar ? editorNumeroHTML(st) : ''}${lienzo}${o.panel ? bloquesHTML(key, st) : ''}${o.nota ? `<p class="mt-1.5 text-center text-xs font-semibold text-blue-700 dark:text-blue-300">${o.nota}</p>` : ''}</div>`;
+}
+const marcar = (n, demo) => Object.assign(n, {demo});
+/** Demostraciones de los gestos del lienzo (tocar, mantener, juntar, bloques, propiedades). */
+function GESTOS(){
+  const t = s => { const z = treeOf(s); allZones(z).forEach(fusionarNumeros); return z; };   // ya agrupado en monomios
+  const ej1 = t('3x+5'), ej2 = t('3x=12'), ej3 = t('3x+5x'), ej4 = t('3x-7'), ej5 = t('y=frac{5}{x^{2}}'), ej6 = t('3x+5=20');
+  return [
+    {icon:'🗑', titulo:'Tocar para eliminar', txt:'Un toque NO borra la ficha: aparece un 🗑 flotante encima. Si tocas el 🗑 se elimina; si tocas en otro lado, el 🗑 se va.',
+      pasos:['Toca una ficha: se marca en rojo y aparece el 🗑 flotante.', 'Toca el 🗑 para eliminarla…', '…o toca en cualquier otro lado y el 🗑 desaparece.'],
+      frames:[lienzoGesto(ej1, {borrar:ej1[0]}), lienzoGesto(t('5'), {nota:'Se eliminó 3x (con ↶ Deshacer vuelve).'}), lienzoGesto(t('3x+5'))]},
+    {icon:'✏️', titulo:'Mantener para editar', txt:'Mantén presionado un monomio o un número: arriba aparecen sus fichas, cada cifra por separado. Puedes moverlas, borrarlas o arrastrarlas fuera. El 1 de x no se ve, pero aquí sí aparece.',
+      pasos:['Mantén presionado −12x.', 'Arriba aparecen sus fichas: −, 1, 2, x. Toca una para moverla ◀ ▶ o borrarla.', 'Toca fuera del editor para cerrarlo.'],
+      frames:[lienzoGesto(t('-12x')), (() => { const z = t('-12x'); return lienzoGesto(z, {editar:z[0]}); })(), lienzoGesto(t('-12x'))]},
+    {icon:'＋', titulo:'Signo + automático', txt:'Cada monomio es una sola ficha (signo, número y letra). El de adelante no lleva «+»; si otro término va detrás, el «+» se pone solo, y si lo pasas adelante se quita.',
+      pasos:['Arma 3x: el 3 y la x forman una ficha.', 'Pon el 5 detrás: aparece «+5» solo.', 'Arrastra el 5 adelante: queda 5 + 3x sin «+» al inicio.'],
+      frames:[lienzoGesto(t('3x')), lienzoGesto(t('3x+5')), lienzoGesto(t('5+3x'))]},
+    {icon:'🤝', titulo:'Juntar términos semejantes', txt:'Arrastra un término y MANTENLO encima de otro: el de abajo hace una seña. Al soltar, si son semejantes (misma letra y del mismo lado del =) se operan; si no, el término queda al lado y el de abajo vibra.',
+      pasos:['Arrastra 5x y mantenlo sobre 3x: 3x hace una seña ✨.', 'Suelta: se operan → 8x.', 'Con −7 sobre 3x no se puede: queda al lado y 3x vibra.'],
+      frames:[lienzoGesto([marcar(ej3[0], 'lego-sena'), marcar(ej3[1], 'demo-arrastre')]), lienzoGesto(t('8x')), lienzoGesto([marcar(ej4[0], 'demo-vibrar'), ej4[1]])]},
+    {icon:'🧩', titulo:'Bloques: pasar a dividir', txt:'Al tocar un monomio, abajo aparecen sus bloques: el número con su signo y la letra. Si el monomio está solo de su lado del =, arrastra el número al otro lado y pasa a dividir todo.',
+      pasos:['Toca 3x: abajo aparecen los bloques [3] [x].', 'Arrastra el bloque 3 al otro lado del =.', 'El 3 pasa a dividir: x = 12/3.'],
+      frames:[lienzoGesto(ej2, {borrar:ej2[0], panel:true}), lienzoGesto(ej2, {borrar:ej2[0], panel:true, nota:'👆 Arrastra el [3] hasta después del 12'}), lienzoGesto(t('x=frac{12}{3}'))]},
+    {icon:'xⁿ', titulo:'Potencia fuera de la fracción', txt:'Si una potencia está abajo de una fracción, sácala (arrástrala por su borde o usa el botón del panel): sube con exponente negativo y, si su base tiene varias fichas, entre paréntesis.',
+      pasos:['Toca algo dentro de x²: aparece el aviso violeta.', 'Arrástrala fuera de la fracción o toca ⬆ Subir.', 'Resultado: y = 5x⁻².'],
+      frames:[lienzoGesto(ej5, {borrar:ej5[2].z[1][0].z[0][0], panel:true}), lienzoGesto(ej5, {nota:'👆 Arrastra x² fuera de la fracción'}), lienzoGesto(t('y=5x^{-2}'))]},
+    {icon:'🃏', titulo:'Propiedades guiadas', txt:'En 🃏 Propiedades, «Pasar al otro lado» y «Dividir ambos lados» te guían: primero tocas el término y luego eliges el lado (o divides). Solo aparecen las propiedades que ya desbloqueaste en la Ruta.',
+      pasos:['Elige 🃏 Pasar al otro lado y toca el +5.', 'Elige a qué lado lo pasas: ➡ a la derecha.', 'Pasa restando: 3x = 20 − 5.'],
+      frames:[lienzoGesto(ej6, {guia:{carta:'mover', nodo:null}}), lienzoGesto(ej6, {guia:{carta:'mover', nodo:ej6[1]}}), lienzoGesto(t('3x=20-5'))]},
+  ];
+}
 /** Tres momentos que se repiten (animación con keyframes). */
 /** Escenas de una demostración: avanzan solas, pero se pueden pasar a mano (◀ ▶, deslizando) o pausar.
     `probar`: id de un mini‑ejercicio interactivo que se despliega debajo. */
@@ -368,14 +404,20 @@ function pageTutorial(){
     ${tarjeta(`<b>Mantener presionado = asomar</b><p class="${C.src}">Para sacar una sola ficha rápido.</p>`, menuDemo('mantener'))}
   </div>
   <h3 class="${C.h3}">✋ Mover, quitar y el espacio azul</h3>
-  ${tarjeta('', escenas(['Arrastra una ficha: la barra azul muestra dónde caerá. Tócala para quitarla, o suéltala fuera del lienzo.', 'El espacio con borde azul es el activo: ahí entran las fichas que tocas. Toca otro espacio para elegirlo.', '⇥ Siguiente espacio salta al próximo; ⤴ Salir vuelve al de afuera del recuadro.'],
+  ${tarjeta('', escenas(['Arrastra una ficha: la barra azul muestra dónde caerá. Para quitarla, tócala y usa el 🗑, o suéltala fuera del lienzo.', 'El espacio con borde azul es el activo: ahí entran las fichas que tocas. Toca otro espacio para elegirlo.', '⇥ Siguiente espacio salta al próximo; ⤴ Salir vuelve al de afuera del recuadro.'],
       [lienzoDemo([hoja('2'), hoja('x'), hoja('+'), hoja('1')]), lienzoDemo([nz('frac',[hoja('x')],[])]), lienzoDemo([nz('frac',[hoja('x')],[hoja('2')]), hoja('+')])]))}
+  <h3 class="${C.h3}">🪄 Gestos del lienzo</h3>
+  <p class="${C.src}">Tocar, mantener, juntar y pasar al otro lado: lo que puedes hacer con las fichas que ya están en el lienzo.</p>
+  <div class="mt-3 grid gap-3 md:grid-cols-2">${GESTOS().map(g=>tarjeta(`<div class="flex items-center gap-2"><span class="flex h-10 min-w-10 items-center justify-center rounded-xl bg-amber-100 px-2 font-serif text-lg dark:bg-amber-950">${g.icon}</span><b class="text-lg">${g.titulo}</b></div>
+      <p class="!my-2 text-sm">${g.txt}</p>`, escenas(g.pasos, g.frames))).join('')}</div>
   <h3 class="${C.h3}">🧱 Ficha por ficha</h3>
   <div class="flex flex-wrap gap-1.5">${indice}</div>
   <div class="mt-3 grid gap-3 md:grid-cols-2">${demos.map((d,i)=>tarjeta(`<div id="demo-${i}" class="flex items-center gap-2"><span class="flex h-10 min-w-10 items-center justify-center rounded-xl bg-violet-100 px-2 font-serif text-lg dark:bg-violet-950">${d.icon}</span><b class="text-lg">${d.titulo}</b><span class="ml-auto text-xs text-stone-500 dark:text-zinc-400">${d.cat}</span></div>
       <p class="!my-2 text-sm">${d.txt}</p><div class="pointer-events-none mb-3 flex flex-wrap gap-1.5">${d.fichas.map(t=>bankPiece('demo', t)).join('')}</div>`, escenas(d.pasos, d.frames, i))).join('')}</div>
   <h3 class="${C.h3}">✔ Verificar, pista y propiedades</h3>
-  ${tarjeta('', `<ul class="text-sm"><li><b>✔ Verificar</b> revisa el paso; si está bien pasas al siguiente.</li><li><b>💡 Pista</b> y <b>👁 Solución</b> ayudan si te atascas.</li><li><b>↶ Deshacer</b> y <b>🗑 Limpiar</b> corrigen el lienzo.</li><li><b>🃏 Propiedades</b> (en Fundamentos) aplica una carta del juego a lo que armaste.</li></ul>`)}
+  ${tarjeta('', `<ul class="text-sm"><li><b>✔ Verificar</b> revisa el paso; si está bien pasas al siguiente.</li><li><b>💡 Pista</b> y <b>👁 Solución</b> ayudan si te atascas.</li><li><b>↶ Deshacer</b> y <b>🗑 Limpiar</b> corrigen el lienzo.</li><li><b>🃏 Propiedades</b> (en Fundamentos) aplica una carta del juego a lo que armaste.</li><li><b>📝 Tu proceso hasta aquí</b>: arriba del lienzo ves los pasos que ya verificaste; con <b>📋 Empezar desde mi paso anterior</b> copias el último.</li></ul>`)}
+  <h3 class="${C.h3}">🗺️ La Ruta y las lecciones</h3>
+  ${tarjeta('', `<ul class="text-sm"><li>Las lecciones se abren <b>en orden</b>: para entrar a la siguiente, termina los ejercicios con piezas de la anterior (🔒 = bloqueada).</li><li>En la 🗺️ Ruta, <b>toca un nivel</b>: si ya puedes, te lleva directo a sus ejercicios; si no, te muestra los módulos que te faltan y el botón <b>📚 Empezar a estudiar</b>.</li><li>Cada tema también desbloquea cosas del juego: problemas, cartas y los <b>Comandantes</b> de cada mundo.</li></ul>`)}
   <div class="mt-8 flex justify-end"><a class="${C.btnP}" href="#/f">Practicar en Fundamentos ▸</a></div>`;
 }
 

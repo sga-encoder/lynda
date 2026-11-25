@@ -339,6 +339,7 @@ function elDeNodo(key, node){
   return null;
 }
 function conBorrar(st, n, html){
+  if (n.demo) html = html.replace('class="', `class="${n.demo} `);     // marcas de las animaciones del tutorial
   if (st.borrar !== n) return html;
   const badge = '<button data-lg="borrar" aria-label="Eliminar ficha" class="absolute -right-2 -top-6 z-20 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-rose-600 text-xs text-white shadow-lg ring-2 ring-rose-300 [animation:flotar_1.4s_ease-in-out_infinite] dark:border-zinc-900">🗑</button>';
   return html.replace('class="', 'class="relative ring-2 ring-rose-400 ').replace('>', '>' + badge);

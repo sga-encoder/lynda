@@ -414,14 +414,25 @@ function mostrarBienvenida(){
   capa.id = 'bienvenida'; capa.className = 'fixed inset-0 z-[75] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4';
   capa.innerHTML = `<div class="max-h-[100dvh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-stone-50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl dark:bg-zinc-950">
     <div class="flex items-center gap-2"><b class="flex-1 text-xl">${icono3D('🧩')} ¡Bienvenido! 5 pasos prácticos</b><button data-bienvenida="saltar" class="${C.btn} !min-h-9 !px-3 !text-xs">Omitir</button></div>
-    <p class="mt-1 text-sm text-stone-600 dark:text-zinc-400">Arma con las fichas lo que pide cada paso y toca ✔ Verificar. Solo se muestra esta vez.</p>
+    <p class="mt-1 text-sm text-stone-600 dark:text-zinc-400">En cada paso primero <b>mira cómo se hace</b> y luego hazlo tú: te iremos señalando qué tocar. Solo se muestra esta vez.</p>
+    <div data-video class="mt-2"></div>
     <div class="mt-2">${legoCard(legoEx(key), key, 0)}</div>
-    <button data-bienvenida="listo" class="${C.btnP} mt-3 hidden w-full">🎉 ¡Listo! Empezar</button></div>`;
+    <button data-bienvenida="listo" class="${C.btnP} mt-3 w-full" style="display:none">🎉 ¡Listo! Empezar</button></div>`;
   document.body.appendChild(capa); delete LEGO[key]; renderMath(capa); renderLego(key);
-  const cerrar = () => { store.set('bienvenida-vista', true); capa.remove(); delete LEGO_HOOKS[key]; };
+  const video = capa.querySelector('[data-video]'), card = capa.querySelector(`[data-lego="${key}"]`);
+  let pasoVisto = -1, viendo = false;
+  // Cada paso: primero el video corto (la respuesta armándose ficha por ficha), luego «¡Ahora tú!» y la guía sobre las fichas reales
+  const mostrarVideo = i => { const s = legoEx(key).steps[i]; viendo = true; card.classList.add('hidden');
+    video.innerHTML = `<div class="rounded-2xl border-2 border-violet-400 bg-violet-50 p-3 dark:border-violet-700 dark:bg-violet-950/40"><b class="text-sm">▶ Paso ${i + 1} de 5 · mira cómo se hace</b><p class="mb-2 text-sm">${s.q}</p>${videoGuia(s.a[0])}
+      <button data-ahora class="${C.btnP} mt-3 w-full">¡Ahora tú! ▸</button></div>`; renderMath(video); };
+  const cerrar = () => { store.set('bienvenida-vista', true); Guia.detener(); capa.remove(); delete LEGO_HOOKS[key]; };
   const vigilar = setInterval(() => { if (!capa.isConnected) return clearInterval(vigilar);
-    if (legoState(key).step >= legoEx(key).steps.length){ capa.querySelector('[data-bienvenida="listo"]').classList.remove('hidden'); store.set('bienvenida-vista', true); } }, 400);
-  capa.addEventListener('click', e => { if (e.target.closest('[data-bienvenida]')) cerrar(); });
+    const st = legoState(key), total = legoEx(key).steps.length;
+    if (st.step >= total){ video.innerHTML = ''; card.classList.remove('hidden'); capa.querySelector('[data-bienvenida="listo"]').style.display = ''; store.set('bienvenida-vista', true); return; }
+    if (st.step !== pasoVisto){ pasoVisto = st.step; Guia.detener(); mostrarVideo(st.step); } }, 300);
+  capa.addEventListener('click', e => {
+    if (e.target.closest('[data-ahora]')){ viendo = false; video.innerHTML = ''; card.classList.remove('hidden'); card.scrollIntoView({block:'start', behavior:'smooth'}); return Guia.iniciar(key); }
+    if (e.target.closest('[data-bienvenida]')) cerrar(); });
 }
 /** Bandeja falsa (igual a la real) para la demostración del menú. */
 function menuDemo(modo){
@@ -875,8 +886,9 @@ document.addEventListener('click', e=>{
     return; }
   const pr = e.target.closest('[data-probar]');
   if (pr){ const i = +pr.dataset.probar, key = `z-demo-${i}`, zona = document.querySelector(`[data-probar-zona="${i}"]`);
-    if (zona.innerHTML){ zona.innerHTML = ''; pr.textContent = '🧪 Probar yo'; return; }
+    if (zona.innerHTML){ zona.innerHTML = ''; pr.textContent = '🧪 Probar yo'; Guia.detener(); return; }
     delete LEGO[key]; zona.innerHTML = legoCard(legoEx(key), key, 0); renderMath(zona); renderLego(key); pr.textContent = '✕ Cerrar prueba';
+    Guia.iniciar(key);   // guía sobre las fichas reales: qué tocar en cada momento
     zona.scrollIntoView({behavior:'smooth', block:'start'}); return; }
   const ir = e.target.closest('[data-ir]');
   if (ir){ e.preventDefault(); document.getElementById(ir.dataset.ir)?.scrollIntoView({behavior:'smooth', block:'center'}); return; }

@@ -26,6 +26,14 @@
   .lego-scroll::-webkit-scrollbar-thumb{background:#3b82f6;border-radius:9999px}
   .dark .lego-scroll{scrollbar-color:#60a5fa #27272a}
   .dark .lego-scroll::-webkit-scrollbar-track{background:#27272a}
+  /* ---------- Guía interactiva de los tutoriales: resaltado y mano ---------- */
+  @keyframes guia-aro{0%,100%{stroke-opacity:1;stroke-width:3}50%{stroke-opacity:.35;stroke-width:6}}
+  @keyframes guia-toque{0%,100%{transform:translate(0,0) scale(1)}40%{transform:translate(-4px,-10px) scale(1.08)}55%{transform:translate(0,0) scale(.92)}}
+  @keyframes guia-arrastre{0%{transform:translate(0,40px);opacity:0}20%{opacity:1}70%{transform:translate(0,-6px)}100%{transform:translate(0,-6px);opacity:0}}
+  .guia-aro{animation:guia-aro 1.2s ease-in-out infinite}
+  .guia-mano{animation:guia-toque 1.1s ease-in-out infinite;filter:drop-shadow(0 4px 6px rgba(0,0,0,.5));transition:left .25s,top .25s}
+  .guia-mano.guia-arrastra{animation:guia-arrastre 1.6s ease-in-out infinite}
+  #guia3d [data-burbuja]{transition:left .25s,top .25s}
   /* ---------- Iconos y barras 3D (Three.js, pintados por Lienzos3D) ---------- */
   html.cartas3d .t3d-on{position:relative;-webkit-text-fill-color:transparent}
   html.cartas3d .t3d-on > canvas.t3d{position:absolute;left:-25%;top:-25%;width:150%;height:150%;pointer-events:none}

@@ -1185,7 +1185,6 @@ class Pool {
   tomar(props){ return Object.assign(this.#libres.pop() ?? this.#crear(), props); }
   soltar(o){ this.#libres.push(o); }
 }
-const REGEN_BASE = 1.5;   // energía por segundo que genera la base sola
 class Energia {
   constructor(valor = 0, max = 100){ this.valor = valor; this.max = max; }
   agregar(n){ this.valor = Math.min(this.max, this.valor + n); }
@@ -1361,7 +1360,6 @@ class World {
   update(dt, director){
     if (this.sinEnergia) this.tiempoSinEnergia += dt; this.tiempo += dt;
     this.sinEnergia = false;
-    this.energia.agregar(dt * REGEN_BASE);                            // los científicos de la base generan un poco de energía
     director.update(dt, this);
     for (const e of this.enemigos) if (!e.contado){ e.contado = true; this.vistos[e.tipo] = (this.vistos[e.tipo] ?? 0) + 1; }
     const L = this.loadout, C = this.clima, lento = L.efecto('lentitud', 1) * (C.vel ?? 1);

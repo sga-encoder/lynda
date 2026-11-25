@@ -75,9 +75,8 @@ class Run {
     this.energia = new Energia(30 + p.total('energia'));
     this.extraSoldados = p.total('soldados');
     this.xpMult = 1 + p.total('xp');
-    // Combos: los ya montados de cada área + hasta 3 propios; se recargan en cada ronda
-    this.combos = [...Object.entries(COMBOS_HECHOS).flatMap(([dominio, l]) => l.map(c => new Combo({...c, dominio, hecho:true}))),
-                   ...Object.entries(p.data.mazo).flatMap(([dominio, l]) => l.map(c => new Combo({...c, dominio, mazo:true})))];   // tu mazo viaja a todas las partidas
+    // Cartas compuestas: solo las que armaste en 🃏 Mazo (viajan a todas las partidas y se usan sin límite)
+    this.combos = Object.entries(p.data.mazo).flatMap(([dominio, l]) => l.map(c => new Combo({...c, dominio, mazo:true})));
     this.loadout.potencia = id => p.nivel('tac-' + id);
     this.loadout.permitido = id => app.bonusDesbloqueado(id);          // la Ruta decide qué bonificadores aparecen
     this.proceso = [];                                                 // cada paso dado (se guarda con la partida)
@@ -106,11 +105,11 @@ function cartaHTML(c, dom, {sel = false, attr = `data-carta="${c.id}"`, chica = 
 }
 function comboHTML(cb, dom){
   const iconos = cb.cartas.map(id => dom.cartas.get(id)?.icon ?? '?').join('<span class="text-zinc-500">›</span>');
-  return `<button data-combo="${cb.id}" data-arte class="relative h-[9.6rem] w-[6.7rem] shrink-0 rounded-2xl bg-gradient-to-br ${GRAD.combo} p-[2px] text-left shadow-lg shadow-black/50 touch-manipulation select-none transition-transform active:scale-95 ${cb.usado ? 'grayscale opacity-50' : ''}">
+  return `<button data-combo="${cb.id}" data-arte class="relative h-[9.6rem] w-[6.7rem] shrink-0 rounded-2xl bg-gradient-to-br ${GRAD.combo} p-[2px] text-left shadow-lg shadow-black/50 touch-manipulation select-none transition-transform active:scale-95 ">
     <span class="flex h-full flex-col rounded-[14px] bg-zinc-950/95 p-1.5">
       <span class="text-[9.5px] font-black uppercase leading-tight tracking-wide text-amber-200">🔗 ${cb.nombre}</span>
       <span class="mt-1 flex flex-wrap items-center justify-center gap-0.5 text-base leading-none">${iconos}</span>
-      <span class="mt-auto text-center text-[8px] leading-tight text-zinc-400">${cb.usado ? '↻ se recarga la próxima ronda' : cb.hecho ? 'Combo ya montado · 1 vez por ronda' : cb.mazo ? '🃏 De tu mazo · 1 vez por ronda' : 'Tu combo · 1 vez por ronda'}</span>
+      <span class="mt-auto text-center text-[8px] leading-tight text-zinc-400">🃏 Carta compuesta · sin límite</span>
     </span></button>`;
 }
 
@@ -176,7 +175,6 @@ class BattleScene extends Scene {
     this.mundo ??= new World({bus:this.bus, loadout:r.loadout, energia:r.energia, base:r.base, extraSoldados:r.extraSoldados, mej:id => P.nivel(id), torreta:P.total('torreta'), soldadosOk:id => this.app.soldadoDesbloqueado(id), perfil:uid => perfilSoldado(P, uid), titular:tipo => titularDe(this.app, tipo), potencia:armaId => efectoPotencia(r, armaId), fx:armaId => fxDisparo(r, armaId), peloton:this.app.pelotonActivo() ? P.data.peloton : null});
     const clima = r.mision === 1 && r.oleada === 1 ? 'despejado' : this.app.rng.pick(CLIMAS_ROTACION);
     this.mundo.ponerClima(clima);
-    r.combos.forEach(c => c.usado = false);                          // los combos se recargan cada ronda
     const C = CLIMAS[clima];
     this.aviso(`Misión ${r.mision} · Oleada ${r.oleada}${this.cfg.jefe ? ' · 👹 JEFE' : ''}\n${C.icon} ${C.name}: ${C.desc}`);
     if (r.pendiente){ this.retomar(r.pendiente); r.pendiente = null; }  // partida cargada: sigue con su problema
@@ -249,11 +247,9 @@ class BattleScene extends Scene {
     const quiz = !!this.quiz;
     this.$('quiz').classList.toggle('hidden', !quiz); this.$('mano').classList.toggle('hidden', quiz);
     if (quiz) return this.dibujarQuiz();
-    const r = this.run, propios = r.combos.filter(c => !c.hecho).length;
     this.$('mano').innerHTML =
       this.manoConAyuda().join('') +
-      r.combosDe(this.dom.id).map(cb => comboHTML(cb, this.dom)).join('') +
-      (propios < MAX_COMBOS_PROPIOS ? `<button data-a="taller" class="flex h-[9.6rem] w-[6.7rem] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-zinc-600 text-center text-xs text-zinc-300 touch-manipulation active:scale-95"><span class="text-3xl">🔗</span><b>Crear combo</b><span class="text-[10px] text-zinc-500">${propios}/${MAX_COMBOS_PROPIOS} propios</span></button>` : '');
+      this.run.combosDe(this.dom.id).map(cb => comboHTML(cb, this.dom)).join('');   // las cartas compuestas se arman solo en 🃏 Mazo
   }
   /** Sin ayuda todas las cartas se ven igual; con ayuda media se iluminan las que sirven y con alta se marca la mejor. */
   manoConAyuda(){
@@ -278,9 +274,8 @@ class BattleScene extends Scene {
   click(e){
     const a = e.target.closest('[data-a]')?.dataset.a;
     if (a === 'pausa') return this.mostrarPausa();
-    if (a === 'taller') return this.abrirTaller();
     if (a === 'pista'){ this.pistaMostrada = true; return this.mostrarPista(); }
-    if (a === 'quiz-no'){ this.quiz = null; this.carta = null; this.dibujarProblema(); this.dibujarMano(); return this.mensaje(''); }
+    if (a === 'quiz-no'){ this.quiz = null; this.carta = null; this.cadena = null; this.dibujarProblema(); this.dibujarMano(); return this.mensaje(''); }
     const op = e.target.closest('[data-opcion]')?.dataset.opcion;
     if (op != null && this.quiz) return this.elegirOpcion(+op);
     const cb = e.target.closest('[data-combo]')?.dataset.combo;
@@ -291,6 +286,7 @@ class BattleScene extends Scene {
     if (t && this.carta){ const path = this.objetivos[+t.dataset.t], c = this.carta; this.carta = null; return this.resultadoDe(c, path); }
   }
   jugarCarta(c){
+    this.cadena = null;                                              // tocar otra carta cancela la carta compuesta en curso
     if (this.carta === c){ this.carta = null; this.dibujarProblema(); this.dibujarMano(); return this.mensaje(''); }
     if (c.free) return this.abrirLibre();
     const objs = c.targets(this.raiz);
@@ -302,10 +298,13 @@ class BattleScene extends Scene {
   }
   /** Semiautomático: el jugador elige cuál es el resultado correcto de aplicar la carta. */
   resultadoDe(c, path){
-    if (c.id === 'mover' && this.raiz instanceof Eq){   // guiado: primero se elige a qué lado pasa
-      this.quiz = {lado:true, carta:c, path, opciones:[{texto:'⬅ A la izquierda'}, {texto:'A la derecha ➡'}]};
+    if (c.id === 'mover' && this.raiz instanceof Eq){   // guiado: ¿el término llega positivo o negativo al otro lado?
+      const t = this.raiz.children[path[0]].terms[path[1]], llega = negate(t), opuesto = t;
+      const neg = n => this.dom.tex(n).trim().startsWith('-');
+      const ops = [llega, opuesto].sort((a, b) => neg(a) - neg(b));     // primero el positivo, luego el negativo
+      this.quiz = {lado:true, carta:c, path, correcta:ops.indexOf(llega), opciones:ops.map(n => ({texto:`${neg(n) ? '➖ Pasa negativo' : '➕ Pasa positivo'} &nbsp; ${texJuego(this.dom.tex(n), false)}`}))};
       this.dibujarProblema(); this.dibujarMano();
-      return this.mensaje(`🃏 <b>Pasar al otro lado</b>: ¿a qué lado pasa el término marcado?`, 'amber');
+      return this.mensaje(`🃏 <b>Pasar al otro lado</b>: el término marcado, ¿pasa positivo o negativo?`, 'amber');
     }
     const correcto = c.apply(this.raiz, path);
     if (c.opcionesCortas && this.app.progreso.data.semi){                // solo el resultado del grupo, no toda la expresión
@@ -329,9 +328,9 @@ class BattleScene extends Scene {
   elegirOpcion(i){
     const q = this.quiz; this.quiz = null;
     if (q.lado){                                                       // elegir el lado: el correcto es el contrario al del término
-      if (i === (q.path[0] === 0 ? 1 : 0)) return this.aplicar(q.carta.apply(this.raiz, q.path), {carta:q.carta});   // el lado ya decide el resultado: se aplica solo
-      this.combo = 0; this.dibujarProblema(); this.dibujarMano();
-      return this.mensaje('❌ El término ya está de ese lado: se pasa al lado contrario.', 'rose');
+      if (i === q.correcta){ this.aplicar(q.carta.apply(this.raiz, q.path), {carta:q.carta}); return this.seguirCombo(); }   // el signo decide el resultado: se aplica solo
+      this.combo = 0; this.cadena = null; this.dibujarProblema(); this.dibujarMano();
+      return this.mensaje('❌ Al pasar al otro lado el término cambia de signo: lo que suma pasa restando y lo que resta pasa sumando.', 'rose');
     }
     if (q.cortas ? q.opciones[i]?.ok : q.opciones[i] === q.correcto) return this.aplicar(q.correcto, {carta:q.carta});
     this.combo = 0; this.pasos++;
@@ -340,40 +339,35 @@ class BattleScene extends Scene {
   }
 
   /* ---- Combos ---- */
+  /* ---- Cartas compuestas (se arman en 🃏 Mazo, se usan sin límite) ---- */
   usarCombo(cb){
-    if (cb.usado) return this.mensaje('Ese combo ya se usó en esta ronda.', 'zinc');
-    const estados = cb.ejecutar(this.raiz, this.dom);
-    if (!estados.length){ this.combo = 0; return this.mensaje(`🔗 <b>${cb.nombre}</b> no se pudo aplicar aquí (ni se gastó).`, 'rose'); }
-    cb.usado = true; this.run.combosUsados++; cb.cartas.forEach(id => this.app.progreso.descubrir('cartas', id));
-    estados.slice(0, -1).forEach(s => this.historial.add(this.dom.key(s)));
-    this.pasos += estados.length - 1;
-    this.aplicar(estados[estados.length - 1], {cadena:true});
+    if (!cb) return;
+    cb.cartas.forEach(id => this.app.progreso.descubrir('cartas', id)); this.run.combosUsados++;
+    this.cadena = {cb, i:0, hechos:0};
+    this.seguirCombo();
   }
-  abrirTaller(){
-    const dom = this.dom, cartas = dom.cartas.all().filter(c => !c.free), seq = [];
-    const pintar = () => this.abrirCapa(`
-      <h2 class="text-center text-2xl font-black">🔗 Taller de combos</h2>
-      <p class="text-center text-sm text-zinc-400">${dom.icon} ${dom.nombre} · toca cartas en el orden en que quieres aplicarlas (máx. ${MAX_CARTAS_COMBO}). Cada carta se aplica a todos sus lugares antes de pasar a la siguiente. Se usa 1 vez por ronda.</p>
-      <div class="mt-3 flex min-h-16 flex-wrap items-center gap-1.5 rounded-2xl border-2 border-dashed border-zinc-700 p-2">${seq.length ? seq.map((id, i) => `<button data-quitar="${i}" class="flex items-center gap-1 rounded-xl bg-zinc-800 px-2 py-1.5 text-sm"><b class="text-amber-300">${i + 1}</b> ${dom.cartas.get(id).icon} ${dom.cartas.get(id).name} ✕</button>`).join('') : '<span class="text-sm text-zinc-500">Tu secuencia aparecerá aquí</span>'}</div>
-      <div class="mt-3 flex flex-wrap justify-center gap-2">${cartas.map(c => cartaHTML(c, dom, {attr:`data-pick="${c.id}"`, chica:true})).join('')}</div>
-      <div class="mt-4 grid grid-cols-2 gap-2"><button data-a="cancelar" class="${UI.btn}">Cancelar</button><button data-a="guardar" class="${UI.btnP}" ${seq.length >= 2 ? '' : 'disabled'}>Guardar combo</button></div>`,
-    e => {
-      const pick = e.target.closest('[data-pick]')?.dataset.pick;
-      if (pick && seq.length < MAX_CARTAS_COMBO){ seq.push(pick); return pintar(); }
-      const q = e.target.closest('[data-quitar]')?.dataset.quitar;
-      if (q != null){ seq.splice(+q, 1); return pintar(); }
-      const a = e.target.closest('[data-a]')?.dataset.a;
-      if (a === 'cancelar') this.cerrarCapa();
-      if (a === 'guardar'){
-        const n = this.run.combos.filter(c => !c.hecho).length + 1;
-        this.run.combos.push(new Combo({nombre:`Mi combo ${n}`, dominio:dom.id, cartas:[...seq]}));
-        this.cerrarCapa(); this.dibujarMano(); this.mensaje('🔗 Combo guardado para esta partida.', 'emerald');
+  /** Ejecuta la carta compuesta carta por carta; «Pasar al otro lado» se detiene a preguntar (término y signo). */
+  seguirCombo(){
+    const C = this.cadena; if (!C || this.resuelto) return (this.cadena = null);
+    while (C.i < C.cb.cartas.length){
+      const carta = this.dom.cartas.get(C.cb.cartas[C.i++]); if (!carta) continue;
+      let objs = carta.targets(this.raiz); if (!objs.length) continue;
+      if (carta.id === 'mover' && this.raiz instanceof Eq){
+        const conX = n => [...walk(n)].some(([m]) => m instanceof X);
+        const utiles = objs.filter(([sd, k]) => { const t = this.raiz.children[sd].terms[k]; return conX(t) ? sd === 1 : conX(this.raiz.children[sd]); });
+        if (utiles.length) objs = utiles;
+        C.hechos++;
+        if (objs.length === 1) return this.resultadoDe(carta, objs[0]);
+        this.carta = carta; this.objetivos = objs; this.dibujarProblema(); this.dibujarMano();
+        return this.mensaje(`🔗 <b>${C.cb.nombre}</b> · paso ${C.i}/${C.cb.cartas.length}: toca el término que <b>pasa al otro lado</b>.`, 'amber');
       }
-    });
-    pintar();
+      C.hechos++;
+      this.aplicar(carta.apply(this.raiz, objs[0]), {carta, cadena:true});
+      if (this.resuelto || this.cadena !== C) return (this.cadena = null);
+    }
+    this.cadena = null;
+    if (!C.hechos) this.mensaje(`🔗 <b>${C.cb.nombre}</b> no se pudo aplicar aquí.`, 'rose');
   }
-
-  /* ---- Paso libre (dentro de la batalla, con la expresión cargada en piezas) ---- */
   abrirLibre(){
     this.app.piezas.abrir({
       expr: this.dom.tex(this.raiz), piezas: this.dom.piezas(this.raiz), ayuda: this.dom.ayudaLibre(this.raiz),

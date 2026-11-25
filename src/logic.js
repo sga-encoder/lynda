@@ -336,8 +336,8 @@ function GESTOS(){
     {icon:'xⁿ', titulo:'Potencia fuera de la fracción', txt:'Si una potencia está abajo de una fracción, sácala (arrástrala por su borde o usa el botón del panel): sube con exponente negativo y, si su base tiene varias fichas, entre paréntesis.',
       pasos:['Toca algo dentro de x²: aparece el aviso violeta.', 'Arrástrala fuera de la fracción o toca ⬆ Subir.', 'Resultado: y = 5x⁻².'],
       frames:[lienzoGesto(ej5, {borrar:ej5[2].z[1][0].z[0][0], panel:true}), lienzoGesto(ej5, {nota:'👆 Arrastra x² fuera de la fracción'}), lienzoGesto(t('y=5x^{-2}'))]},
-    {icon:'🃏', titulo:'Propiedades guiadas', txt:'En 🃏 Propiedades, «Pasar al otro lado» y «Dividir ambos lados» te guían: primero tocas el término y luego eliges el lado (o divides). Solo aparecen las propiedades que ya desbloqueaste en la Ruta.',
-      pasos:['Elige 🃏 Pasar al otro lado y toca el +5.', 'Elige a qué lado lo pasas: ➡ a la derecha.', 'Pasa restando: 3x = 20 − 5.'],
+    {icon:'🃏', titulo:'Propiedades guiadas', txt:'En 🃏 Propiedades, «Pasar al otro lado» y «Dividir ambos lados» te guían: primero tocas el término y luego eliges si pasa positivo o negativo (o divides). Solo aparecen las propiedades que ya desbloqueaste en la Ruta.',
+      pasos:['Elige 🃏 Pasar al otro lado y toca el +5.', '¿Pasa positivo o negativo? ➖ negativo: lo que suma pasa restando.', 'Queda 3x = 20 − 5.'],
       frames:[lienzoGesto(ej6, {guia:{carta:'mover', nodo:null}}), lienzoGesto(ej6, {guia:{carta:'mover', nodo:ej6[1]}}), lienzoGesto(t('3x=20-5'))]},
   ];
 }

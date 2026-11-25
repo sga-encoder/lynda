@@ -273,16 +273,16 @@ class MazoScene extends Scene {
     const D = DOMINIOS[this.dom], lista = this.lista;
     this.app.html(`
     <div class="mx-auto flex h-full max-w-xl flex-col px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
-      <div class="flex items-center justify-between">${btnVolver}<span class="text-xs text-zinc-400">${lista.length}/${MAX_MAZO} combinaciones</span></div>
+      <div class="flex items-center justify-between">${btnVolver}<span class="text-xs text-zinc-400">${lista.length}/${MAX_MAZO} cartas compuestas</span></div>
       <h2 class="mt-3 text-2xl font-black">🃏 Mazo</h2>
-      <p class="text-xs text-zinc-400">Combinaciones de propiedades que se aplican en orden y te acompañan en <b>todas</b> las partidas (una vez por ronda cada una). Hay un mazo por área.</p>
+      <p class="text-xs text-zinc-400">Arma <b>cartas compuestas</b> de hasta 5 propiedades (se pueden repetir, por ejemplo ↔️ ↔️ 🧲 🧲 🧮). En batalla se aplican una tras otra; en «Pasar al otro lado» tú eliges el término y si pasa positivo o negativo. Te acompañan en <b>todas</b> las partidas y se usan <b>sin límite</b>. Solo se crean aquí, no durante la partida.</p>
       ${tabs([['fund', '🧱', 'Fundamentos'], ['alg', '🔺', 'Álgebra'], ['dif', '📈', 'Diferencial'], ['int', '∫', 'Integral']], this.dom)}
       <div class="mt-2 flex-1 space-y-2 overflow-y-auto pb-4">
         ${this.armando ? this.constructor_(D) : `
         ${lista.map((cb, i) => `<div class="${UI.card} flex items-center gap-3"><span class="text-2xl">🔗</span><div class="flex-1"><b>${cb.nombre}</b>
           <div class="mt-1 flex flex-wrap items-center gap-1 text-sm">${cb.cartas.map((id, j) => `${j ? '<span class="text-zinc-500">›</span>' : ''}<span class="rounded-lg bg-zinc-800 px-1.5 py-0.5">${D.cartas.get(id).icon} ${D.cartas.get(id).name}</span>`).join('')}</div></div>
-          <button data-borrar="${i}" class="${UI.btn} !min-h-10 !px-3" aria-label="Borrar">🗑</button></div>`).join('') || '<p class="py-6 text-center text-sm text-zinc-500">Tu mazo está vacío.</p>'}
-        <button data-a="combinar" class="${UI.btnP} w-full" ${lista.length >= MAX_MAZO ? 'disabled' : ''}>🔗 Combinar propiedades</button>`}
+          <button data-borrar="${i}" class="${UI.btn} !min-h-10 !px-3" aria-label="Borrar">🗑</button></div>`).join('') || '<p class="py-6 text-center text-sm text-zinc-500">Tu mazo está vacío: crea tu primera carta compuesta.</p>'}
+        <button data-a="combinar" class="${UI.btnP} w-full" ${lista.length >= MAX_MAZO ? 'disabled' : ''}>🔗 Crear carta compuesta</button>`}
       </div></div>`).onclick = e => this.click(e);
     if (this.armando){ this.activarArrastre(); this.app.root.querySelector('[data-nombre]').oninput = e => this.armando.nombre = e.target.value; }
   }
@@ -292,7 +292,7 @@ class MazoScene extends Scene {
       <div data-caja class="mt-2 flex min-h-24 flex-wrap items-center gap-1.5 rounded-2xl border-2 border-dashed ${a.sobre ? 'border-emerald-400 bg-emerald-400/10' : 'border-zinc-600'} p-2">
         ${a.cartas.length ? a.cartas.map((id, i) => `<button data-quitar="${i}" data-chip class="flex items-center gap-1 rounded-xl bg-zinc-800 px-2 py-1.5 text-sm"><b class="text-amber-300">${i + 1}</b> ${D.cartas.get(id).icon} ${D.cartas.get(id).name} ✕</button>`).join('') : '<span class="w-full text-center text-sm text-zinc-500">Suelta aquí las cartas, en el orden en que se aplicarán</span>'}
       </div>
-      <input data-nombre value="${a.nombre}" maxlength="24" class="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" placeholder="Nombre de la combinación">
+      <input data-nombre value="${a.nombre}" maxlength="24" class="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" placeholder="Nombre de la carta compuesta">
       <div class="mt-2 grid grid-cols-2 gap-2"><button data-a="cancelar" class="${UI.btn}">Cancelar</button><button data-a="guardar" class="${UI.btnP}" ${a.cartas.length >= 2 ? '' : 'disabled'}>Guardar en el mazo</button></div></div>
       <div class="mt-2 flex flex-wrap justify-center gap-2">${D.cartas.all().filter(c => !c.free && this.app.cartaDesbloqueada(c.id)).map(c => cartaHTML(c, D, {attr:`data-pick="${c.id}" style="touch-action:none"`, chica:true})).join('')}</div>`;
   }
@@ -301,14 +301,14 @@ class MazoScene extends Scene {
     if (a === 'volver') return this.armando ? (this.armando = null, this.pintar()) : this.app.go(new MenuScene(this.app));
     const tab = e.target.closest('[data-tab]')?.dataset.tab; if (tab){ this.dom = tab; this.armando = null; return this.pintar(); }
     const b = e.target.closest('[data-borrar]')?.dataset.borrar; if (b != null){ const l = [...this.lista]; l.splice(+b, 1); this.app.progreso.guardarMazo(this.dom, l); return this.pintar(); }
-    if (a === 'combinar'){ this.armando = {cartas:[], nombre:`Combinación ${this.lista.length + 1}`}; return this.pintar(); }
+    if (a === 'combinar'){ this.armando = {cartas:[], nombre:`Carta compuesta ${this.lista.length + 1}`}; return this.pintar(); }
     if (a === 'cancelar'){ this.armando = null; return this.pintar(); }
     if (a === 'guardar'){
       const nombre = this.app.root.querySelector('[data-nombre]').value.trim() || this.armando.nombre;
       this.app.progreso.guardarMazo(this.dom, [...this.lista, {nombre, cartas:[...this.armando.cartas]}]);
       this.armando = null; return this.pintar();
     }
-    const q = e.target.closest('[data-quitar]')?.dataset.quitar; if (q != null){ this.armando.cartas.splice(+q, 1); return this.pintar(); }
+    const q = e.target.closest('[data-quitar]')?.dataset.quitar; if (q != null && performance.now() - (this.tSoltar ?? 0) > 450){ this.armando.cartas.splice(+q, 1); return this.pintar(); }   // el «click» que sigue a soltar una carta no quita fichas
   }
   /** Arrastrar cartas al recuadro (puntero: dedo o ratón). Un toque sin mover también la agrega. */
   activarArrastre(){
@@ -330,7 +330,7 @@ class MazoScene extends Scene {
     };
     root.onpointerup = e => {
       const d = this.arr; this.arr = null; if (!d) return;
-      this.fantasma?.remove(); this.fantasma = null;
+      this.fantasma?.remove(); this.fantasma = null; this.tSoltar = performance.now();
       const lleno = this.armando.cartas.length >= MAX_CARTAS_COMBO;
       if (!d.movido){ if (!lleno) this.armando.cartas.push(d.id); return this.pintar(); }
       const caja = root.querySelector('[data-caja]'), cr = caja.getBoundingClientRect(), y = e.clientY - (e.pointerType === 'mouse' ? 0 : 40);

@@ -519,10 +519,10 @@ function guiaHTML(st){
   const b = 'inline-flex min-h-10 items-center gap-1 rounded-xl border px-3 text-sm touch-manipulation active:scale-95';
   const sel = g.nodo ? `<b>${kx(tokTex(g.nodo.t))}</b>` : '';
   const txt = g.carta === 'mover'
-    ? (!g.nodo ? '1️⃣ Toca en el lienzo el término que vas a <b>pasar al otro lado</b>.' : `2️⃣ Elegiste ${sel}. ¿A qué lado lo pasas? Recuerda que cambia de signo.`)
+    ? (!g.nodo ? '1️⃣ Toca en el lienzo el término que vas a <b>pasar al otro lado</b>.' : `2️⃣ Elegiste ${sel}. Al otro lado del =, ¿pasa positivo o negativo?`)
     : (!g.nodo ? '1️⃣ Toca el término cuyo <b>número</b> pasa a dividir al otro lado.' : `2️⃣ Elegiste ${sel}: su coeficiente pasa a dividir todo el otro lado.`);
   const botones = !g.nodo ? '' : g.carta === 'mover'
-    ? `<button class="${b} border-blue-400 bg-white dark:bg-zinc-900" data-lg="lado:0">⬅ A la izquierda</button><button class="${b} border-blue-400 bg-white dark:bg-zinc-900" data-lg="lado:1">A la derecha ➡</button>`
+    ? `<button class="${b} border-emerald-400 bg-white dark:bg-zinc-900" data-lg="signo:+">➕ Pasa positivo</button><button class="${b} border-rose-400 bg-white dark:bg-zinc-900" data-lg="signo:-">➖ Pasa negativo</button>`
     : `<button class="${b} border-blue-400 bg-white dark:bg-zinc-900" data-lg="dividir">➗ Dividir ambos lados</button>`;
   return `<div class="mb-2 rounded-xl border-2 border-violet-400 bg-violet-50 p-2.5 text-sm dark:bg-violet-950/40">
     <div class="flex items-start justify-between gap-2"><span>🃏 <b>${g.carta === 'mover' ? 'Pasar al otro lado' : 'Dividir ambos lados'}</b> · ${txt}</span><button class="h-8 w-8 shrink-0 rounded-lg" data-lg="guia-no" aria-label="Cancelar">✕</button></div>
@@ -535,6 +535,11 @@ function aplicarGuia(st, act){
   if (act === 'guia-no'){ st.guia = null; return; }
   if (!g?.nodo) return;
   const i = raiz.indexOf(g.nodo), lado = i < ig ? 0 : 1;
+  if (act.startsWith('signo:')){                                  // ¿pasa positivo o negativo? siempre va al lado contrario
+    const actual = partesTermino(g.nodo)[0] === '-' ? '-' : '+';
+    if (act.slice(6) === actual){ st.msg = {ok:false, t:'❌ Al pasar al otro lado el término cambia de signo: lo que suma pasa restando y lo que resta pasa sumando.'}; return; }
+    act = 'lado:' + (1 - lado);
+  }
   if (act.startsWith('lado:')){
     const destino = +act.slice(5);
     if (destino === lado){ st.msg = {ok:false, t:'Ese término ya está de ese lado: elige el otro lado.'}; return; }
@@ -620,7 +625,7 @@ function legoAction(key, act){
   if (act==='borrar') borrarSeleccion(st);
   if (act==='subirpot'){ const pt = st.borrar && potDenominador(st.root, st.borrar); if (pt) sacarPotencia(st, pt); }
   if (act.startsWith('guia:')){ st.guia = {carta:act.slice(5), nodo:null}; st.verProps = false; st.msg = null; }
-  if (act === 'guia-no' || act.startsWith('lado:') || act === 'dividir') aplicarGuia(st, act);
+  if (act === 'guia-no' || act.startsWith('lado:') || act.startsWith('signo:') || act === 'dividir') aplicarGuia(st, act);
   if (act==='usarprev' && st.prev){ snapshot(st); st.root = clonar(st.prev); st.active = null; st.msg = {ok:true, t:'📋 Copié tu paso anterior al lienzo: modifícalo para escribir el siguiente.'}; }
   if (act.startsWith('dig')) accionCifras(st, act);
   if (act==='zoom+') st.zoom = Math.min(1.6, +((st.zoom ?? 1) + 0.1).toFixed(1));

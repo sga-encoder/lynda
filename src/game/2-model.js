@@ -151,7 +151,7 @@ class Loadout {
 
 /* ---------- Combos de cartas ----------
    Un combo aplica varias cartas en un orden fijo. Cada carta se aplica a todos sus
-   objetivos (en orden) antes de pasar a la siguiente. Se puede usar una vez por ronda. */
+   objetivos (en orden) antes de pasar a la siguiente. En batalla se ejecuta guiada (ver BattleScene.seguirCombo) y sin límite de usos. */
 class Combo {
   constructor({nombre, dominio, cartas, hecho = false, mazo = false}){ Object.assign(this, {nombre, dominio, cartas, hecho, mazo, usado:false, id:'cb' + Math.random().toString(36).slice(2, 8)}); }
   /** Ejecuta el combo; devuelve la lista de estados intermedios. */
@@ -168,12 +168,7 @@ class Combo {
     return estados;
   }
 }
-const COMBOS_HECHOS = {
-  fund: [{nombre:'Despejar x', cartas:['dist', 'mover', 'seme', 'div', 'oper']}, {nombre:'Limpiar expresión', cartas:['dist', 'seme']}],
-  dif:  [{nombre:'Polinomio', cartas:['d-suma', 'd-kf', 'd-pot', 'd-cte']}, {nombre:'Cadena completa', cartas:['d-kf', 'd-cad', 'd-suma', 'd-kf', 'd-pot', 'd-tabla', 'd-cte']}],
-  int:  [{nombre:'Polinomio', cartas:['i-suma', 'i-kf', 'i-pot', 'i-cte', 'i-c']}, {nombre:'Sustitución', cartas:['i-kf', 'i-sust', 'i-c']}],
-};
-const MAX_COMBOS_PROPIOS = 3, MAX_CARTAS_COMBO = 5;
+const MAX_CARTAS_COMBO = 5;
 
 /* ---------- Modo asistido (3 niveles) ---------- */
 const NIVELES_AYUDA = [
@@ -246,7 +241,7 @@ const MEJORAS = {
 /** Arma base de una fusión (para aplicar las mejoras del arma original). */
 const armaBase = id => FUSIONES.find(f => f.resultado === id)?.a ?? id;
 const puntosMision = m => 10 + 5 * m;
-const MAX_MAZO = 4;
+const MAX_MAZO = 8;
 
 class SaveRepository {                               // patrón Repository: el resto del juego no sabe de localStorage
   #key = 'calcint:juego';

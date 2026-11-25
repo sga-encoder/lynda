@@ -226,7 +226,7 @@ function fotoPartida(escena, nombre){
     run:{potenciadores:r.potenciadores ?? {}, supers:r.supers ?? [], mundo:r.mundo ?? null, mm:r.mm ?? 0, infinito:!!r.infinito, tipos:r.tipos ? [...r.tipos] : null, mision:r.mision, oleada:r.oleada, nivel:r.nivel, xp:r.xp, xpTotal:r.xpTotal, problemas:r.problemas, eficientes:r.eficientes, bajas:r.bajas, jefes:r.jefes,
       combosUsados:r.combosUsados, puntosMisiones:r.puntosMisiones, vida:r.base.vida, vidaMax:r.base.vidaMax, energia:r.energia.valor,
       armas:l.armas.map(b => [b.id, b.nivel]), tacticos:l.tacticos.map(b => [b.id, b.nivel]),
-      combos:r.combos.filter(c => !c.hecho && !c.mazo).map(c => ({nombre:c.nombre, dominio:c.dominio, cartas:c.cartas}))},
+      combos:[]},
     problema: escena.raiz && !escena.resuelto ? {dominio:escena.dom.id, tipo:escena.tipo.id, raiz:nodoAJSON(escena.raiz), inicio:nodoAJSON(escena.inicio ?? escena.raiz), pasos:escena.pasos, par:escena.par, tex:escena.dom.tex(escena.raiz)} : null,
     proceso:r.proceso ?? [],
   };
@@ -242,7 +242,6 @@ function runDesdeFoto(app, p){
   r.loadout.armas = s.armas.filter(([id]) => BONUS_DEFS[id]).map(([id, n]) => new Bonus(id, n));
   r.loadout.tacticos = s.tacticos.filter(([id]) => BONUS_DEFS[id]).map(([id, n]) => new Bonus(id, n));
   r.base.vidaMax = s.vidaMax; r.base.vida = Math.max(1, s.vida); r.energia.valor = s.energia;
-  r.combos.push(...(s.combos ?? []).map(c => new Combo(c)));
   if (p.problema && DOMINIOS[p.problema.dominio]){
     const dom = DOMINIOS[p.problema.dominio];
     r.pendiente = {dom, tipo:dom.tipos.find(t => t.id === p.problema.tipo) ?? dom.tipos[0], raiz:nodoDeJSON(p.problema.raiz), inicio:nodoDeJSON(p.problema.inicio), pasos:p.problema.pasos, par:p.problema.par};
@@ -356,13 +355,13 @@ class PracticaPropiedades {
     const st = this.estado[i] ??= {fase:0, opciones:null, msg:null}, hecho = this.isDone(this.key(i));
     const marcas = st.fase >= 1 ? new Map(ex.objetivos.flatMap((p, j) => this.carta.marcas(ex.raiz, p).map(q => [q.join('.'), j]))) : null;
     const lado = this.carta.id === 'mover';
-    const pasoTxt = ['Toca la carta para usarla.', ex.objetivos.length > 1 ? 'Toca en la expresión DÓNDE aplicarla (cualquier parte marcada).' : 'Toca la parte marcada.', lado ? '¿A qué lado pasa el término marcado?' : this.carta.opcionesCortas ? '¿Cuánto da juntar los términos marcados? Elige el resultado.' : '¿Qué queda después de aplicarla? Elige el resultado.', '¡Correcto!'][st.fase];
+    const pasoTxt = ['Toca la carta para usarla.', ex.objetivos.length > 1 ? 'Toca en la expresión DÓNDE aplicarla (cualquier parte marcada).' : 'Toca la parte marcada.', lado ? 'El término marcado, ¿pasa positivo o negativo al otro lado?' : this.carta.opcionesCortas ? '¿Cuánto da juntar los términos marcados? Elige el resultado.' : '¿Qué queda después de aplicarla? Elige el resultado.', '¡Correcto!'][st.fase];
     return `<div class="mt-4 rounded-2xl border border-stone-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900" data-ex="${i}">
       <div class="flex items-center gap-2 text-sm"><b>🃏 Ejercicio ${i + 1}</b><span class="ml-auto text-stone-500 dark:text-zinc-400">${hecho ? '✅ Resuelto' : `${Math.min(st.fase, 3)}/3`}</span></div>
       <div class="mt-2 flex min-h-16 items-center justify-center overflow-x-auto rounded-xl bg-stone-100 px-2 text-lg dark:bg-zinc-950 [&_[data-t]]:cursor-pointer [&_[data-t]]:rounded-md [&_[data-t]]:bg-amber-300/40 [&_[data-t]]:outline [&_[data-t]]:outline-2 [&_[data-t]]:outline-amber-400 [&_[data-t='1']]:bg-sky-300/40 [&_[data-t='1']]:outline-sky-400 [&_[data-t='2']]:bg-fuchsia-300/40 [&_[data-t='2']]:outline-fuchsia-400" data-expr="${i}">${this.tex(this.dom.tex(st.fase === 3 ? (st.correcto ?? ex.correcto) : ex.raiz, st.fase === 1 ? marcas : st.fase === 2 && st.j != null ? new Map(this.carta.marcas(ex.raiz, ex.objetivos[st.j]).map(q => [q.join('.'), 0])) : null))}</div>
       <p class="mt-2 text-sm font-semibold">${st.fase + 1 <= 3 ? `Paso ${st.fase + 1}: ` : ''}${pasoTxt}</p>
       ${st.fase === 0 ? `<button data-usar="${i}" class="mt-2 inline-flex min-h-12 items-center gap-2 rounded-xl bg-gradient-to-r ${GRAD[this.dom.id]} px-4 font-bold text-white touch-manipulation active:scale-95">${this.carta.icon} Usar «${this.carta.name}»</button>` : ''}
-      ${st.fase === 2 && lado ? `<div class="mt-2 grid grid-cols-2 gap-2"><button data-lado="${i}|0" class="min-h-14 rounded-xl border-2 border-stone-200 bg-white px-3 font-semibold touch-manipulation active:scale-[0.98] dark:border-zinc-700 dark:bg-zinc-950">⬅ A la izquierda</button><button data-lado="${i}|1" class="min-h-14 rounded-xl border-2 border-stone-200 bg-white px-3 font-semibold touch-manipulation active:scale-[0.98] dark:border-zinc-700 dark:bg-zinc-950">A la derecha ➡</button></div>` : ''}
+      ${st.fase === 2 && lado ? `<div class="mt-2 grid grid-cols-2 gap-2"><button data-lado="${i}|+" class="min-h-14 rounded-xl border-2 border-emerald-300 bg-white px-3 font-semibold touch-manipulation active:scale-[0.98] dark:border-emerald-700 dark:bg-zinc-950">➕ Pasa positivo</button><button data-lado="${i}|-" class="min-h-14 rounded-xl border-2 border-rose-300 bg-white px-3 font-semibold touch-manipulation active:scale-[0.98] dark:border-rose-700 dark:bg-zinc-950">➖ Pasa negativo</button></div>` : ''}
       ${st.fase === 2 && !lado ? `<div class="mt-2 grid gap-2">${st.opciones.map((o, j) => `<button data-op="${i}|${j}" class="flex min-h-14 items-center justify-center overflow-x-auto rounded-xl border-2 border-stone-200 bg-white px-3 text-lg touch-manipulation active:scale-[0.98] dark:border-zinc-700 dark:bg-zinc-950">${this.tex(this.dom.tex(o.vista ?? o), false)}</button>`).join('')}</div>` : ''}
       ${st.msg ? `<p class="mt-2 rounded-xl px-3 py-2 text-sm ${st.msg.ok ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200' : 'bg-rose-50 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200'}">${st.msg.t}</p>` : ''}
       ${st.fase === 3 ? `<button data-otra="${i}" class="mt-2 text-sm text-blue-700 underline dark:text-blue-300">↻ Repetir</button>` : ''}
@@ -379,8 +378,9 @@ class PracticaPropiedades {
       else { st.msg = {ok:false, t:'Ese resultado tiene un error. Revisa signos, coeficientes y exponentes y vuelve a intentarlo.'}; }
       return this.render(); }
     const ld = e.target.closest('[data-lado]');
-    if (ld){ const [i, l] = ld.dataset.lado.split('|').map(Number), st = this.estado[i], ex = this.lista[i];
-      if (l !== 1 - ex.objetivos[st.j][0]){ st.msg = {ok:false, t:'❌ El término ya está de ese lado: se pasa al lado contrario.'}; return this.render(); }
+    if (ld){ const [si, sg] = ld.dataset.lado.split('|'), i = +si, st = this.estado[i], ex = this.lista[i], [sd, k] = ex.objetivos[st.j];
+      const llega = this.dom.tex(negate(ex.raiz.children[sd].terms[k])).trim().startsWith('-') ? '-' : '+';
+      if (sg !== llega){ st.msg = {ok:false, t:'❌ Al pasar al otro lado el término cambia de signo: lo que suma pasa restando y lo que resta pasa sumando.'}; return this.render(); }
       st.fase = 3; st.msg = {ok:true, t:`Bien: pasó al otro lado con el signo cambiado. ${this.carta.pista ?? ''}`}; this.onDone(this.key(i)); return this.render(); }
     if (otra){ delete this.estado[+otra.dataset.otra]; return this.render(); }
   }

@@ -15,6 +15,7 @@ class Pool {
   tomar(props){ return Object.assign(this.#libres.pop() ?? this.#crear(), props); }
   soltar(o){ this.#libres.push(o); }
 }
+const REGEN_BASE = 1.5;   // energía por segundo que genera la base sola
 class Energia {
   constructor(valor = 0, max = 100){ this.valor = valor; this.max = max; }
   agregar(n){ this.valor = Math.min(this.max, this.valor + n); }
@@ -74,7 +75,7 @@ class Enemigo {
   get cy(){ return this.vuela ? this.y : this.y - 8 * this.escala; }
 }
 const E = (tipo, props) => new Enemigo({tipo, ...props});
-const jv = c => 1 + (c.vida - 1) * 0.5;          // los jefes escalan la mitad que el resto
+const jv = c => (1 + (c.vida - 1) * 0.5) * (c.jefeVida ?? 1);   // los jefes escalan la mitad que el resto (y empiezan suaves)
 const ENEMIGOS = {
   // ---- Tierra ----
   explorador: (x, c) => E('explorador', {x, y:-10, estado:'cae', vida:3 * c.vida, vel:11 * c.velocidad, dps:1.4, xp:4}),
@@ -102,7 +103,7 @@ const ENEMIGOS = {
 const JEFES = ['coloso', 'reina', 'acorazado', 'mente'];
 /** Qué enemigos aparecen según el avance (t = 0…11) y con qué peso. */
 const TABLA_APARICION = [
-  ['explorador', 0, 5], ['saltador', 1, 2], ['nave', 1, 1.5], ['blindado', 2, 2], ['acido', 3, 2], ['dron', 3, 1.5],
+  ['explorador', 0, 5], ['saltador', 1, 2], ['nave', 1, 1.5], ['blindado', 3, 2], ['acido', 3, 2], ['dron', 3, 1.5],
   ['escudero', 4, 2], ['bombardero', 4, 1.5], ['excavador', 5, 2], ['caza', 6, 1.5], ['portadrones', 8, 1],
 ];
 
@@ -152,10 +153,10 @@ class WaveDirector {
     const opciones = [...TABLA_APARICION, ...(this.cfg.extra ?? [])].filter(([id, desde]) => t >= desde && (voladores < 7 || !esAire(id)));
     let r = this.rng.next() * opciones.reduce((s, o) => s + o[2], 0), id = opciones[0][0];
     for (const [k, , w] of opciones){ if ((r -= w) <= 0){ id = k; break; } }
-    const aire = esAire(id), grupo = Math.min(24 - m.enemigos.length, 1 + this.rng.int(0, 1 + Math.floor(t / 3)));   // llegan en grupos
+    const aire = esAire(id), grupo = Math.min(24 - m.enemigos.length, 1 + this.rng.int(0, Math.floor(t / 2)));   // llegan en grupos (desde la 2.ª misión)
     for (let g = 0; g < grupo; g++){
       const e = ENEMIGOS[id](aire ? 24 + this.rng.int(0, 50) : this.rng.int(200, MUNDO.W - 12), this.cfg);
-      if (!e.armas.length && !e.jefe && this.rng.next() < 0.65)       // los alienígenas comunes también disparan
+      if (!e.armas.length && !e.jefe && this.rng.next() < Math.min(0.65, 0.2 + 0.05 * t))   // los comunes también disparan (más a medida que avanzas)
         e.armas = [{t:1.5 + this.rng.next() * 2, tipo:'acido', rango:e.vuela ? 170 : 130, cd:2.6 + this.rng.next(), dmg:+(0.9 * Math.sqrt(this.cfg.vida)).toFixed(2), objetivo:this.rng.next() < 0.5 ? 'base' : 'soldados'}];
       e.x += g * 9; m.enemigos.push(e); if (g) this.generados++;
     }
@@ -190,6 +191,7 @@ class World {
   update(dt, director){
     if (this.sinEnergia) this.tiempoSinEnergia += dt; this.tiempo += dt;
     this.sinEnergia = false;
+    this.energia.agregar(dt * REGEN_BASE);                            // los científicos de la base generan un poco de energía
     director.update(dt, this);
     for (const e of this.enemigos) if (!e.contado){ e.contado = true; this.vistos[e.tipo] = (this.vistos[e.tipo] ?? 0) + 1; }
     const L = this.loadout, C = this.clima, lento = L.efecto('lentitud', 1) * (C.vel ?? 1);
@@ -288,11 +290,15 @@ class World {
           const dx = this.base.cx - e.x, dy = this.base.cy - e.y, d = Math.hypot(dx, dy);
           if (d < 10){ this.base.dañar(e.dano); this.bus.emit('base-dañada'); this.explosion(e.x, e.y, '#f9a8d4', 14); this.sacudir(0.2); e.vida = 0; e.sinXP = true; }
           else { e.x += dx / d * vel * dt; e.y += dy / d * vel * dt * 0.6; }
-        } else if (e.flota){ if (e.x > e.flota) e.x -= vel * dt; else e.y += Math.sin(e.fase / 4) * 0.15; }   // se queda flotando a distancia
+        } else if (e.flota){                                              // se queda flotando a distancia…
+          if (e.x > e.flota) e.x -= vel * dt;
+          else { e.y += Math.sin(e.fase / 4) * 0.15;
+            if ((e.esperaT = (e.esperaT ?? 0) + dt) > 8){ e.esperaT = 0; e.flota = Math.max(this.base.derecha + 40, e.flota * 0.7); } }   // …pero sin paciencia infinita: se acerca para que siempre se le pueda alcanzar
+        }
         else {
           e.x -= vel * dt;
-          if ((e.forma ?? e.tipo) === 'nave' && e.x > 150 && e.x < MUNDO.W - 10 && (e.soltar -= dt) <= 0){
-            e.soltar = 4; const al = ENEMIGOS.explorador(e.x, {vida:e.vidaMax / 7, velocidad:e.vel / 16}); al.y = e.y + 6; this.enemigos.push(al);
+          if ((e.forma ?? e.tipo) === 'nave' && (e.soltados ?? 0) < 3 && e.x > 150 && e.x < MUNDO.W - 10 && (e.soltar -= dt) <= 0){
+            e.soltar = 6; e.soltados = (e.soltados ?? 0) + 1;                 // cada nave suelta como máximo 3 exploradores const al = ENEMIGOS.explorador(e.x, {vida:e.vidaMax / 7, velocidad:e.vel / 16}); al.y = e.y + 6; this.enemigos.push(al);
           }
           if (e.x < -30) e.x = MUNDO.W + 30;
         }
@@ -309,7 +315,8 @@ class World {
       const limite = conSoldados ? frente + 7 * e.escala : this.base.derecha + 2 + 4 * e.escala;
       if (e.bajoTierra && e.x <= limite + 30){ e.bajoTierra = false; this.polvo(e.x, MUNDO.suelo); this.explosion(e.x, MUNDO.suelo - 3, '#a16207', 10); }
       if (e.para && e.x <= e.para) continue;                             // la reina se queda lejos invocando
-      if (e.armas.some(a => a.rango && a.objetivo === 'soldados') && conSoldados && e.x - frente <= e.armas.find(a => a.rango).rango * 0.9) continue;
+      if (e.armas.some(a => a.rango && a.objetivo === 'soldados') && conSoldados && e.x - frente <= e.armas.find(a => a.rango).rango * 0.9 * (C.rango ?? 1)
+          && (e.esperaT = (e.esperaT ?? 0) + dt) < 6) continue;            // dispara a distancia un rato y luego avanza (si no, la oleada podría no terminar)
       if (e.x > limite){ e.x -= vel * dt; continue; }
       if (e.salta && conSoldados){ e.saltando = 0; e.x0 = e.x; e.x1 = this.base.derecha + 4; continue; }
       if (conSoldados){

@@ -306,6 +306,14 @@ class BattleScene extends Scene {
       this.dibujarProblema(); this.dibujarMano();
       return this.mensaje(`🃏 <b>Pasar al otro lado</b>: el término marcado, ¿pasa positivo o negativo?`, 'amber');
     }
+    if (c.id === 'div' && this.raiz instanceof Eq){        // guiado: el número pasa a dividir con su mismo signo
+      const k = new Num(this.raiz.children[path[0]].k), neg = k.q.n < 0;
+      const pos = neg ? negate(k) : k, ops = [pos, negate(pos)];
+      this.quiz = {lado:true, carta:c, path, correcta:neg ? 1 : 0, error:'❌ Al pasar a dividir, el número conserva su signo: si multiplica positivo, divide positivo; si multiplica negativo, divide negativo.',
+        opciones:ops.map((n, i) => ({texto:`${i ? '➖ Divide negativo' : '➕ Divide positivo'} &nbsp; ${texJuego(this.dom.tex(n), false)}`}))};
+      this.dibujarProblema(); this.dibujarMano();
+      return this.mensaje(`🃏 <b>Dividir ambos lados</b>: el número que multiplica pasa a dividir. ¿Con qué signo queda?`, 'amber');
+    }
     const correcto = c.apply(this.raiz, path);
     if (c.opcionesCortas && this.app.progreso.data.semi){                // solo el resultado del grupo, no toda la expresión
       const o = c.opcionesCortas(this.raiz, path, this.app.rng, this.ayuda >= 3 ? 1 : 2);
@@ -330,7 +338,7 @@ class BattleScene extends Scene {
     if (q.lado){                                                       // elegir el lado: el correcto es el contrario al del término
       if (i === q.correcta){ this.aplicar(q.carta.apply(this.raiz, q.path), {carta:q.carta}); return this.seguirCombo(); }   // el signo decide el resultado: se aplica solo
       this.combo = 0; this.cadena = null; this.dibujarProblema(); this.dibujarMano();
-      return this.mensaje('❌ Al pasar al otro lado el término cambia de signo: lo que suma pasa restando y lo que resta pasa sumando.', 'rose');
+      return this.mensaje(q.error ?? '❌ Al pasar al otro lado el término cambia de signo: lo que suma pasa restando y lo que resta pasa sumando.', 'rose');
     }
     if (q.cortas ? q.opciones[i]?.ok : q.opciones[i] === q.correcto) return this.aplicar(q.correcto, {carta:q.carta});
     this.combo = 0; this.pasos++;
@@ -352,10 +360,12 @@ class BattleScene extends Scene {
     while (C.i < C.cb.cartas.length){
       const carta = this.dom.cartas.get(C.cb.cartas[C.i++]); if (!carta) continue;
       let objs = carta.targets(this.raiz); if (!objs.length) continue;
+      if (carta.id === 'div' && this.raiz instanceof Eq){ C.hechos++; return this.resultadoDe(carta, objs[0]); }   // pregunta el signo
       if (carta.id === 'mover' && this.raiz instanceof Eq){
         const conX = n => [...walk(n)].some(([m]) => m instanceof X);
         const utiles = objs.filter(([sd, k]) => { const t = this.raiz.children[sd].terms[k]; return conX(t) ? sd === 1 : conX(this.raiz.children[sd]); });
-        if (utiles.length) objs = utiles;
+        if (!utiles.length) continue;                                  // ya no hay nada útil que pasar: se salta este paso
+        objs = utiles;
         C.hechos++;
         if (objs.length === 1) return this.resultadoDe(carta, objs[0]);
         this.carta = carta; this.objetivos = objs; this.dibujarProblema(); this.dibujarMano();
@@ -395,7 +405,7 @@ class BattleScene extends Scene {
     if (avance > 0){
       this.combo++;
       const pts = this.puntuador.puntuar({avance, segundos, combo:this.combo - 1, libre, cadena, ventana:r.loadout.efecto('ventana', 0) + r.ventanaExtra});
-      const energia = 0.6 * pts.energia * r.loadout.energiaMult * r.energiaPaso;   // cada paso da menos energía: hay que resolver más
+      const energia = pts.energia * r.loadout.energiaMult * r.energiaPaso;
       r.energia.agregar(energia); this.ganarXP(pts.xp * r.xpMult * NIVELES_AYUDA[this.ayuda].xp);
       const extras = pts.detalle.map(d => `${d.nombre} ×${d.mult.toFixed(1)}`).join(' · ');
       this.mensaje(`+${Math.round(energia)} ⚡ ${extras ? `<span class="text-sky-300">(${extras})</span>` : ''}`, 'emerald');

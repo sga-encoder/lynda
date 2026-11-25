@@ -1154,12 +1154,13 @@ class Progreso {
 const MISIONES = 4, OLEADAS = 5;   // cada misión tiene 5 oleadas; la última trae al Comandante o al Soberano
 const CLIMAS_ROTACION = ['despejado', 'lluvia', 'niebla', 'nieve', 'tormenta', 'viento'];
 function configOleada(mision, oleada){
-  const t = Math.round(((mision - 1) * OLEADAS + (oleada - 1)) * 0.6);     // 0..11 (escala igual que con 3 oleadas)
+  const t = Math.round(((mision - 1) * OLEADAS + (oleada - 1)) * 0.45);    // sube poco a poco: misión 1 → 0..2, misión 2 → 2..4…
   return {
     t,
-    problemas: 1 + Math.floor(t / 4) + (oleada === OLEADAS ? 1 : 0),
-    minimo: 12 + Math.round(t * 1.5),                    // muchos más enemigos por oleada
-    intervalo: Math.max(0.6, 2.3 - t * 0.14),           // aparecen más seguido
+    problemas: 1 + Math.floor(t / 4) + (oleada === OLEADAS && mision > 1 ? 1 : 0),
+    jefeVida: mision === 1 ? 0.55 : mision === 2 ? 0.8 : 1,        // los primeros jefes son más suaves
+    minimo: 7 + Math.round(t * 2),                      // la primera misión es suave y luego crece
+    intervalo: Math.max(0.6, 3.0 - t * 0.2),            // aparecen más seguido a medida que avanzas
     velocidad: 1 + t * 0.07,
     vida: 1 + t * 0.14,
     jefe: oleada === OLEADAS ? JEFES[(mision - 1) % JEFES.length] : null, // un jefe al final de cada misión (en modo infinito se repiten)
@@ -1184,6 +1185,7 @@ class Pool {
   tomar(props){ return Object.assign(this.#libres.pop() ?? this.#crear(), props); }
   soltar(o){ this.#libres.push(o); }
 }
+const REGEN_BASE = 1.5;   // energía por segundo que genera la base sola
 class Energia {
   constructor(valor = 0, max = 100){ this.valor = valor; this.max = max; }
   agregar(n){ this.valor = Math.min(this.max, this.valor + n); }
@@ -1243,7 +1245,7 @@ class Enemigo {
   get cy(){ return this.vuela ? this.y : this.y - 8 * this.escala; }
 }
 const E = (tipo, props) => new Enemigo({tipo, ...props});
-const jv = c => 1 + (c.vida - 1) * 0.5;          // los jefes escalan la mitad que el resto
+const jv = c => (1 + (c.vida - 1) * 0.5) * (c.jefeVida ?? 1);   // los jefes escalan la mitad que el resto (y empiezan suaves)
 const ENEMIGOS = {
   // ---- Tierra ----
   explorador: (x, c) => E('explorador', {x, y:-10, estado:'cae', vida:3 * c.vida, vel:11 * c.velocidad, dps:1.4, xp:4}),
@@ -1271,7 +1273,7 @@ const ENEMIGOS = {
 const JEFES = ['coloso', 'reina', 'acorazado', 'mente'];
 /** Qué enemigos aparecen según el avance (t = 0…11) y con qué peso. */
 const TABLA_APARICION = [
-  ['explorador', 0, 5], ['saltador', 1, 2], ['nave', 1, 1.5], ['blindado', 2, 2], ['acido', 3, 2], ['dron', 3, 1.5],
+  ['explorador', 0, 5], ['saltador', 1, 2], ['nave', 1, 1.5], ['blindado', 3, 2], ['acido', 3, 2], ['dron', 3, 1.5],
   ['escudero', 4, 2], ['bombardero', 4, 1.5], ['excavador', 5, 2], ['caza', 6, 1.5], ['portadrones', 8, 1],
 ];
 
@@ -1321,10 +1323,10 @@ class WaveDirector {
     const opciones = [...TABLA_APARICION, ...(this.cfg.extra ?? [])].filter(([id, desde]) => t >= desde && (voladores < 7 || !esAire(id)));
     let r = this.rng.next() * opciones.reduce((s, o) => s + o[2], 0), id = opciones[0][0];
     for (const [k, , w] of opciones){ if ((r -= w) <= 0){ id = k; break; } }
-    const aire = esAire(id), grupo = Math.min(24 - m.enemigos.length, 1 + this.rng.int(0, 1 + Math.floor(t / 3)));   // llegan en grupos
+    const aire = esAire(id), grupo = Math.min(24 - m.enemigos.length, 1 + this.rng.int(0, Math.floor(t / 2)));   // llegan en grupos (desde la 2.ª misión)
     for (let g = 0; g < grupo; g++){
       const e = ENEMIGOS[id](aire ? 24 + this.rng.int(0, 50) : this.rng.int(200, MUNDO.W - 12), this.cfg);
-      if (!e.armas.length && !e.jefe && this.rng.next() < 0.65)       // los alienígenas comunes también disparan
+      if (!e.armas.length && !e.jefe && this.rng.next() < Math.min(0.65, 0.2 + 0.05 * t))   // los comunes también disparan (más a medida que avanzas)
         e.armas = [{t:1.5 + this.rng.next() * 2, tipo:'acido', rango:e.vuela ? 170 : 130, cd:2.6 + this.rng.next(), dmg:+(0.9 * Math.sqrt(this.cfg.vida)).toFixed(2), objetivo:this.rng.next() < 0.5 ? 'base' : 'soldados'}];
       e.x += g * 9; m.enemigos.push(e); if (g) this.generados++;
     }
@@ -1359,6 +1361,7 @@ class World {
   update(dt, director){
     if (this.sinEnergia) this.tiempoSinEnergia += dt; this.tiempo += dt;
     this.sinEnergia = false;
+    this.energia.agregar(dt * REGEN_BASE);                            // los científicos de la base generan un poco de energía
     director.update(dt, this);
     for (const e of this.enemigos) if (!e.contado){ e.contado = true; this.vistos[e.tipo] = (this.vistos[e.tipo] ?? 0) + 1; }
     const L = this.loadout, C = this.clima, lento = L.efecto('lentitud', 1) * (C.vel ?? 1);
@@ -1457,11 +1460,15 @@ class World {
           const dx = this.base.cx - e.x, dy = this.base.cy - e.y, d = Math.hypot(dx, dy);
           if (d < 10){ this.base.dañar(e.dano); this.bus.emit('base-dañada'); this.explosion(e.x, e.y, '#f9a8d4', 14); this.sacudir(0.2); e.vida = 0; e.sinXP = true; }
           else { e.x += dx / d * vel * dt; e.y += dy / d * vel * dt * 0.6; }
-        } else if (e.flota){ if (e.x > e.flota) e.x -= vel * dt; else e.y += Math.sin(e.fase / 4) * 0.15; }   // se queda flotando a distancia
+        } else if (e.flota){                                              // se queda flotando a distancia…
+          if (e.x > e.flota) e.x -= vel * dt;
+          else { e.y += Math.sin(e.fase / 4) * 0.15;
+            if ((e.esperaT = (e.esperaT ?? 0) + dt) > 8){ e.esperaT = 0; e.flota = Math.max(this.base.derecha + 40, e.flota * 0.7); } }   // …pero sin paciencia infinita: se acerca para que siempre se le pueda alcanzar
+        }
         else {
           e.x -= vel * dt;
-          if ((e.forma ?? e.tipo) === 'nave' && e.x > 150 && e.x < MUNDO.W - 10 && (e.soltar -= dt) <= 0){
-            e.soltar = 4; const al = ENEMIGOS.explorador(e.x, {vida:e.vidaMax / 7, velocidad:e.vel / 16}); al.y = e.y + 6; this.enemigos.push(al);
+          if ((e.forma ?? e.tipo) === 'nave' && (e.soltados ?? 0) < 3 && e.x > 150 && e.x < MUNDO.W - 10 && (e.soltar -= dt) <= 0){
+            e.soltar = 6; e.soltados = (e.soltados ?? 0) + 1;                 // cada nave suelta como máximo 3 exploradores const al = ENEMIGOS.explorador(e.x, {vida:e.vidaMax / 7, velocidad:e.vel / 16}); al.y = e.y + 6; this.enemigos.push(al);
           }
           if (e.x < -30) e.x = MUNDO.W + 30;
         }
@@ -1478,7 +1485,8 @@ class World {
       const limite = conSoldados ? frente + 7 * e.escala : this.base.derecha + 2 + 4 * e.escala;
       if (e.bajoTierra && e.x <= limite + 30){ e.bajoTierra = false; this.polvo(e.x, MUNDO.suelo); this.explosion(e.x, MUNDO.suelo - 3, '#a16207', 10); }
       if (e.para && e.x <= e.para) continue;                             // la reina se queda lejos invocando
-      if (e.armas.some(a => a.rango && a.objetivo === 'soldados') && conSoldados && e.x - frente <= e.armas.find(a => a.rango).rango * 0.9) continue;
+      if (e.armas.some(a => a.rango && a.objetivo === 'soldados') && conSoldados && e.x - frente <= e.armas.find(a => a.rango).rango * 0.9 * (C.rango ?? 1)
+          && (e.esperaT = (e.esperaT ?? 0) + dt) < 6) continue;            // dispara a distancia un rato y luego avanza (si no, la oleada podría no terminar)
       if (e.x > limite){ e.x -= vel * dt; continue; }
       if (e.salta && conSoldados){ e.saltando = 0; e.x0 = e.x; e.x1 = this.base.derecha + 4; continue; }
       if (conSoldados){
@@ -1930,7 +1938,7 @@ function perfilSoldado(P, uid){
   const ns = nivelTropa(P, s[0]), fs = 1 + 0.12 * (ns - 1);
   const arma = ARMAS_TROPA[tipo].find(a => a[0] === T.equipo[tipo].arma) ?? ARMAS_TROPA[tipo][0], na = nivelTropa(P, arma[0]), fa = 1 + 0.15 * (na - 1), A = arma[3];
   const bl = BLINDAJES_TROPA[tipo].find(b => b[0] === T.equipo[tipo].blindaje), nb = bl ? nivelTropa(P, bl[0]) : 0, B = bl ? bl[3] : {}, fb = 1 + 0.2 * Math.max(0, nb - 1);
-  const ataqueBase = base.ataque ? {...base.ataque, costo:base.ataque.costo * 1.8} : {dmg:1, cd:0.9, costo:1.2, rango:130, dano:'fisico'};   // disparar gasta más energía
+  const ataqueBase = base.ataque ? {...base.ataque, costo:base.ataque.costo * 0.9} : {dmg:1, cd:0.9, costo:1.2, rango:130, dano:'fisico'};   // disparar gasta más energía
   const perfil = {uid:s[0], tipo, name:s[1], icon:s[2], vida:base.vida * (m.vida ?? 1) * fs + (B.vida ?? 0) * fb, reduccion:Math.min(0.6, (B.reduccion ?? 0) * fb), regen:(B.regen ?? 0) * fb,
     arma:arma[1], armaId:arma[0], blindaje:bl?.[1] ?? null};
   if (base.apoyo) perfil.apoyo = {...base.apoyo, costo:base.apoyo.costo * 1.5, curar:base.apoyo.curar && base.apoyo.curar * (A.cura ?? 1) * (m.dmg ?? 1) * fs * fa, reparar:base.apoyo.reparar && base.apoyo.reparar * (A.repara ?? 1) * (m.dmg ?? 1) * fs * fa, cd:base.apoyo.cd * (A.cd ?? 1) * (m.cd ?? 1)};
@@ -2326,6 +2334,14 @@ class BattleScene extends Scene {
       this.dibujarProblema(); this.dibujarMano();
       return this.mensaje(`🃏 <b>Pasar al otro lado</b>: el término marcado, ¿pasa positivo o negativo?`, 'amber');
     }
+    if (c.id === 'div' && this.raiz instanceof Eq){        // guiado: el número pasa a dividir con su mismo signo
+      const k = new Num(this.raiz.children[path[0]].k), neg = k.q.n < 0;
+      const pos = neg ? negate(k) : k, ops = [pos, negate(pos)];
+      this.quiz = {lado:true, carta:c, path, correcta:neg ? 1 : 0, error:'❌ Al pasar a dividir, el número conserva su signo: si multiplica positivo, divide positivo; si multiplica negativo, divide negativo.',
+        opciones:ops.map((n, i) => ({texto:`${i ? '➖ Divide negativo' : '➕ Divide positivo'} &nbsp; ${texJuego(this.dom.tex(n), false)}`}))};
+      this.dibujarProblema(); this.dibujarMano();
+      return this.mensaje(`🃏 <b>Dividir ambos lados</b>: el número que multiplica pasa a dividir. ¿Con qué signo queda?`, 'amber');
+    }
     const correcto = c.apply(this.raiz, path);
     if (c.opcionesCortas && this.app.progreso.data.semi){                // solo el resultado del grupo, no toda la expresión
       const o = c.opcionesCortas(this.raiz, path, this.app.rng, this.ayuda >= 3 ? 1 : 2);
@@ -2350,7 +2366,7 @@ class BattleScene extends Scene {
     if (q.lado){                                                       // elegir el lado: el correcto es el contrario al del término
       if (i === q.correcta){ this.aplicar(q.carta.apply(this.raiz, q.path), {carta:q.carta}); return this.seguirCombo(); }   // el signo decide el resultado: se aplica solo
       this.combo = 0; this.cadena = null; this.dibujarProblema(); this.dibujarMano();
-      return this.mensaje('❌ Al pasar al otro lado el término cambia de signo: lo que suma pasa restando y lo que resta pasa sumando.', 'rose');
+      return this.mensaje(q.error ?? '❌ Al pasar al otro lado el término cambia de signo: lo que suma pasa restando y lo que resta pasa sumando.', 'rose');
     }
     if (q.cortas ? q.opciones[i]?.ok : q.opciones[i] === q.correcto) return this.aplicar(q.correcto, {carta:q.carta});
     this.combo = 0; this.pasos++;
@@ -2372,10 +2388,12 @@ class BattleScene extends Scene {
     while (C.i < C.cb.cartas.length){
       const carta = this.dom.cartas.get(C.cb.cartas[C.i++]); if (!carta) continue;
       let objs = carta.targets(this.raiz); if (!objs.length) continue;
+      if (carta.id === 'div' && this.raiz instanceof Eq){ C.hechos++; return this.resultadoDe(carta, objs[0]); }   // pregunta el signo
       if (carta.id === 'mover' && this.raiz instanceof Eq){
         const conX = n => [...walk(n)].some(([m]) => m instanceof X);
         const utiles = objs.filter(([sd, k]) => { const t = this.raiz.children[sd].terms[k]; return conX(t) ? sd === 1 : conX(this.raiz.children[sd]); });
-        if (utiles.length) objs = utiles;
+        if (!utiles.length) continue;                                  // ya no hay nada útil que pasar: se salta este paso
+        objs = utiles;
         C.hechos++;
         if (objs.length === 1) return this.resultadoDe(carta, objs[0]);
         this.carta = carta; this.objetivos = objs; this.dibujarProblema(); this.dibujarMano();
@@ -2415,7 +2433,7 @@ class BattleScene extends Scene {
     if (avance > 0){
       this.combo++;
       const pts = this.puntuador.puntuar({avance, segundos, combo:this.combo - 1, libre, cadena, ventana:r.loadout.efecto('ventana', 0) + r.ventanaExtra});
-      const energia = 0.6 * pts.energia * r.loadout.energiaMult * r.energiaPaso;   // cada paso da menos energía: hay que resolver más
+      const energia = pts.energia * r.loadout.energiaMult * r.energiaPaso;
       r.energia.agregar(energia); this.ganarXP(pts.xp * r.xpMult * NIVELES_AYUDA[this.ayuda].xp);
       const extras = pts.detalle.map(d => `${d.nombre} ×${d.mult.toFixed(1)}`).join(' · ');
       this.mensaje(`+${Math.round(energia)} ⚡ ${extras ? `<span class="text-sky-300">(${extras})</span>` : ''}`, 'emerald');
@@ -3412,14 +3430,14 @@ class PracticaPropiedades {
   ejercicio(ex, i){
     const st = this.estado[i] ??= {fase:0, opciones:null, msg:null}, hecho = this.isDone(this.key(i));
     const marcas = st.fase >= 1 ? new Map(ex.objetivos.flatMap((p, j) => this.carta.marcas(ex.raiz, p).map(q => [q.join('.'), j]))) : null;
-    const lado = this.carta.id === 'mover';
-    const pasoTxt = ['Toca la carta para usarla.', ex.objetivos.length > 1 ? 'Toca en la expresión DÓNDE aplicarla (cualquier parte marcada).' : 'Toca la parte marcada.', lado ? 'El término marcado, ¿pasa positivo o negativo al otro lado?' : this.carta.opcionesCortas ? '¿Cuánto da juntar los términos marcados? Elige el resultado.' : '¿Qué queda después de aplicarla? Elige el resultado.', '¡Correcto!'][st.fase];
+    const lado = this.carta.id === 'mover' || this.carta.id === 'div', esDiv = this.carta.id === 'div';
+    const pasoTxt = ['Toca la carta para usarla.', ex.objetivos.length > 1 ? 'Toca en la expresión DÓNDE aplicarla (cualquier parte marcada).' : 'Toca la parte marcada.', esDiv ? 'El número que multiplica pasa a dividir: ¿con qué signo queda?' : lado ? 'El término marcado, ¿pasa positivo o negativo al otro lado?' : this.carta.opcionesCortas ? '¿Cuánto da juntar los términos marcados? Elige el resultado.' : '¿Qué queda después de aplicarla? Elige el resultado.', '¡Correcto!'][st.fase];
     return `<div class="mt-4 rounded-2xl border border-stone-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900" data-ex="${i}">
       <div class="flex items-center gap-2 text-sm"><b>🃏 Ejercicio ${i + 1}</b><span class="ml-auto text-stone-500 dark:text-zinc-400">${hecho ? '✅ Resuelto' : `${Math.min(st.fase, 3)}/3`}</span></div>
       <div class="mt-2 flex min-h-16 items-center justify-center overflow-x-auto rounded-xl bg-stone-100 px-2 text-lg dark:bg-zinc-950 [&_[data-t]]:cursor-pointer [&_[data-t]]:rounded-md [&_[data-t]]:bg-amber-300/40 [&_[data-t]]:outline [&_[data-t]]:outline-2 [&_[data-t]]:outline-amber-400 [&_[data-t='1']]:bg-sky-300/40 [&_[data-t='1']]:outline-sky-400 [&_[data-t='2']]:bg-fuchsia-300/40 [&_[data-t='2']]:outline-fuchsia-400" data-expr="${i}">${this.tex(this.dom.tex(st.fase === 3 ? (st.correcto ?? ex.correcto) : ex.raiz, st.fase === 1 ? marcas : st.fase === 2 && st.j != null ? new Map(this.carta.marcas(ex.raiz, ex.objetivos[st.j]).map(q => [q.join('.'), 0])) : null))}</div>
       <p class="mt-2 text-sm font-semibold">${st.fase + 1 <= 3 ? `Paso ${st.fase + 1}: ` : ''}${pasoTxt}</p>
       ${st.fase === 0 ? `<button data-usar="${i}" class="mt-2 inline-flex min-h-12 items-center gap-2 rounded-xl bg-gradient-to-r ${GRAD[this.dom.id]} px-4 font-bold text-white touch-manipulation active:scale-95">${this.carta.icon} Usar «${this.carta.name}»</button>` : ''}
-      ${st.fase === 2 && lado ? `<div class="mt-2 grid grid-cols-2 gap-2"><button data-lado="${i}|+" class="min-h-14 rounded-xl border-2 border-emerald-300 bg-white px-3 font-semibold touch-manipulation active:scale-[0.98] dark:border-emerald-700 dark:bg-zinc-950">➕ Pasa positivo</button><button data-lado="${i}|-" class="min-h-14 rounded-xl border-2 border-rose-300 bg-white px-3 font-semibold touch-manipulation active:scale-[0.98] dark:border-rose-700 dark:bg-zinc-950">➖ Pasa negativo</button></div>` : ''}
+      ${st.fase === 2 && lado ? `<div class="mt-2 grid grid-cols-2 gap-2"><button data-lado="${i}|+" class="min-h-14 rounded-xl border-2 border-emerald-300 bg-white px-3 font-semibold touch-manipulation active:scale-[0.98] dark:border-emerald-700 dark:bg-zinc-950">${esDiv ? '➕ Divide positivo' : '➕ Pasa positivo'}</button><button data-lado="${i}|-" class="min-h-14 rounded-xl border-2 border-rose-300 bg-white px-3 font-semibold touch-manipulation active:scale-[0.98] dark:border-rose-700 dark:bg-zinc-950">${esDiv ? '➖ Divide negativo' : '➖ Pasa negativo'}</button></div>` : ''}
       ${st.fase === 2 && !lado ? `<div class="mt-2 grid gap-2">${st.opciones.map((o, j) => `<button data-op="${i}|${j}" class="flex min-h-14 items-center justify-center overflow-x-auto rounded-xl border-2 border-stone-200 bg-white px-3 text-lg touch-manipulation active:scale-[0.98] dark:border-zinc-700 dark:bg-zinc-950">${this.tex(this.dom.tex(o.vista ?? o), false)}</button>`).join('')}</div>` : ''}
       ${st.msg ? `<p class="mt-2 rounded-xl px-3 py-2 text-sm ${st.msg.ok ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200' : 'bg-rose-50 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200'}">${st.msg.t}</p>` : ''}
       ${st.fase === 3 ? `<button data-otra="${i}" class="mt-2 text-sm text-blue-700 underline dark:text-blue-300">↻ Repetir</button>` : ''}
@@ -3436,10 +3454,10 @@ class PracticaPropiedades {
       else { st.msg = {ok:false, t:'Ese resultado tiene un error. Revisa signos, coeficientes y exponentes y vuelve a intentarlo.'}; }
       return this.render(); }
     const ld = e.target.closest('[data-lado]');
-    if (ld){ const [si, sg] = ld.dataset.lado.split('|'), i = +si, st = this.estado[i], ex = this.lista[i], [sd, k] = ex.objetivos[st.j];
-      const llega = this.dom.tex(negate(ex.raiz.children[sd].terms[k])).trim().startsWith('-') ? '-' : '+';
-      if (sg !== llega){ st.msg = {ok:false, t:'❌ Al pasar al otro lado el término cambia de signo: lo que suma pasa restando y lo que resta pasa sumando.'}; return this.render(); }
-      st.fase = 3; st.msg = {ok:true, t:`Bien: pasó al otro lado con el signo cambiado. ${this.carta.pista ?? ''}`}; this.onDone(this.key(i)); return this.render(); }
+    if (ld){ const [si, sg] = ld.dataset.lado.split('|'), i = +si, st = this.estado[i], ex = this.lista[i], [sd, k] = ex.objetivos[st.j], esDiv = this.carta.id === 'div';
+      const llega = esDiv ? (ex.raiz.children[sd].k.n < 0 ? '-' : '+') : this.dom.tex(negate(ex.raiz.children[sd].terms[k])).trim().startsWith('-') ? '-' : '+';
+      if (sg !== llega){ st.msg = {ok:false, t:esDiv ? '❌ Al pasar a dividir, el número conserva su signo: si multiplica negativo, divide negativo.' : '❌ Al pasar al otro lado el término cambia de signo: lo que suma pasa restando y lo que resta pasa sumando.'}; return this.render(); }
+      st.fase = 3; st.msg = {ok:true, t:`${esDiv ? 'Bien: el número pasó a dividir con su mismo signo.' : 'Bien: pasó al otro lado con el signo cambiado.'} ${this.carta.pista ?? ''}`}; this.onDone(this.key(i)); return this.render(); }
     if (otra){ delete this.estado[+otra.dataset.otra]; return this.render(); }
   }
   elegirLugar(i, j){

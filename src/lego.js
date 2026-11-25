@@ -520,10 +520,10 @@ function guiaHTML(st){
   const sel = g.nodo ? `<b>${kx(tokTex(g.nodo.t))}</b>` : '';
   const txt = g.carta === 'mover'
     ? (!g.nodo ? '1️⃣ Toca en el lienzo el término que vas a <b>pasar al otro lado</b>.' : `2️⃣ Elegiste ${sel}. Al otro lado del =, ¿pasa positivo o negativo?`)
-    : (!g.nodo ? '1️⃣ Toca el término cuyo <b>número</b> pasa a dividir al otro lado.' : `2️⃣ Elegiste ${sel}: su coeficiente pasa a dividir todo el otro lado.`);
+    : (!g.nodo ? '1️⃣ Toca el término cuyo <b>número</b> pasa a dividir al otro lado.' : `2️⃣ Elegiste ${sel}: su número pasa a dividir todo el otro lado. ¿Con qué signo queda?`);
   const botones = !g.nodo ? '' : g.carta === 'mover'
     ? `<button class="${b} border-emerald-400 bg-white dark:bg-zinc-900" data-lg="signo:+">➕ Pasa positivo</button><button class="${b} border-rose-400 bg-white dark:bg-zinc-900" data-lg="signo:-">➖ Pasa negativo</button>`
-    : `<button class="${b} border-blue-400 bg-white dark:bg-zinc-900" data-lg="dividir">➗ Dividir ambos lados</button>`;
+    : `<button class="${b} border-emerald-400 bg-white dark:bg-zinc-900" data-lg="divsigno:+">➕ Divide positivo</button><button class="${b} border-rose-400 bg-white dark:bg-zinc-900" data-lg="divsigno:-">➖ Divide negativo</button>`;
   return `<div class="mb-2 rounded-xl border-2 border-violet-400 bg-violet-50 p-2.5 text-sm dark:bg-violet-950/40">
     <div class="flex items-start justify-between gap-2"><span>🃏 <b>${g.carta === 'mover' ? 'Pasar al otro lado' : 'Dividir ambos lados'}</b> · ${txt}</span><button class="h-8 w-8 shrink-0 rounded-lg" data-lg="guia-no" aria-label="Cancelar">✕</button></div>
     ${botones ? `<div class="mt-2 flex flex-wrap gap-1.5">${botones}</div>` : ''}</div>`;
@@ -552,6 +552,11 @@ function aplicarGuia(st, act){
     const nuevo = p.length > 1 ? hacerMono({}, p) : {t:p[0]};
     if (destino === 1) raiz.push(nuevo); else raiz.splice(raiz.findIndex(n => n.t === '='), 0, nuevo);
     st.guia = null; st.msg = {ok:true, t:'🃏 Pasaste el término al otro lado con el signo contrario. Revisa y pulsa Verificar.'};
+  }
+  if (act.startsWith('divsigno:')){                                // el número conserva su signo al pasar a dividir
+    const actual = partesTermino(g.nodo)[0] === '-' ? '-' : '+';
+    if (act.slice(9) !== actual){ st.msg = {ok:false, t:'❌ Al pasar a dividir, el número conserva su signo: si multiplica negativo, divide negativo.'}; return; }
+    act = 'dividir';
   }
   if (act === 'dividir'){
     const p = partesTermino(g.nodo), signo = p[0] === '-' ? '-' : '', num = p.find(x => /^\d+$/.test(x)), letra = p.find(x => /^[a-zA-Zπ]$/.test(x));
@@ -625,7 +630,7 @@ function legoAction(key, act){
   if (act==='borrar') borrarSeleccion(st);
   if (act==='subirpot'){ const pt = st.borrar && potDenominador(st.root, st.borrar); if (pt) sacarPotencia(st, pt); }
   if (act.startsWith('guia:')){ st.guia = {carta:act.slice(5), nodo:null}; st.verProps = false; st.msg = null; }
-  if (act === 'guia-no' || act.startsWith('lado:') || act.startsWith('signo:') || act === 'dividir') aplicarGuia(st, act);
+  if (act === 'guia-no' || act.startsWith('lado:') || act.startsWith('signo:') || act.startsWith('divsigno:') || act === 'dividir') aplicarGuia(st, act);
   if (act==='usarprev' && st.prev){ snapshot(st); st.root = clonar(st.prev); st.active = null; st.msg = {ok:true, t:'📋 Copié tu paso anterior al lienzo: modifícalo para escribir el siguiente.'}; }
   if (act.startsWith('dig')) accionCifras(st, act);
   if (act==='zoom+') st.zoom = Math.min(1.6, +((st.zoom ?? 1) + 0.1).toFixed(1));
@@ -729,7 +734,7 @@ function insertNode(key, zone, idx, node){
 }
 
 /* ---------- Arrastrar / tocar (pointer events: mouse y táctil) ---------- */
-let DRAG = null;
+let DRAG = null, GUIA_T = 0;   // GUIA_T: momento en que se eligió un término en la guía
 /** Índice de inserción consciente de filas: las piezas se agrupan por renglón (según su franja vertical)
     y dentro del renglón más cercano se decide por la mitad horizontal de cada pieza.
     Antes se comparaba con el borde superior de cada pieza, y una fracción alta adelantaba
@@ -891,7 +896,7 @@ document.addEventListener('pointerup', e=>{
   if (!d.moved){                                   // toque
     if (d.src==='node' && st.guia && !st.guia.nodo){                // modo guiado: el toque elige el término
       const n = d.zone[d.i];
-      if (d.zone === st.root && n.t !== '=' && !n.z && !esSigno(n)){ st.guia.nodo = n; st.msg = null; }
+      if (d.zone === st.root && n.t !== '=' && !n.z && !esSigno(n)){ st.guia.nodo = n; st.msg = null; GUIA_T = performance.now(); }
       else st.msg = {ok:false, t:'Toca un término completo del lienzo (no un signo ni un recuadro).'};
       renderLego(d.key); return;
     }
@@ -953,6 +958,7 @@ document.addEventListener('click', e=>{
     insertNode(key, st.active || st.root, null, newNode(decodeURIComponent(t))); renderLego(key);
   }
   const lg = e.target.closest('[data-lg]');
+  if (lg && /^(signo|divsigno|lado):/.test(lg.dataset.lg) && performance.now() - GUIA_T < 400) return;   // el «click» del mismo toque que eligió el término no responde por ti
   if (lg) legoAction(lg.closest('[data-lego]').dataset.lego, lg.dataset.lg);
 });
 

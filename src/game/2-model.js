@@ -277,12 +277,13 @@ class Progreso {
 const MISIONES = 4, OLEADAS = 5;   // cada misión tiene 5 oleadas; la última trae al Comandante o al Soberano
 const CLIMAS_ROTACION = ['despejado', 'lluvia', 'niebla', 'nieve', 'tormenta', 'viento'];
 function configOleada(mision, oleada){
-  const t = Math.round(((mision - 1) * OLEADAS + (oleada - 1)) * 0.6);     // 0..11 (escala igual que con 3 oleadas)
+  const t = Math.round(((mision - 1) * OLEADAS + (oleada - 1)) * 0.45);    // sube poco a poco: misión 1 → 0..2, misión 2 → 2..4…
   return {
     t,
-    problemas: 1 + Math.floor(t / 4) + (oleada === OLEADAS ? 1 : 0),
-    minimo: 12 + Math.round(t * 1.5),                    // muchos más enemigos por oleada
-    intervalo: Math.max(0.6, 2.3 - t * 0.14),           // aparecen más seguido
+    problemas: 1 + Math.floor(t / 4) + (oleada === OLEADAS && mision > 1 ? 1 : 0),
+    jefeVida: mision === 1 ? 0.55 : mision === 2 ? 0.8 : 1,        // los primeros jefes son más suaves
+    minimo: 7 + Math.round(t * 2),                      // la primera misión es suave y luego crece
+    intervalo: Math.max(0.6, 3.0 - t * 0.2),            // aparecen más seguido a medida que avanzas
     velocidad: 1 + t * 0.07,
     vida: 1 + t * 0.14,
     jefe: oleada === OLEADAS ? JEFES[(mision - 1) % JEFES.length] : null, // un jefe al final de cada misión (en modo infinito se repiten)

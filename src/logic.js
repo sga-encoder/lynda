@@ -368,13 +368,41 @@ let ESC_X = null;
 document.addEventListener('pointerdown', e => { const esc = e.target.closest('[data-esc]'); ESC_X = esc && !e.target.closest('button') ? {esc, x:e.clientX} : null; });
 document.addEventListener('pointerup', e => { if (!ESC_X) return; const dx = e.clientX - ESC_X.x, esc = ESC_X.esc; ESC_X = null;
   if (Math.abs(dx) > 40){ esc.dataset.auto = '0'; esc.querySelector('[data-esc-nav="pausa"]').textContent = '▶︎'; irEscena(esc, +esc.dataset.i + (dx < 0 ? 1 : -1)); } });
-/** Mini‑ejercicios «Probar»: armar lo que muestra la animación, con las fichas reales. */
+/** Mini‑ejercicios «Probar»: exactamente lo que muestra la animación, nada más. Un paso por cada paso
+    animado (misma instrucción, solo sus fichas), y cada paso sigue desde lo que armaste en el anterior. */
+const piezasDeFrame = z => z.flatMap(n => n.z ? [n.t, ...n.z.flatMap(piezasDeFrame)] : [n.t]);
+function practicaDeAnimacion(pasos, frames, hasta = frames.length - 1){
+  const usados = frames.slice(0, hasta + 1).map((f, k) => ({f, k})).filter(({f}) => f.length);   // un lienzo vacío no se practica
+  return {src:'Igual que la animación', p:ansTex(ser(frames[hasta])), steps:usados.map(({f, k}, j) => ({q:pasos[k], k:[...new Set(piezasDeFrame(f))], a:[ser(f)], orden:true, copia:j > 0,
+    w:j === usados.length - 1 ? '¡Hiciste lo mismo que la animación!' : 'Bien: igual que en la animación.', h:pasos[k]}))};
+}
 function ejerciciosProbar(){
-  const piezas = z => z.flatMap(n => n.z ? [n.t, ...n.z.flatMap(piezas)] : [n.t]);
-  const tutorial = DEMOS().map(d => { const meta = d.frames[d.probar ?? d.frames.length - 1];
-    return {src:'Prueba libre', p:ansTex(ser(meta)), steps:[{q:`Arma con las fichas lo que mostró la animación: ${d.pasos.at(-1)}`, k:[...new Set(piezas(meta))], a:[ser(meta)], w:'¡Así se usa esta ficha!', h:d.pasos.join(' ')}]}; });
-  tutorial.push({src:'Prueba libre', p:'x^{2}+5', steps:[{q:'Toca ƒ Funciones (queda fija 📌) y pon □^□ con x y 2; luego MANTÉN presionado 🔢 Números para sacar el 5 (pon antes el + de ± Signos).', k:['pot','x','2','+','5'], a:['x^{2}+5'], w:'Tocar fija el menú; mantener lo asoma.', h:'□^□: base x, exponente 2. Después +, y el 5.'}]});
+  const tutorial = DEMOS().map(d => practicaDeAnimacion(d.pasos, d.frames, d.probar ?? d.frames.length - 1));
+  // Menú «tocar = fijar»: la animación pone □^□ con el menú fijo
+  tutorial.push(practicaDeAnimacion(['Toca ƒ Funciones (el menú queda fijo 📌) y pon la ficha □^□.'], [[nz('pot', [], [])]]));
   return tutorial;
+}
+/** Bienvenida: 5 pasos prácticos la primera vez que se abre la app (después no vuelve a salir). */
+function ejerciciosInicio(){
+  const P = [['Toca la ficha 5 para ponerla en el lienzo.', '5', ['5']], ['Toca el 1 y luego el 2: las cifras seguidas se juntan en 12.', '12', ['1', '2']],
+    ['Arma 3x: primero el número 3 y luego la letra x.', '3x', ['3', 'x']], ['Usa los signos: arma 2x + 1 = 7.', '2x+1=7', ['2', 'x', '+', '1', '=', '7']],
+    ['Pon la ficha de fracción y llénala: x arriba y 2 abajo (toca un espacio para elegirlo).', 'frac{x}{2}', ['frac', 'x', '2']]];
+  return [{src:'Bienvenida', p:'\\text{5 pasos para empezar}', steps:P.map(([q, a, k], i) => ({q, a:[a], k, orden:true, w:['Las fichas se tocan o se arrastran al lienzo.', 'Cifras seguidas = un solo número.', 'Un número junto a una letra es un coeficiente.', 'Los signos van entre las fichas.', 'Las fichas con espacios guardan otras fichas adentro.'][i], h:q}))}];
+}
+function mostrarBienvenida(){
+  if (store.get('bienvenida-vista')) return;
+  const key = 'z-inicio-0', capa = document.createElement('div');
+  capa.id = 'bienvenida'; capa.className = 'fixed inset-0 z-[75] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4';
+  capa.innerHTML = `<div class="max-h-[100dvh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-stone-50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl dark:bg-zinc-950">
+    <div class="flex items-center gap-2"><b class="flex-1 text-xl">${icono3D('🧩')} ¡Bienvenido! 5 pasos prácticos</b><button data-bienvenida="saltar" class="${C.btn} !min-h-9 !px-3 !text-xs">Omitir</button></div>
+    <p class="mt-1 text-sm text-stone-600 dark:text-zinc-400">Arma con las fichas lo que pide cada paso y toca ✔ Verificar. Solo se muestra esta vez.</p>
+    <div class="mt-2">${legoCard(legoEx(key), key, 0)}</div>
+    <button data-bienvenida="listo" class="${C.btnP} mt-3 hidden w-full">🎉 ¡Listo! Empezar</button></div>`;
+  document.body.appendChild(capa); delete LEGO[key]; renderMath(capa); renderLego(key);
+  const cerrar = () => { store.set('bienvenida-vista', true); capa.remove(); delete LEGO_HOOKS[key]; };
+  const vigilar = setInterval(() => { if (!capa.isConnected) return clearInterval(vigilar);
+    if (legoState(key).step >= legoEx(key).steps.length){ capa.querySelector('[data-bienvenida="listo"]').classList.remove('hidden'); store.set('bienvenida-vista', true); } }, 400);
+  capa.addEventListener('click', e => { if (e.target.closest('[data-bienvenida]')) cerrar(); });
 }
 /** Bandeja falsa (igual a la real) para la demostración del menú. */
 function menuDemo(modo){
@@ -817,6 +845,7 @@ document.addEventListener('click', e => {
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !document.getElementById('ajustes').classList.contains('hidden')) cerrarAjustes(); });   // Esc cierra la configuración
 window.addEventListener('hashchange', route);
 window.addEventListener('load', route);
+window.addEventListener('load', () => setTimeout(mostrarBienvenida, 300));   // primera vez: 5 pasos prácticos
 
 /* ---------- Practicar: juego (se crea al entrar por primera vez) ---------- */
 document.addEventListener('click', e=>{

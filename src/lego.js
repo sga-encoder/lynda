@@ -664,7 +664,7 @@ function propsHTML(key, st){
     <div class="mt-1.5 flex flex-wrap gap-1.5">${L.length ? L.map(c => `<button class="${chip} border-violet-400 bg-white dark:bg-zinc-900" data-lg="${c.id === 'mover' || c.id === 'div' || c.id === 'dist' ? 'guia:' : 'prop:'}${c.id}">${c.icon} ${c.name}</button>`).join('')
       : `<span class="text-sm text-stone-600 dark:text-zinc-300">${st.root.length ? 'Ninguna de tus cartas desbloqueadas aplica aquí (las demás se ganan en la 🗺️ Ruta).' : 'Primero arma algo en el lienzo.'}</span>`}</div></div>`;
 }
-const SECCION_LEGO = {f:() => FUND, d:() => DIF, z:() => [{id:'demo', lego:ejerciciosProbar()}]};   // z: pruebas del tutorial      // prefijo de la clave → temas
+const SECCION_LEGO = {f:() => FUND, d:() => DIF, z:() => [{id:'demo', lego:ejerciciosProbar()}, {id:'inicio', lego:ejerciciosInicio()}]};   // z: pruebas del tutorial      // prefijo de la clave → temas
 function legoEx(key){                 // key = <f|d>-<tema>-<i>
   const [, sec, tema, i] = key.match(/^([fdz])-(.+)-(\d+)$/);
   const ex = SECCION_LEGO[sec]().find(t=>t.id===tema).lego[+i];

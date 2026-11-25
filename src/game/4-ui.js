@@ -319,10 +319,11 @@ class BattleScene extends Scene {
     if (objs.length === 1) return this.resultadoDe(c, objs[0]);
     this.carta = c; this.objetivos = objs;
     this.dibujarProblema(); this.dibujarMano();
-    this.mensaje(c.id === 'seme' ? 'Elige qué grupo juntar: toca uno de sus términos (se resaltan juntos).' : `Toca en la expresión dónde aplicar <b>${c.name}</b>.`, 'amber');
+    this.mensaje(c.id === 'seme' ? 'Elige qué grupo juntar: toca uno de sus términos (se resaltan juntos).' : c.id === 'dist' ? 'Toca el <b>polinomio</b> (el paréntesis marcado) al que aplicas la distributiva.' : `Toca en la expresión dónde aplicar <b>${c.name}</b>.`, 'amber');
   }
   /** Semiautomático: el jugador elige cuál es el resultado correcto de aplicar la carta. */
   resultadoDe(c, path){
+    if (c.id === 'dist'){ this.aplicar(c.apply(this.raiz, path), {carta:c}); return this.seguirCombo(); }   // distributiva: elegido el polinomio, se aplica sin preguntar
     if (c.id === 'mover' && this.raiz instanceof Eq){   // guiado: ¿el término llega positivo o negativo al otro lado?
       const t = this.raiz.children[path[0]].terms[path[1]], llega = negate(t), opuesto = t;
       const neg = n => this.dom.tex(n).trim().startsWith('-');
@@ -574,11 +575,12 @@ class BattleScene extends Scene {
   }
   oleadaTerminada(){
     const r = this.run, nuevos = this.sincronizarCatalogo();
-    this.app.ruta.ganar(XP_RUTA.oleada + (r.oleada === OLEADAS ? XP_RUTA.mision : 0));
-    if (r.oleada === OLEADAS) this.app.ruta.contar('misiones');
+    if (!r.lab){ this.app.ruta.ganar(XP_RUTA.oleada + (r.oleada === OLEADAS ? XP_RUTA.mision : 0));
+    if (r.oleada === OLEADAS) this.app.ruta.contar('misiones'); }   // 🧪 el laboratorio no cuenta para la Ruta
     if (r.oleada === OLEADAS){ const pts = puntosMision(r.mision); this.app.progreso.ganarPuntos(pts); r.puntosMisiones += pts; const m = r.mision; setTimeout(() => this.aviso(`🏅 ¡Misión ${m} cumplida! +${pts} 🔬`), 2700); }
     if (nuevos.length) setTimeout(() => this.aviso(`📚 Nuevo en el catálogo (${nuevos.length})`), 5300);
     if (r.oleada < OLEADAS) return this.elegirFinOleada(() => { r.oleada++; this.iniciarOleada(); });   // primero se eligen potenciadores y tácticos
+    if (r.mundo && r.lab){ this.victoriaTexto = '🧪 Prueba de laboratorio superada.'; return this.fin(true); }
     if (r.mundo) return this.misionMundoCumplida();
     if (r.mision < MISIONES || r.infinito){ r.mision++; r.oleada = 1; r.base.vida = Math.min(r.base.vidaMax, r.base.vida + 25); return this.elegirFinOleada(() => this.pausaMision(r.mision - 1)); }
     return this.fin(true);
@@ -594,7 +596,7 @@ class BattleScene extends Scene {
   }
   /** Al terminar cada misión el juego se detiene: seguir o guardar el avance para después. */
   pausaMision(m){
-    const g = new GestorPartidas(); g.guardar(fotoPartida(this, `${this.run.infinito ? '♾️ ' : ''}Misión ${m} cumplida`));   // guardado automático
+    const g = new GestorPartidas(); if (!this.run.lab) g.guardar(fotoPartida(this, `${this.run.infinito ? '♾️ ' : ''}Misión ${m} cumplida`));   // guardado automático
     this.abrirCapa(`<div class="m-auto flex w-full max-w-sm flex-col gap-3 text-center"><div class="text-6xl">🏅</div>
       <h2 class="text-2xl font-black">¡Misión ${m} cumplida!</h2>
       <p class="text-sm text-zinc-400">El avance quedó guardado en 💾 Partidas. ¿Sigues con la misión ${m + 1} o la dejas para después?</p>

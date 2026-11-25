@@ -117,7 +117,7 @@ class VistaPrevia extends Renderer {
 /* ---------- Catálogo ---------- */
 class CatalogoScene extends Scene {
   enter(){ this.tab ??= 'cartas'; this.todo = !!this.app.progreso.data.todo; this.pintar(); }   // «ver todo» solo existe con el modo desarrollador   // en modo desarrollo se ve todo
-  exit(){ cancelAnimationFrame(this.raf); this.soltarVisores(); }
+  exit(){ cancelAnimationFrame(this.raf); this.soltarVisores(); if (this.tecla) document.removeEventListener('keydown', this.tecla); this.tecla = null; }
   soltarVisores(){ this.obs?.disconnect(); (this.visores ?? []).forEach(v => v.dispose()); this.visores = []; }
   conocido(cat, id){ return this.todo || this.app.progreso.conocido(cat, id); }
   dominioDisponible(dom){ const d = this.app.progreso.data; return this.todo || dom.tipos.some(t => d.todo || this.app.tipoDesbloqueado(t)); }
@@ -189,9 +189,13 @@ class CatalogoScene extends Scene {
     if (a === 'vertodo'){ this.todo = e.target.checked; return this.pintar(); }
     const tab = e.target.closest('[data-tab]')?.dataset.tab; if (tab){ this.tab = tab; return this.pintar(); }
     const it = e.target.closest('[data-item]')?.dataset.item; if (it != null) return this.abrirDetalle(this.lista[+it]);
+    if (e.target.closest('[data-a="detprev"]')) return this.moverDetalle(-1);
+    if (e.target.closest('[data-a="detnext"]')) return this.moverDetalle(1);
     if (e.target.closest('[data-a="cerrar"]')) this.cerrarDetalle();
   }
   cerrarDetalle(){ this.detalle = null; this.pintar(); }
+  /** Pasa al elemento anterior (−1) o siguiente (+1) sin salir de la pantalla completa. */
+  moverDetalle(d){ const L = this.lista, i = L.indexOf(this.detalle); if (i < 0) return; this.abrirDetalle(L[(i + d + L.length) % L.length]); }
   abrirDetalle(it){
     this.detalle = it;
     const P = this.app.progreso, cont = this.app.root.querySelector('[data-h="detalle"]');
@@ -262,9 +266,17 @@ class CatalogoScene extends Scene {
     }
     cont.classList.remove('hidden');
     cont.innerHTML = `<div class="flex h-full flex-col overflow-y-auto bg-zinc-950 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
-      <div class="mx-auto w-full max-w-md"><div class="flex items-center justify-between"><b class="text-lg">${it.ok ? it.name : 'Desconocido'}</b><button data-a="cerrar" class="${UI.btn} !min-h-10 !px-3">✕</button></div>
+      <div class="mx-auto w-full max-w-md"><div class="flex items-center justify-between gap-2"><b class="min-w-0 truncate text-lg">${it.ok ? it.name : 'Desconocido'}</b><button data-a="cerrar" class="${UI.btn} !min-h-10 !px-3">✕</button></div>
+      <div class="mt-2 flex items-center justify-between gap-2"><button data-a="detprev" class="${UI.btn} !min-h-10 !px-4" aria-label="Anterior">◀</button><span class="text-xs text-zinc-400">${this.lista.indexOf(it) + 1} de ${this.lista.length} · desliza o usa las flechas${vitrina3D() && vista.includes('data-grande') ? ' · arrastra la escena para girarla' : ''}</span><button data-a="detnext" class="${UI.btn} !min-h-10 !px-4" aria-label="Siguiente">▶</button></div>
       <div class="mt-3">${vista}</div><div class="mt-3">${cuerpo}</div></div></div>`;
     cancelAnimationFrame(this.raf); this.animar();
+    // Deslizar a los lados (o ← → en el teclado) pasa al elemento anterior/siguiente del catálogo
+    let ini = null;
+    cont.onpointerdown = e => { ini = vitrina3D() && e.target.closest('canvas[data-grande]') ? null : {x:e.clientX, y:e.clientY, t:performance.now()}; };   // sobre la escena 3D, arrastrar la gira
+    cont.onpointerup = e => { if (!ini) return; const dx = e.clientX - ini.x, dy = e.clientY - ini.y, rapido = performance.now() - ini.t < 700; ini = null;
+      if (rapido && Math.abs(dx) > 60 && Math.abs(dx) > 1.5 * Math.abs(dy)) this.moverDetalle(dx < 0 ? 1 : -1); };
+    cont.onpointercancel = () => { ini = null; };
+    if (!this.tecla){ this.tecla = e => { if (!this.detalle) return; if (e.key === 'ArrowRight') this.moverDetalle(1); if (e.key === 'ArrowLeft') this.moverDetalle(-1); if (e.key === 'Escape') this.cerrarDetalle(); }; document.addEventListener('keydown', this.tecla); }
   }
 }
 
@@ -278,17 +290,20 @@ class MejorasScene extends Scene {
     <div class="mx-auto flex h-full max-w-xl flex-col px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
       <div class="flex items-center justify-between">${btnVolver}<span class="text-lg font-bold text-amber-300">${P.data.puntos} 🔬</span></div>
       <h2 class="mt-3 text-2xl font-black">🛠 Mejoras permanentes</h2>
-      <p class="text-xs text-zinc-400">Ganas 🔬 al <b>completar cada misión</b> (10 + 5 × número de misión) y con tu XP (1 por cada 10). Se mantienen entre partidas.</p>
+      ${P.data.todo ? '<p class="rounded-xl bg-amber-400/15 px-3 py-1.5 text-xs text-amber-300">🧪 Modo desarrollador: sube o baja cada mejora con − y +, sin costo.</p>' : ''}<p class="text-xs text-zinc-400">Ganas 🔬 al <b>completar cada misión</b> (10 + 5 × número de misión) y con tu XP (1 por cada 10). Se mantienen entre partidas.</p>
       ${tabs(CATEGORIAS_MEJORA, this.tab)}
       <div class="mt-2 flex-1 space-y-2 overflow-y-auto pb-4">${lista.map(([id, m]) => {
         const disp = P.disponible(id), n = P.nivel(id), max = n >= m.max;
         return `<div class="${UI.card} flex items-center gap-3 ${disp ? '' : 'opacity-60'}"><span class="text-3xl ${disp ? '' : 'brightness-0'}">${m.icon}</span>
           <div class="flex-1"><b>${disp ? m.name : 'Desconocido'}</b> <span class="text-xs">${pips(n, m.max)}</span><div class="text-xs text-zinc-400">${disp ? m.desc : '🔒 Descúbrelo en una partida para poder mejorarlo'}</div></div>
-          <button data-buy="${id}" class="${UI.btnP} !min-h-11 !px-3 text-sm" ${P.puedeComprar(id) ? '' : 'disabled'}>${max ? 'Máx.' : `${P.costo(id)} 🔬`}</button></div>`;
+          ${P.data.todo ? `<div class="flex gap-1"><button data-dev="${id}|-1" class="${UI.btn} !min-h-11 !px-3" ${n ? '' : 'disabled'} aria-label="Bajar">−</button><button data-dev="${id}|1" class="${UI.btn} !min-h-11 !px-3" ${max ? 'disabled' : ''} aria-label="Subir">+</button></div>`
+            : `<button data-buy="${id}" class="${UI.btnP} !min-h-11 !px-3 text-sm" ${P.puedeComprar(id) ? '' : 'disabled'}>${max ? 'Máx.' : `${P.costo(id)} 🔬`}</button>`}</div>`;
       }).join('')}</div></div>`).onclick = e => {
       if (e.target.closest('[data-a="volver"]')) return this.app.go(new MenuScene(this.app));
       const tab = e.target.closest('[data-tab]')?.dataset.tab; if (tab){ this.tab = tab; return this.pintar(); }
       const id = e.target.closest('[data-buy]')?.dataset.buy; if (id && P.comprar(id)) this.pintar();
+      const dv = e.target.closest('[data-dev]')?.dataset.dev;                   // 🧪 modo desarrollador: subir o bajar gratis
+      if (dv && P.data.todo){ const [mid, d] = dv.split('|'); P.data.mejoras[mid] = Math.max(0, Math.min(MEJORAS[mid].max, P.nivel(mid) + +d)); P.guardar(); this.pintar(); }
     };
   }
 }
@@ -384,12 +399,14 @@ class PelotonScene extends Scene {
   pintar(msg = ''){
     const P = this.app.progreso, d = P.data, tipos = this.tipos(); if (!tipos.includes(this.tab)) this.tab = 'fusilero';
     const I = itemsTropa(this.app, this.tab), chat = d.chatarra ?? 0, estrategia = this.app.pelotonDisponible();
+    const dev = !!this.app.progreso.data.todo;
     const fila = (it, accion) => { const max = it.nivel >= MAX_NIVEL_TROPA, costo = costoTropa(it.nivel);
       return `<div class="${UI.card} !p-2.5 ${it.libre ? '' : 'opacity-50'} ${it.equipado ? 'ring-2 ring-emerald-400' : ''}">
         <div class="flex items-center gap-2"><span class="text-2xl">${it.libre ? it.icon : '🔒'}</span><span class="min-w-0 flex-1"><b class="text-sm">${it.libre ? it.name : 'Bloqueado'}</b> ${it.libre ? pips(it.nivel, MAX_NIVEL_TROPA) : ''}
           <span class="block text-[11px] text-zinc-400">${it.libre ? it.desc : 'Se desbloquea más adelante en la 🗺️ Ruta.'}</span>
           ${it.libre && it.clase === 'soldado' && RASGOS_SOLDADO[it.id] ? `<span class="mt-0.5 block text-[11px]"><span class="inline-block h-2.5 w-2.5 rounded-full align-middle" style="background:${RASGOS_SOLDADO[it.id].bala}"></span> <b>${RASGOS_SOLDADO[it.id].pasiva.nombre}:</b> <span class="text-zinc-400">${RASGOS_SOLDADO[it.id].pasiva.desc}</span><br><span class="text-zinc-400">Activas: ${RASGOS_SOLDADO[it.id].activas.map(a => `${a.icon} ${a.nombre}`).join(' · ')} (con fusiones de su arma)</span></span>` : ''}</span></div>
-        ${it.libre ? `<div class="mt-2 flex gap-1.5">${accion ?? ''}<button data-subir="${it.id}" class="${UI.btn} !min-h-9 flex-1 !px-2 text-xs" ${max || chat < costo ? 'disabled' : ''}>${max ? 'Nivel máximo' : `⬆ Nivel ${it.nivel + 1} · ⚙️ ${costo}`}</button></div>` : ''}</div>`; };
+        ${it.libre && dev ? `<div class="mt-2 flex gap-1.5">${accion ?? ''}<button data-devniv="${it.id}|-1" class="${UI.btn} !min-h-9 flex-1 !px-2" ${it.nivel <= 1 ? 'disabled' : ''}>− Nivel</button><button data-devniv="${it.id}|1" class="${UI.btn} !min-h-9 flex-1 !px-2" ${max ? 'disabled' : ''}>+ Nivel</button></div>`
+        : it.libre ? `<div class="mt-2 flex gap-1.5">${accion ?? ''}<button data-subir="${it.id}" class="${UI.btn} !min-h-9 flex-1 !px-2 text-xs" ${max || chat < costo ? 'disabled' : ''}>${max ? 'Nivel máximo' : `⬆ Nivel ${it.nivel + 1} · ⚙️ ${costo}`}</button></div>` : ''}</div>`; };
     const uids = tipos.flatMap(t => SOLDADOS_UNICOS[t].filter((x, k) => tropaDesbloqueada(this.app, t, 'soldado', k)).map(x => x[0]));
     const pl = d.peloton ??= {orden:ORDEN_RECLUTA.slice(0, SLOTS_PELOTON), equipo:{}};
     const nombreUid = u => SOLDADOS[u] ? `${SOLDADOS[u].icon} ${SOLDADOS[u].name}` : (() => { const pf = perfilSoldado(P, u); return `${pf.icon} ${pf.name.split(' ')[0]}`; })();
@@ -411,6 +428,8 @@ class PelotonScene extends Scene {
   click(e, uids){
     const P = this.app.progreso, d = P.data, T = tropaDe(P);
     const tab = e.target.closest('[data-tab]')?.dataset.tab; if (tab && this.tipos().includes(tab)){ this.tab = tab; return this.pintar(); }
+    const dn = e.target.closest('[data-devniv]')?.dataset.devniv;             // 🧪 modo desarrollador: subir o bajar gratis
+    if (dn && P.data.todo){ const [iid, d] = dn.split('|'), T = tropaDe(P); T.niveles[iid] = Math.max(1, Math.min(MAX_NIVEL_TROPA, nivelTropa(P, iid) + +d)); P.guardar(); return this.pintar(); }
     const sub = e.target.closest('[data-subir]')?.dataset.subir;
     if (sub){ const n = nivelTropa(P, sub), c = costoTropa(n); if ((d.chatarra ?? 0) < c || n >= MAX_NIVEL_TROPA) return;
       d.chatarra -= c; T.niveles[sub] = n + 1; P.guardar(); return this.pintar(`⬆ Subió al nivel ${n + 1}.`); }

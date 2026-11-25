@@ -272,7 +272,7 @@ class Progreso {
     this.data = {puntos:0, mejoras:{}, record:0, partidas:0, modo:'fund', todo:false, devDesbloqueado:false, mazoInfinito:[], preguntas:false, asistido:0, dificultad:'soldado', rutaXP:0, ...repo.load()};
     if (!this.data.devDesbloqueado) this.data.todo = false;          // el modo desarrollador exige la contraseña
     this.data.desc = {armas:['rifle'], tacticos:[], enemigos:[], soldados:[], cartas:[], fusiones:[], potenciadores:[], ...(this.data.desc ?? {})};
-    this.data.mazo = {fund:[], alg:[], dif:[], int:[], ...(this.data.mazo ?? {})};
+    this.data.mazo = {fund:[], fact:[], alg:[], dif:[], int:[], ...(this.data.mazo ?? {})};
   }
   /** Registra algo encontrado por primera vez (para el catálogo). Devuelve true si es nuevo. */
   /** Registra algo nuevo para el catálogo. Descubrir o usar algo por primera vez da ⚙️ chatarra de premio. */

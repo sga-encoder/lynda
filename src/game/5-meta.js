@@ -330,7 +330,7 @@ class MazoScene extends Scene {
       <div class="flex items-center justify-between">${btnVolver}<span class="text-xs text-zinc-400">${lista.length}/${MAX_MAZO} cartas compuestas</span></div>
       <h2 class="mt-3 text-2xl font-black">🃏 Mazo</h2>
       <p class="text-xs text-zinc-400">Arma <b>cartas compuestas</b> de hasta ${MAX_CARTAS_COMBO} propiedades (se pueden repetir, por ejemplo ↔️ ↔️ 🧲 🧲 🧮). En batalla se aplican una tras otra; en «Pasar al otro lado» tú eliges el término y si pasa positivo o negativo. Te acompañan en <b>todas</b> las partidas y se usan <b>sin límite</b>. Solo se crean aquí, no durante la partida.</p>
-      ${tabs([['fund', '🧱', 'Fundamentos'], ['alg', '🔺', 'Álgebra'], ['dif', '📈', 'Diferencial'], ['int', '∫', 'Integral']], this.dom)}
+      ${tabs([['fund', '🧱', 'Fundamentos'], ['fact', '🧩', 'Factorización'], ['alg', '🔺', 'Álgebra'], ['dif', '📈', 'Diferencial'], ['int', '∫', 'Integral']], this.dom)}
       <div data-lista-mazo class="mt-2 flex-1 space-y-2 overflow-y-auto pb-4">
         ${this.armando ? this.constructor_(D) : `
         ${lista.map((cb, i) => `<div class="${UI.card}"><div class="flex items-center gap-2"><span class="text-2xl">🔗</span><b class="flex-1">${cb.nombre}</b>

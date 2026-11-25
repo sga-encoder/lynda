@@ -480,7 +480,7 @@ function pageTutorial(){
 }
 
 /* ---------- Propiedades: índice por área y práctica de una carta ---------- */
-const DOM_NOMBRE = {fund:['🧱','Fundamentos'], alg:['🔺','Potencias, raíces, logaritmos y trigonometría'], dif:['📈','Cálculo diferencial'], int:['∫','Cálculo integral']};
+const DOM_NOMBRE = {fund:['🧱','Fundamentos'], fact:['🧩','Factorización'], alg:['🔺','Potencias, raíces, logaritmos y trigonometría'], dif:['📈','Cálculo diferencial'], int:['∫','Cálculo integral']};
 function pagePropsIndex(domId){
   const [ic, n] = DOM_NOMBRE[domId], pp = propsProgreso(domId);
   return `<div class="text-sm text-stone-500 dark:text-zinc-400"><a href="#/aprender" class="underline">Inicio</a> › Propiedades</div>
@@ -579,7 +579,7 @@ function pageSecIndex(sec){
   <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
    ${L.map((T,i)=>{const p=temaProgress(T,sec);return tile(`#/${sec}/${T.id}`, `${i+1} · ${T.t}`, `${T.examples.length} ejemplos · ${p.n}/${p.tot} ejercicios con piezas`)}).join('')}
   </div>
-  ${sec==='f' ? propsBloque('fund','despejar y simplificar') + propsBloque('alg','potencias, raíces, logaritmos y trigonometría') : propsBloque('dif','derivadas')}
+  ${sec==='f' ? propsBloque('fund','despejar y simplificar') + propsBloque('fact','factorizar') + propsBloque('alg','potencias, raíces, logaritmos y trigonometría') : propsBloque('dif','derivadas')}
   <div class="${C.card} mt-6">📖 Las propiedades de esta sección están en el <button class="text-blue-700 underline dark:text-blue-300" data-dict-sec="${S.dict}">Diccionario de propiedades</button>.</div>`;
 }
 function pageSecTopic(sec, T){

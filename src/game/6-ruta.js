@@ -30,6 +30,8 @@ const CARTAS_DE_TIPO = {
   dln:['d-kf', 'd-cad', 'd-suma', 'd-cte', 'd-pot'], dexp2:['d-cad', 'd-kf', 'd-pot'], dsincos:['d-kf', 'd-prod', 'd-tabla'],
   ipoli:['i-suma', 'i-kf', 'i-cte', 'i-pot', 'i-c'], itrig:['i-suma', 'i-kf', 'i-tabla', 'i-c', 'i-ln'], isqrt:['i-suma', 'i-kf', 'i-cte', 'i-pot', 'i-c'],
   ineg:['i-suma', 'i-kf', 'i-pot', 'i-c'], irecip:['i-kf', 'i-sust', 'i-c'], ilin:['i-sust', 'i-c'],
+  amix1:['p-prod', 'p-prodpot', 'p-pot', 'p-coc', 'p-uno'], amix2:['r-prod', 'r-exacta', 'r-pot', 'p-prod', 'p-coc', 'p-uno'], amix3:['p-prodpot', 'p-pot', 'p-coc', 'a-oper', 'p-uno'],
+  amix4:['r-coc', 'r-pot', 'r-exacta', 'p-prod', 'p-uno'], amix5:['p-cocpot', 'p-pot', 'p-prod', 'p-coc', 'p-uno'],   // simplificaciones complejas
   fac1:['f-comun'], fac2:['f-difcuad', 'f-comun'], fac3:['f-tcp', 'f-comun'], fac4:['f-trin1', 'f-tcp', 'f-comun'], fac5:['f-trin2', 'f-comun'],   // factorización
 };
 
@@ -48,9 +50,9 @@ const PREMIOS_TEMA = {
   'f-polinomios':{tipos:['simp1'], ...PRIMER_JUEGO}, 'f-lineales':{tipos:['lin1', 'lin2'], bonus:['laser', 'reclutas'], soldados:['pesado']}, 'f-factorizacion':{tipos:['simp2', 'dist', 'fac1', 'fac2', 'fac3'], bonus:['lenta'], soldados:['granadero']},
   'f-potencias':{tipos:['apot0', 'apot1', 'apot2', 'apot3', 'araiz1', 'araiz2'], soldados:['medico']}, 'f-cuadraticas':{tipos:['fac4', 'fac5'], bonus:['municion'], soldados:['ingeniero']}, 'f-racionales':{bonus:['concentracion'], puntos:10},
   'f-radicales':{bonus:['torreta'], puntos:15}, 'f-polinomicas':{bonus:['misil']}, 'f-exponenciales':{tipos:['alog3'], bonus:['mortero']}, 'f-logaritmicas':{tipos:['alog1', 'alog2'], bonus:['estudio']},
-  'f-trigonometricas':{tipos:['atrig1', 'atrig2', 'atrig3', 'atrig4'], bonus:['botiquin']}, 'f-inecuaciones':{bonus:['reactivo'], puntos:20},
-  'd-limites':{bonus:['criogenico'], puntos:10}, 'd-reglas':{tipos:['dpoli', 'dsqrt', 'dneg'], bonus:['calculadora']}, 'd-producto':{tipos:['dprod'], bonus:['reciclaje']}, 'd-cadena':{tipos:['dcad', 'dexp2'], bonus:['iman']}, 'd-trascendentes':{tipos:['dtrig', 'dtan', 'dln'], bonus:['tesla']},
-  'd-implicita':{tipos:['dcoc']}, 'd-extremos':{tipos:['dsincos']}, 'd-optimizacion':{difs:['veterano'], bonus:['franco']}, 'd-lhopital':{puntos:25},
+  'f-trigonometricas':{tipos:['atrig1', 'atrig2', 'atrig3', 'atrig4'], bonus:['botiquin']}, 'f-inecuaciones':{tipos:['amix1', 'amix2'], bonus:['reactivo'], puntos:20},
+  'd-limites':{tipos:['amix3'], bonus:['criogenico'], puntos:10}, 'd-reglas':{tipos:['dpoli', 'dsqrt', 'dneg'], bonus:['calculadora']}, 'd-producto':{tipos:['dprod'], bonus:['reciclaje']}, 'd-cadena':{tipos:['dcad', 'dexp2'], bonus:['iman']}, 'd-trascendentes':{tipos:['dtrig', 'dtan', 'dln'], bonus:['tesla']},
+  'd-implicita':{tipos:['dcoc', 'amix4']}, 'd-extremos':{tipos:['dsincos']}, 'd-optimizacion':{difs:['veterano'], bonus:['franco']}, 'd-lhopital':{tipos:['amix5'], puntos:25},
   'l1':{tipos:['ipoli', 'isqrt', 'ineg']}, 'l2':{tipos:['itrig', 'ilin', 'irecip']}, 'l7':{difs:['leyenda'], puntos:40},
 };
 const prefijos = (keys, pref) => keys.filter(k => k.startsWith(pref)).length;
@@ -327,7 +329,7 @@ function ejerciciosDeCarta(domId, cartaId){
         const k = dom.key(cur);
         if (!vistos.has(k)){
           let correcto; try { correcto = carta.apply(cur, objs[0]); } catch { break; }
-          const distr = dom.distractores(correcto, rng, 2);
+          const distr = carta.preguntaFactores ? [carta.tarjetas(cur, objs[0], rng).mal] : dom.distractores(correcto, rng, 2);
           if (distr.length >= 1 && out.length < 3){ vistos.add(k); out.push({raiz:cur, objetivos:objs, correcto, distractores:distr}); }
         }
         if (rng.next() < 0.6) break;                       // variedad: a veces seguimos el camino para otra situación
@@ -357,14 +359,14 @@ class PracticaPropiedades {
     const st = this.estado[i] ??= {fase:0, opciones:null, msg:null}, hecho = this.isDone(this.key(i));
     const marcas = st.fase >= 1 ? new Map(ex.objetivos.flatMap((p, j) => this.carta.marcas(ex.raiz, p).map(q => [q.join('.'), j]))) : null;
     const lado = this.carta.id === 'mover' || this.carta.id === 'div', esDiv = this.carta.id === 'div';
-    const pasoTxt = ['Toca la carta para usarla.', this.carta.id === 'dist' ? 'Toca el polinomio (el paréntesis marcado) al que se aplica.' : ex.objetivos.length > 1 ? 'Toca en la expresión DÓNDE aplicarla (cualquier parte marcada).' : 'Toca la parte marcada.', esDiv ? 'El número que multiplica pasa a dividir: ¿con qué signo queda?' : lado ? 'El término marcado, ¿pasa positivo o negativo al otro lado?' : this.carta.opcionesCortas ? '¿Cuánto da juntar los términos marcados? Elige el resultado.' : '¿Qué queda después de aplicarla? Elige el resultado.', '¡Correcto!'][st.fase];
+    const pasoTxt = ['Toca la carta para usarla.', this.carta.id === 'dist' ? 'Toca el polinomio (el paréntesis marcado) al que se aplica.' : this.carta.preguntaFactores ? 'Toca el polinomio que vas a factorizar.' : ex.objetivos.length > 1 ? 'Toca en la expresión DÓNDE aplicarla (cualquier parte marcada).' : 'Toca la parte marcada.', esDiv ? 'El número que multiplica pasa a dividir: ¿con qué signo queda?' : lado ? 'El término marcado, ¿pasa positivo o negativo al otro lado?' : this.carta.opcionesCortas ? '¿Cuánto da juntar los términos marcados? Elige el resultado.' : '¿Qué queda después de aplicarla? Elige el resultado.', '¡Correcto!'][st.fase];
     return `<div class="mt-4 rounded-2xl border border-stone-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900" data-ex="${i}">
       <div class="flex items-center gap-2 text-sm"><b>🃏 Ejercicio ${i + 1}</b><span class="ml-auto text-stone-500 dark:text-zinc-400">${hecho ? '✅ Resuelto' : `${Math.min(st.fase, 3)}/3`}</span></div>
       <div class="mt-2 flex min-h-16 items-center justify-center overflow-x-auto rounded-xl bg-stone-100 px-2 text-lg dark:bg-zinc-950 [&_[data-t]]:cursor-pointer [&_[data-t]]:rounded-md [&_[data-t]]:bg-amber-300/40 [&_[data-t]]:outline [&_[data-t]]:outline-2 [&_[data-t]]:outline-amber-400 [&_[data-t='1']]:bg-sky-300/40 [&_[data-t='1']]:outline-sky-400 [&_[data-t='2']]:bg-fuchsia-300/40 [&_[data-t='2']]:outline-fuchsia-400" data-expr="${i}">${this.tex(this.dom.tex(st.fase === 3 ? (st.correcto ?? ex.correcto) : ex.raiz, st.fase === 1 ? marcas : st.fase === 2 && st.j != null ? new Map(this.carta.marcas(ex.raiz, ex.objetivos[st.j]).map(q => [q.join('.'), 0])) : null))}</div>
       <p class="mt-2 text-sm font-semibold">${st.fase + 1 <= 3 ? `Paso ${st.fase + 1}: ` : ''}${pasoTxt}</p>
       ${st.fase === 0 ? `<button data-usar="${i}" class="mt-2 inline-flex min-h-12 items-center gap-2 rounded-xl bg-gradient-to-r ${GRAD[this.dom.id]} px-4 font-bold text-white touch-manipulation active:scale-95">${this.carta.icon} Usar «${this.carta.name}»</button>` : ''}
       ${st.fase === 2 && lado ? `<div class="mt-2 grid grid-cols-2 gap-2"><button data-lado="${i}|+" class="min-h-14 rounded-xl border-2 border-emerald-300 bg-white px-3 font-semibold touch-manipulation active:scale-[0.98] dark:border-emerald-700 dark:bg-zinc-950">${esDiv ? '➕ Divide positivo' : '➕ Pasa positivo'}</button><button data-lado="${i}|-" class="min-h-14 rounded-xl border-2 border-rose-300 bg-white px-3 font-semibold touch-manipulation active:scale-[0.98] dark:border-rose-700 dark:bg-zinc-950">${esDiv ? '➖ Divide negativo' : '➖ Pasa negativo'}</button></div>` : ''}
-      ${st.fase === 2 && !lado ? `<div class="mt-2 grid gap-2">${st.opciones.map((o, j) => `<button data-op="${i}|${j}" class="flex min-h-14 items-center justify-center overflow-x-auto rounded-xl border-2 border-stone-200 bg-white px-3 text-lg touch-manipulation active:scale-[0.98] dark:border-zinc-700 dark:bg-zinc-950">${this.tex(this.dom.tex(o.vista ?? o), false)}</button>`).join('')}</div>` : ''}
+      ${st.fase === 2 && !lado ? `<div class="mt-2 grid gap-2 ${this.carta.preguntaFactores ? 'grid-cols-2' : ''}">${st.opciones.map((o, j) => `<button data-op="${i}|${j}" class="flex min-h-14 items-center justify-center overflow-x-auto rounded-xl border-2 border-stone-200 bg-white px-3 text-lg touch-manipulation active:scale-[0.98] dark:border-zinc-700 dark:bg-zinc-950">${this.tex(this.dom.tex(o.vista ?? o), false)}</button>`).join('')}</div>` : ''}
       ${st.msg ? `<p class="mt-2 rounded-xl px-3 py-2 text-sm ${st.msg.ok ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200' : 'bg-rose-50 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200'}">${st.msg.t}</p>` : ''}
       ${st.fase === 3 ? `<button data-otra="${i}" class="mt-2 text-sm text-blue-700 underline dark:text-blue-300">↻ Repetir</button>` : ''}
     </div>`;
@@ -372,7 +374,7 @@ class PracticaPropiedades {
   click(e){
     const u = e.target.closest('[data-usar]'), op = e.target.closest('[data-op]'), t = e.target.closest('[data-t]'), otra = e.target.closest('[data-otra]');
     if (u){ const i = +u.dataset.usar, ex = this.lista[i], st = this.estado[i]; st.msg = null;
-      if (ex.objetivos.length === 1 && this.carta.id !== 'dist') return this.elegirLugar(i, 0);   // la distributiva siempre pide tocar el polinomio
+      if (ex.objetivos.length === 1 && this.carta.id !== 'dist' && !this.carta.preguntaFactores) return this.elegirLugar(i, 0);   // la distributiva y la factorización siempre piden tocar el polinomio
       st.fase = 1; return this.render(); }
     if (t){ const i = +t.closest('[data-expr]').dataset.expr; if (this.estado[i].fase === 1) return this.elegirLugar(i, +t.dataset.t); }
     if (op){ const [i, j] = op.dataset.op.split('|').map(Number), st = this.estado[i], ex = this.lista[i];
@@ -391,7 +393,10 @@ class PracticaPropiedades {
     const correcto = this.carta.apply(ex.raiz, ex.objetivos[j]);
     st.correcto = correcto; st.fase = 2; st.msg = null; st.j = j;   // se sigue marcando el grupo elegido
     if (this.carta.id === 'dist'){ st.fase = 3; st.msg = {ok:true, t:`Bien: elegiste el polinomio y la distributiva se aplicó. ${this.carta.pista ?? ''}`}; this.onDone(this.key(i)); return this.render(); }
-    if (this.carta.opcionesCortas){                                     // semejantes: solo el resultado del grupo
+    if (this.carta.preguntaFactores){                                   // factorización: 2 tarjetas (factores bien y mal)
+      const T = this.carta.tarjetas(ex.raiz, ex.objetivos[j], new Rng(semillaDe(this.key(i) + j)));
+      st.opciones = new Rng(semillaDe('o' + i + j)).shuffle([{vista:T.bien, ok:true}, {vista:T.mal}]);
+    } else if (this.carta.opcionesCortas){                              // semejantes: solo el resultado del grupo
       const o = this.carta.opcionesCortas(ex.raiz, ex.objetivos[j], new Rng(semillaDe(this.key(i) + j)), 2);
       st.opciones = new Rng(semillaDe('o' + i + j)).shuffle([{vista:o.correcta, ok:true}, ...o.distractores.map(v => ({vista:v}))]);
     } else st.opciones = new Rng(semillaDe('o' + i + j)).shuffle([correcto, ...this.dom.distractores(correcto, new Rng(semillaDe(this.key(i) + j)), 2)]);

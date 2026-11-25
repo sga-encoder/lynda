@@ -343,10 +343,10 @@ class BattleScene extends Scene {
     const objs = c.targets(this.raiz);
     if (!objs.length){ this.combo = 0; return this.mensaje(`${c.icon} <b>${c.name}</b> no se puede aplicar aquí.`, 'rose'); }
     if (c.id === 'seme' && this.dom.id === 'fund') return this.elegirSemejantes(c);   // elegir los monomios uno a uno
-    if (objs.length === 1 && c.id !== 'dist') return this.resultadoDe(c, objs[0]);   // la distributiva siempre pide tocar el polinomio
+    if (objs.length === 1 && c.id !== 'dist' && !c.preguntaFactores) return this.resultadoDe(c, objs[0]);   // la distributiva y la factorización siempre piden tocar el polinomio
     this.carta = c; this.objetivos = objs;
     this.dibujarProblema(); this.dibujarMano();
-    this.mensaje(c.id === 'seme' ? 'Elige qué grupo juntar: toca uno de sus términos (se resaltan juntos).' : c.id === 'dist' ? 'Toca el <b>polinomio</b> (el paréntesis marcado) al que aplicas la distributiva.' : `Toca en la expresión dónde aplicar <b>${c.name}</b>.`, 'amber');
+    this.mensaje(c.id === 'seme' ? 'Elige qué grupo juntar: toca uno de sus términos (se resaltan juntos).' : c.id === 'dist' ? 'Toca el <b>polinomio</b> (el paréntesis marcado) al que aplicas la distributiva.' : c.preguntaFactores ? `${c.icon} Toca el <b>polinomio</b> que vas a factorizar con <b>${c.name}</b>.` : `Toca en la expresión dónde aplicar <b>${c.name}</b>.`, 'amber');
   }
   /** Términos semejantes: se tocan 2 o más monomios (todos se ven igual: el color no dice cuáles van juntos) y se pulsa Juntar. */
   elegirSemejantes(c){
@@ -440,8 +440,8 @@ class BattleScene extends Scene {
       const carta = this.dom.cartas.get(C.cb.cartas[C.i++]); if (!carta) continue;
       let objs = carta.targets(this.raiz); if (!objs.length) continue;
       if (carta.id === 'div' && this.raiz instanceof Eq){ C.hechos++; return this.resultadoDe(carta, objs[0]); }   // pasa a dividir solo
-      if (carta.id === 'dist'){ C.hechos++; this.carta = carta; this.objetivos = objs; this.dibujarProblema(); this.dibujarMano();   // tocar el polinomio
-        return this.mensaje(`🔗 <b>${C.cb.nombre}</b> · paso ${C.i}/${C.cb.cartas.length}: toca el <b>polinomio</b> al que aplicas la distributiva.`, 'amber'); }
+      if (carta.id === 'dist' || carta.preguntaFactores){ C.hechos++; this.carta = carta; this.objetivos = objs; this.dibujarProblema(); this.dibujarMano();   // tocar el polinomio
+        return this.mensaje(`🔗 <b>${C.cb.nombre}</b> · paso ${C.i}/${C.cb.cartas.length}: toca el <b>polinomio</b> al que aplicas ${carta.preguntaFactores ? `<b>${carta.name}</b>` : 'la distributiva'}.`, 'amber'); }
       if (carta.id === 'mover' && this.raiz instanceof Eq){
         const conX = n => [...walk(n)].some(([m]) => m instanceof X);
         const utiles = objs.filter(([sd, k]) => { const t = this.raiz.children[sd].terms[k]; return conX(t) ? sd === 1 : conX(this.raiz.children[sd]); });

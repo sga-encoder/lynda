@@ -2352,7 +2352,7 @@ function pageTutorial(){
 }
 
 /* ---------- Propiedades: índice por área y práctica de una carta ---------- */
-const DOM_NOMBRE = {fund:['🧱','Fundamentos'], alg:['🔺','Potencias, raíces, logaritmos y trigonometría'], dif:['📈','Cálculo diferencial'], int:['∫','Cálculo integral']};
+const DOM_NOMBRE = {fund:['🧱','Fundamentos'], fact:['🧩','Factorización'], alg:['🔺','Potencias, raíces, logaritmos y trigonometría'], dif:['📈','Cálculo diferencial'], int:['∫','Cálculo integral']};
 function pagePropsIndex(domId){
   const [ic, n] = DOM_NOMBRE[domId], pp = propsProgreso(domId);
   return `<div class="text-sm text-stone-500 dark:text-zinc-400"><a href="#/aprender" class="underline">Inicio</a> › Propiedades</div>
@@ -2451,7 +2451,7 @@ function pageSecIndex(sec){
   <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
    ${L.map((T,i)=>{const p=temaProgress(T,sec);return tile(`#/${sec}/${T.id}`, `${i+1} · ${T.t}`, `${T.examples.length} ejemplos · ${p.n}/${p.tot} ejercicios con piezas`)}).join('')}
   </div>
-  ${sec==='f' ? propsBloque('fund','despejar y simplificar') + propsBloque('alg','potencias, raíces, logaritmos y trigonometría') : propsBloque('dif','derivadas')}
+  ${sec==='f' ? propsBloque('fund','despejar y simplificar') + propsBloque('fact','factorizar') + propsBloque('alg','potencias, raíces, logaritmos y trigonometría') : propsBloque('dif','derivadas')}
   <div class="${C.card} mt-6">📖 Las propiedades de esta sección están en el <button class="text-blue-700 underline dark:text-blue-300" data-dict-sec="${S.dict}">Diccionario de propiedades</button>.</div>`;
 }
 function pageSecTopic(sec, T){
@@ -5499,6 +5499,20 @@ const cartasAlgebra = () => new CardRegistry()
 const xp = n => A.pow(A.X, n), Y = {k:'v', n:'y'};
 const angulo = r => { const k = r.int(1, 4); return k === 1 ? A.X : A.mul([A.n(k), A.X]); };   // x, 2x, 3x, 4x
 const menos = u => A.mul([A.n(-1), u]);
+/** Simplificaciones complejas: combinan raíces, fracciones y exponentes (se desbloquean más adelante en la Ruta). */
+const xg = n => n === 1 ? A.X : xp(n);   // x en vez de x¹
+const tiposMixtos = [
+  new ProblemType({id:'amix1', name:'Mixto: potencia de un producto entre potencia', mode:'expr', needs:['f-inecuaciones-'], tier:3,
+    make: r => { const a = r.int(2, 4), b = r.int(1, 3), c = r.int(2, 3); return A.div(A.pow(A.mul([xp(a), xg(b)]), c), xg(r.int(1, (a + b) * c - 1))); }}),
+  new ProblemType({id:'amix2', name:'Mixto: raíz por potencia entre potencia', mode:'expr', needs:['f-inecuaciones-'], tier:3,
+    make: r => { const k = r.int(2, 5), a = r.int(1, 3), b = r.int(1, 4); return A.div(A.mul([A.fn('sqrt', A.mul([A.n(k * k), xp(2 * a)])), xg(b)]), xg(r.int(1, a + b))); }}),
+  new ProblemType({id:'amix3', name:'Mixto: fracción con potencias y coeficientes', mode:'expr', needs:['d-limites-'], tier:3,
+    make: r => { const k = r.int(2, 4), m = r.pick([2, 4, k * k].filter(v => (k * k) % v === 0)), a = r.int(2, 3); return A.div(A.pow(A.mul([A.n(k), xp(a)]), 2), A.mul([A.n(m), xg(r.int(1, 2 * a - 1))])); }}),
+  new ProblemType({id:'amix4', name:'Mixto: raíz de un cociente por potencia', mode:'expr', needs:['d-implicita-'], tier:3,
+    make: r => A.mul([A.fn('sqrt', A.div(xp(2 * r.int(1, 3)), A.n(r.pick([4, 9, 16, 25])))), xg(r.int(1, 4))])}),
+  new ProblemType({id:'amix5', name:'Mixto: potencia de un cociente con dos variables', mode:'expr', needs:['d-lhopital-'], tier:3,
+    make: r => A.mul([A.pow(A.div(xp(r.int(2, 4)), A.pow(Y, r.int(1, 3))), r.int(2, 3)), A.pow(Y, r.int(2, 6))])}),
+];
 const tiposAlgebra = [
   new ProblemType({id:'apot1', name:'Potencias: producto y cociente', mode:'expr', needs:['f-potencias-'], tier:1,
     make: r => { const a = r.int(2, 5), b = r.int(2, 4), c = r.int(1, a + b - 1); return A.div(A.mul([xp(a), xp(b)]), xp(c)); }}),
@@ -5558,7 +5572,7 @@ DOMINIOS.alg = new Dominio({id:'alg', nombre:'Potencias, raíces, logaritmos y t
     return {raiz:aplanar(e)};
   },
   consigna:() => 'Simplifica', distractores:distractoresAlg, prellenar: r => { try { return piezasCalc(r); } catch { return []; } },
-  vista: src => A.tex(aplanar(A.parse(src))), tipos:tiposAlgebra});
+  vista: src => A.tex(aplanar(A.parse(src))), tipos:[...tiposAlgebra, ...tiposMixtos]});
 
 /* =====================================================================
    DEFENSA ALGEBRAICA · 1d) Dominio de Factorización (Planeta Ábaco)
@@ -5955,7 +5969,7 @@ class Progreso {
     this.data = {puntos:0, mejoras:{}, record:0, partidas:0, modo:'fund', todo:false, devDesbloqueado:false, mazoInfinito:[], preguntas:false, asistido:0, dificultad:'soldado', rutaXP:0, ...repo.load()};
     if (!this.data.devDesbloqueado) this.data.todo = false;          // el modo desarrollador exige la contraseña
     this.data.desc = {armas:['rifle'], tacticos:[], enemigos:[], soldados:[], cartas:[], fusiones:[], potenciadores:[], ...(this.data.desc ?? {})};
-    this.data.mazo = {fund:[], alg:[], dif:[], int:[], ...(this.data.mazo ?? {})};
+    this.data.mazo = {fund:[], fact:[], alg:[], dif:[], int:[], ...(this.data.mazo ?? {})};
   }
   /** Registra algo encontrado por primera vez (para el catálogo). Devuelve true si es nuevo. */
   /** Registra algo nuevo para el catálogo. Descubrir o usar algo por primera vez da ⚙️ chatarra de premio. */
@@ -8309,10 +8323,10 @@ class BattleScene extends Scene {
     const objs = c.targets(this.raiz);
     if (!objs.length){ this.combo = 0; return this.mensaje(`${c.icon} <b>${c.name}</b> no se puede aplicar aquí.`, 'rose'); }
     if (c.id === 'seme' && this.dom.id === 'fund') return this.elegirSemejantes(c);   // elegir los monomios uno a uno
-    if (objs.length === 1 && c.id !== 'dist') return this.resultadoDe(c, objs[0]);   // la distributiva siempre pide tocar el polinomio
+    if (objs.length === 1 && c.id !== 'dist' && !c.preguntaFactores) return this.resultadoDe(c, objs[0]);   // la distributiva y la factorización siempre piden tocar el polinomio
     this.carta = c; this.objetivos = objs;
     this.dibujarProblema(); this.dibujarMano();
-    this.mensaje(c.id === 'seme' ? 'Elige qué grupo juntar: toca uno de sus términos (se resaltan juntos).' : c.id === 'dist' ? 'Toca el <b>polinomio</b> (el paréntesis marcado) al que aplicas la distributiva.' : `Toca en la expresión dónde aplicar <b>${c.name}</b>.`, 'amber');
+    this.mensaje(c.id === 'seme' ? 'Elige qué grupo juntar: toca uno de sus términos (se resaltan juntos).' : c.id === 'dist' ? 'Toca el <b>polinomio</b> (el paréntesis marcado) al que aplicas la distributiva.' : c.preguntaFactores ? `${c.icon} Toca el <b>polinomio</b> que vas a factorizar con <b>${c.name}</b>.` : `Toca en la expresión dónde aplicar <b>${c.name}</b>.`, 'amber');
   }
   /** Términos semejantes: se tocan 2 o más monomios (todos se ven igual: el color no dice cuáles van juntos) y se pulsa Juntar. */
   elegirSemejantes(c){
@@ -8406,8 +8420,8 @@ class BattleScene extends Scene {
       const carta = this.dom.cartas.get(C.cb.cartas[C.i++]); if (!carta) continue;
       let objs = carta.targets(this.raiz); if (!objs.length) continue;
       if (carta.id === 'div' && this.raiz instanceof Eq){ C.hechos++; return this.resultadoDe(carta, objs[0]); }   // pasa a dividir solo
-      if (carta.id === 'dist'){ C.hechos++; this.carta = carta; this.objetivos = objs; this.dibujarProblema(); this.dibujarMano();   // tocar el polinomio
-        return this.mensaje(`🔗 <b>${C.cb.nombre}</b> · paso ${C.i}/${C.cb.cartas.length}: toca el <b>polinomio</b> al que aplicas la distributiva.`, 'amber'); }
+      if (carta.id === 'dist' || carta.preguntaFactores){ C.hechos++; this.carta = carta; this.objetivos = objs; this.dibujarProblema(); this.dibujarMano();   // tocar el polinomio
+        return this.mensaje(`🔗 <b>${C.cb.nombre}</b> · paso ${C.i}/${C.cb.cartas.length}: toca el <b>polinomio</b> al que aplicas ${carta.preguntaFactores ? `<b>${carta.name}</b>` : 'la distributiva'}.`, 'amber'); }
       if (carta.id === 'mover' && this.raiz instanceof Eq){
         const conX = n => [...walk(n)].some(([m]) => m instanceof X);
         const utiles = objs.filter(([sd, k]) => { const t = this.raiz.children[sd].terms[k]; return conX(t) ? sd === 1 : conX(this.raiz.children[sd]); });
@@ -9091,7 +9105,7 @@ class MazoScene extends Scene {
       <div class="flex items-center justify-between">${btnVolver}<span class="text-xs text-zinc-400">${lista.length}/${MAX_MAZO} cartas compuestas</span></div>
       <h2 class="mt-3 text-2xl font-black">🃏 Mazo</h2>
       <p class="text-xs text-zinc-400">Arma <b>cartas compuestas</b> de hasta ${MAX_CARTAS_COMBO} propiedades (se pueden repetir, por ejemplo ↔️ ↔️ 🧲 🧲 🧮). En batalla se aplican una tras otra; en «Pasar al otro lado» tú eliges el término y si pasa positivo o negativo. Te acompañan en <b>todas</b> las partidas y se usan <b>sin límite</b>. Solo se crean aquí, no durante la partida.</p>
-      ${tabs([['fund', '🧱', 'Fundamentos'], ['alg', '🔺', 'Álgebra'], ['dif', '📈', 'Diferencial'], ['int', '∫', 'Integral']], this.dom)}
+      ${tabs([['fund', '🧱', 'Fundamentos'], ['fact', '🧩', 'Factorización'], ['alg', '🔺', 'Álgebra'], ['dif', '📈', 'Diferencial'], ['int', '∫', 'Integral']], this.dom)}
       <div data-lista-mazo class="mt-2 flex-1 space-y-2 overflow-y-auto pb-4">
         ${this.armando ? this.constructor_(D) : `
         ${lista.map((cb, i) => `<div class="${UI.card}"><div class="flex items-center gap-2"><span class="text-2xl">🔗</span><b class="flex-1">${cb.nombre}</b>
@@ -9315,6 +9329,8 @@ const CARTAS_DE_TIPO = {
   dln:['d-kf', 'd-cad', 'd-suma', 'd-cte', 'd-pot'], dexp2:['d-cad', 'd-kf', 'd-pot'], dsincos:['d-kf', 'd-prod', 'd-tabla'],
   ipoli:['i-suma', 'i-kf', 'i-cte', 'i-pot', 'i-c'], itrig:['i-suma', 'i-kf', 'i-tabla', 'i-c', 'i-ln'], isqrt:['i-suma', 'i-kf', 'i-cte', 'i-pot', 'i-c'],
   ineg:['i-suma', 'i-kf', 'i-pot', 'i-c'], irecip:['i-kf', 'i-sust', 'i-c'], ilin:['i-sust', 'i-c'],
+  amix1:['p-prod', 'p-prodpot', 'p-pot', 'p-coc', 'p-uno'], amix2:['r-prod', 'r-exacta', 'r-pot', 'p-prod', 'p-coc', 'p-uno'], amix3:['p-prodpot', 'p-pot', 'p-coc', 'a-oper', 'p-uno'],
+  amix4:['r-coc', 'r-pot', 'r-exacta', 'p-prod', 'p-uno'], amix5:['p-cocpot', 'p-pot', 'p-prod', 'p-coc', 'p-uno'],   // simplificaciones complejas
   fac1:['f-comun'], fac2:['f-difcuad', 'f-comun'], fac3:['f-tcp', 'f-comun'], fac4:['f-trin1', 'f-tcp', 'f-comun'], fac5:['f-trin2', 'f-comun'],   // factorización
 };
 
@@ -9333,9 +9349,9 @@ const PREMIOS_TEMA = {
   'f-polinomios':{tipos:['simp1'], ...PRIMER_JUEGO}, 'f-lineales':{tipos:['lin1', 'lin2'], bonus:['laser', 'reclutas'], soldados:['pesado']}, 'f-factorizacion':{tipos:['simp2', 'dist', 'fac1', 'fac2', 'fac3'], bonus:['lenta'], soldados:['granadero']},
   'f-potencias':{tipos:['apot0', 'apot1', 'apot2', 'apot3', 'araiz1', 'araiz2'], soldados:['medico']}, 'f-cuadraticas':{tipos:['fac4', 'fac5'], bonus:['municion'], soldados:['ingeniero']}, 'f-racionales':{bonus:['concentracion'], puntos:10},
   'f-radicales':{bonus:['torreta'], puntos:15}, 'f-polinomicas':{bonus:['misil']}, 'f-exponenciales':{tipos:['alog3'], bonus:['mortero']}, 'f-logaritmicas':{tipos:['alog1', 'alog2'], bonus:['estudio']},
-  'f-trigonometricas':{tipos:['atrig1', 'atrig2', 'atrig3', 'atrig4'], bonus:['botiquin']}, 'f-inecuaciones':{bonus:['reactivo'], puntos:20},
-  'd-limites':{bonus:['criogenico'], puntos:10}, 'd-reglas':{tipos:['dpoli', 'dsqrt', 'dneg'], bonus:['calculadora']}, 'd-producto':{tipos:['dprod'], bonus:['reciclaje']}, 'd-cadena':{tipos:['dcad', 'dexp2'], bonus:['iman']}, 'd-trascendentes':{tipos:['dtrig', 'dtan', 'dln'], bonus:['tesla']},
-  'd-implicita':{tipos:['dcoc']}, 'd-extremos':{tipos:['dsincos']}, 'd-optimizacion':{difs:['veterano'], bonus:['franco']}, 'd-lhopital':{puntos:25},
+  'f-trigonometricas':{tipos:['atrig1', 'atrig2', 'atrig3', 'atrig4'], bonus:['botiquin']}, 'f-inecuaciones':{tipos:['amix1', 'amix2'], bonus:['reactivo'], puntos:20},
+  'd-limites':{tipos:['amix3'], bonus:['criogenico'], puntos:10}, 'd-reglas':{tipos:['dpoli', 'dsqrt', 'dneg'], bonus:['calculadora']}, 'd-producto':{tipos:['dprod'], bonus:['reciclaje']}, 'd-cadena':{tipos:['dcad', 'dexp2'], bonus:['iman']}, 'd-trascendentes':{tipos:['dtrig', 'dtan', 'dln'], bonus:['tesla']},
+  'd-implicita':{tipos:['dcoc', 'amix4']}, 'd-extremos':{tipos:['dsincos']}, 'd-optimizacion':{difs:['veterano'], bonus:['franco']}, 'd-lhopital':{tipos:['amix5'], puntos:25},
   'l1':{tipos:['ipoli', 'isqrt', 'ineg']}, 'l2':{tipos:['itrig', 'ilin', 'irecip']}, 'l7':{difs:['leyenda'], puntos:40},
 };
 const prefijos = (keys, pref) => keys.filter(k => k.startsWith(pref)).length;
@@ -9612,7 +9628,7 @@ function ejerciciosDeCarta(domId, cartaId){
         const k = dom.key(cur);
         if (!vistos.has(k)){
           let correcto; try { correcto = carta.apply(cur, objs[0]); } catch { break; }
-          const distr = dom.distractores(correcto, rng, 2);
+          const distr = carta.preguntaFactores ? [carta.tarjetas(cur, objs[0], rng).mal] : dom.distractores(correcto, rng, 2);
           if (distr.length >= 1 && out.length < 3){ vistos.add(k); out.push({raiz:cur, objetivos:objs, correcto, distractores:distr}); }
         }
         if (rng.next() < 0.6) break;                       // variedad: a veces seguimos el camino para otra situación
@@ -9642,14 +9658,14 @@ class PracticaPropiedades {
     const st = this.estado[i] ??= {fase:0, opciones:null, msg:null}, hecho = this.isDone(this.key(i));
     const marcas = st.fase >= 1 ? new Map(ex.objetivos.flatMap((p, j) => this.carta.marcas(ex.raiz, p).map(q => [q.join('.'), j]))) : null;
     const lado = this.carta.id === 'mover' || this.carta.id === 'div', esDiv = this.carta.id === 'div';
-    const pasoTxt = ['Toca la carta para usarla.', this.carta.id === 'dist' ? 'Toca el polinomio (el paréntesis marcado) al que se aplica.' : ex.objetivos.length > 1 ? 'Toca en la expresión DÓNDE aplicarla (cualquier parte marcada).' : 'Toca la parte marcada.', esDiv ? 'El número que multiplica pasa a dividir: ¿con qué signo queda?' : lado ? 'El término marcado, ¿pasa positivo o negativo al otro lado?' : this.carta.opcionesCortas ? '¿Cuánto da juntar los términos marcados? Elige el resultado.' : '¿Qué queda después de aplicarla? Elige el resultado.', '¡Correcto!'][st.fase];
+    const pasoTxt = ['Toca la carta para usarla.', this.carta.id === 'dist' ? 'Toca el polinomio (el paréntesis marcado) al que se aplica.' : this.carta.preguntaFactores ? 'Toca el polinomio que vas a factorizar.' : ex.objetivos.length > 1 ? 'Toca en la expresión DÓNDE aplicarla (cualquier parte marcada).' : 'Toca la parte marcada.', esDiv ? 'El número que multiplica pasa a dividir: ¿con qué signo queda?' : lado ? 'El término marcado, ¿pasa positivo o negativo al otro lado?' : this.carta.opcionesCortas ? '¿Cuánto da juntar los términos marcados? Elige el resultado.' : '¿Qué queda después de aplicarla? Elige el resultado.', '¡Correcto!'][st.fase];
     return `<div class="mt-4 rounded-2xl border border-stone-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900" data-ex="${i}">
       <div class="flex items-center gap-2 text-sm"><b>🃏 Ejercicio ${i + 1}</b><span class="ml-auto text-stone-500 dark:text-zinc-400">${hecho ? '✅ Resuelto' : `${Math.min(st.fase, 3)}/3`}</span></div>
       <div class="mt-2 flex min-h-16 items-center justify-center overflow-x-auto rounded-xl bg-stone-100 px-2 text-lg dark:bg-zinc-950 [&_[data-t]]:cursor-pointer [&_[data-t]]:rounded-md [&_[data-t]]:bg-amber-300/40 [&_[data-t]]:outline [&_[data-t]]:outline-2 [&_[data-t]]:outline-amber-400 [&_[data-t='1']]:bg-sky-300/40 [&_[data-t='1']]:outline-sky-400 [&_[data-t='2']]:bg-fuchsia-300/40 [&_[data-t='2']]:outline-fuchsia-400" data-expr="${i}">${this.tex(this.dom.tex(st.fase === 3 ? (st.correcto ?? ex.correcto) : ex.raiz, st.fase === 1 ? marcas : st.fase === 2 && st.j != null ? new Map(this.carta.marcas(ex.raiz, ex.objetivos[st.j]).map(q => [q.join('.'), 0])) : null))}</div>
       <p class="mt-2 text-sm font-semibold">${st.fase + 1 <= 3 ? `Paso ${st.fase + 1}: ` : ''}${pasoTxt}</p>
       ${st.fase === 0 ? `<button data-usar="${i}" class="mt-2 inline-flex min-h-12 items-center gap-2 rounded-xl bg-gradient-to-r ${GRAD[this.dom.id]} px-4 font-bold text-white touch-manipulation active:scale-95">${this.carta.icon} Usar «${this.carta.name}»</button>` : ''}
       ${st.fase === 2 && lado ? `<div class="mt-2 grid grid-cols-2 gap-2"><button data-lado="${i}|+" class="min-h-14 rounded-xl border-2 border-emerald-300 bg-white px-3 font-semibold touch-manipulation active:scale-[0.98] dark:border-emerald-700 dark:bg-zinc-950">${esDiv ? '➕ Divide positivo' : '➕ Pasa positivo'}</button><button data-lado="${i}|-" class="min-h-14 rounded-xl border-2 border-rose-300 bg-white px-3 font-semibold touch-manipulation active:scale-[0.98] dark:border-rose-700 dark:bg-zinc-950">${esDiv ? '➖ Divide negativo' : '➖ Pasa negativo'}</button></div>` : ''}
-      ${st.fase === 2 && !lado ? `<div class="mt-2 grid gap-2">${st.opciones.map((o, j) => `<button data-op="${i}|${j}" class="flex min-h-14 items-center justify-center overflow-x-auto rounded-xl border-2 border-stone-200 bg-white px-3 text-lg touch-manipulation active:scale-[0.98] dark:border-zinc-700 dark:bg-zinc-950">${this.tex(this.dom.tex(o.vista ?? o), false)}</button>`).join('')}</div>` : ''}
+      ${st.fase === 2 && !lado ? `<div class="mt-2 grid gap-2 ${this.carta.preguntaFactores ? 'grid-cols-2' : ''}">${st.opciones.map((o, j) => `<button data-op="${i}|${j}" class="flex min-h-14 items-center justify-center overflow-x-auto rounded-xl border-2 border-stone-200 bg-white px-3 text-lg touch-manipulation active:scale-[0.98] dark:border-zinc-700 dark:bg-zinc-950">${this.tex(this.dom.tex(o.vista ?? o), false)}</button>`).join('')}</div>` : ''}
       ${st.msg ? `<p class="mt-2 rounded-xl px-3 py-2 text-sm ${st.msg.ok ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200' : 'bg-rose-50 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200'}">${st.msg.t}</p>` : ''}
       ${st.fase === 3 ? `<button data-otra="${i}" class="mt-2 text-sm text-blue-700 underline dark:text-blue-300">↻ Repetir</button>` : ''}
     </div>`;
@@ -9657,7 +9673,7 @@ class PracticaPropiedades {
   click(e){
     const u = e.target.closest('[data-usar]'), op = e.target.closest('[data-op]'), t = e.target.closest('[data-t]'), otra = e.target.closest('[data-otra]');
     if (u){ const i = +u.dataset.usar, ex = this.lista[i], st = this.estado[i]; st.msg = null;
-      if (ex.objetivos.length === 1 && this.carta.id !== 'dist') return this.elegirLugar(i, 0);   // la distributiva siempre pide tocar el polinomio
+      if (ex.objetivos.length === 1 && this.carta.id !== 'dist' && !this.carta.preguntaFactores) return this.elegirLugar(i, 0);   // la distributiva y la factorización siempre piden tocar el polinomio
       st.fase = 1; return this.render(); }
     if (t){ const i = +t.closest('[data-expr]').dataset.expr; if (this.estado[i].fase === 1) return this.elegirLugar(i, +t.dataset.t); }
     if (op){ const [i, j] = op.dataset.op.split('|').map(Number), st = this.estado[i], ex = this.lista[i];
@@ -9676,7 +9692,10 @@ class PracticaPropiedades {
     const correcto = this.carta.apply(ex.raiz, ex.objetivos[j]);
     st.correcto = correcto; st.fase = 2; st.msg = null; st.j = j;   // se sigue marcando el grupo elegido
     if (this.carta.id === 'dist'){ st.fase = 3; st.msg = {ok:true, t:`Bien: elegiste el polinomio y la distributiva se aplicó. ${this.carta.pista ?? ''}`}; this.onDone(this.key(i)); return this.render(); }
-    if (this.carta.opcionesCortas){                                     // semejantes: solo el resultado del grupo
+    if (this.carta.preguntaFactores){                                   // factorización: 2 tarjetas (factores bien y mal)
+      const T = this.carta.tarjetas(ex.raiz, ex.objetivos[j], new Rng(semillaDe(this.key(i) + j)));
+      st.opciones = new Rng(semillaDe('o' + i + j)).shuffle([{vista:T.bien, ok:true}, {vista:T.mal}]);
+    } else if (this.carta.opcionesCortas){                              // semejantes: solo el resultado del grupo
       const o = this.carta.opcionesCortas(ex.raiz, ex.objetivos[j], new Rng(semillaDe(this.key(i) + j)), 2);
       st.opciones = new Rng(semillaDe('o' + i + j)).shuffle([{vista:o.correcta, ok:true}, ...o.distractores.map(v => ({vista:v}))]);
     } else st.opciones = new Rng(semillaDe('o' + i + j)).shuffle([correcto, ...this.dom.distractores(correcto, new Rng(semillaDe(this.key(i) + j)), 2)]);

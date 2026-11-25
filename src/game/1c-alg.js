@@ -137,6 +137,20 @@ const cartasAlgebra = () => new CardRegistry()
 const xp = n => A.pow(A.X, n), Y = {k:'v', n:'y'};
 const angulo = r => { const k = r.int(1, 4); return k === 1 ? A.X : A.mul([A.n(k), A.X]); };   // x, 2x, 3x, 4x
 const menos = u => A.mul([A.n(-1), u]);
+/** Simplificaciones complejas: combinan raíces, fracciones y exponentes (se desbloquean más adelante en la Ruta). */
+const xg = n => n === 1 ? A.X : xp(n);   // x en vez de x¹
+const tiposMixtos = [
+  new ProblemType({id:'amix1', name:'Mixto: potencia de un producto entre potencia', mode:'expr', needs:['f-inecuaciones-'], tier:3,
+    make: r => { const a = r.int(2, 4), b = r.int(1, 3), c = r.int(2, 3); return A.div(A.pow(A.mul([xp(a), xg(b)]), c), xg(r.int(1, (a + b) * c - 1))); }}),
+  new ProblemType({id:'amix2', name:'Mixto: raíz por potencia entre potencia', mode:'expr', needs:['f-inecuaciones-'], tier:3,
+    make: r => { const k = r.int(2, 5), a = r.int(1, 3), b = r.int(1, 4); return A.div(A.mul([A.fn('sqrt', A.mul([A.n(k * k), xp(2 * a)])), xg(b)]), xg(r.int(1, a + b))); }}),
+  new ProblemType({id:'amix3', name:'Mixto: fracción con potencias y coeficientes', mode:'expr', needs:['d-limites-'], tier:3,
+    make: r => { const k = r.int(2, 4), m = r.pick([2, 4, k * k].filter(v => (k * k) % v === 0)), a = r.int(2, 3); return A.div(A.pow(A.mul([A.n(k), xp(a)]), 2), A.mul([A.n(m), xg(r.int(1, 2 * a - 1))])); }}),
+  new ProblemType({id:'amix4', name:'Mixto: raíz de un cociente por potencia', mode:'expr', needs:['d-implicita-'], tier:3,
+    make: r => A.mul([A.fn('sqrt', A.div(xp(2 * r.int(1, 3)), A.n(r.pick([4, 9, 16, 25])))), xg(r.int(1, 4))])}),
+  new ProblemType({id:'amix5', name:'Mixto: potencia de un cociente con dos variables', mode:'expr', needs:['d-lhopital-'], tier:3,
+    make: r => A.mul([A.pow(A.div(xp(r.int(2, 4)), A.pow(Y, r.int(1, 3))), r.int(2, 3)), A.pow(Y, r.int(2, 6))])}),
+];
 const tiposAlgebra = [
   new ProblemType({id:'apot1', name:'Potencias: producto y cociente', mode:'expr', needs:['f-potencias-'], tier:1,
     make: r => { const a = r.int(2, 5), b = r.int(2, 4), c = r.int(1, a + b - 1); return A.div(A.mul([xp(a), xp(b)]), xp(c)); }}),
@@ -196,4 +210,4 @@ DOMINIOS.alg = new Dominio({id:'alg', nombre:'Potencias, raíces, logaritmos y t
     return {raiz:aplanar(e)};
   },
   consigna:() => 'Simplifica', distractores:distractoresAlg, prellenar: r => { try { return piezasCalc(r); } catch { return []; } },
-  vista: src => A.tex(aplanar(A.parse(src))), tipos:tiposAlgebra});
+  vista: src => A.tex(aplanar(A.parse(src))), tipos:[...tiposAlgebra, ...tiposMixtos]});

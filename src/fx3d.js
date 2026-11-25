@@ -504,7 +504,7 @@ const Iconos3D = (() => {
 const EMOJI_3D = {'🧩':'puzzle', '🧱':'ladrillos', '📈':'grafica', '∫':'integral', '🎮':'mando', '🗺️':'mapa', '🏠':'casa', '📖':'libro', '📚':'libros', '🃏':'cartas',
   '🚩':'bandera', '⚡':'rayo', '🪖':'casco', '🔬':'matraz', '🌱':'planta', '⚔️':'espadas', '🔥':'fuego', '💀':'calavera', '✅':'check', '✓':'check', '🔒':'candado',
   '👽':'alien', '🔫':'rifle', '💣':'bomba', '🛡️':'escudo', '⛑️':'cruz', '🔧':'llave', '❤️':'corazon', '🌊':'ola', '⚙️':'engrane', '🛠':'herramientas', '🏆':'trofeo', '🏅':'medalla', '🧮':'abaco',
-  '🪐':'planeta', '♾️':'infinito', '📌':'chincheta', '🪄':'varita', '💡':'bombilla', '✋':'mano', '🗑':'papelera', '✔':'check', '❓':'bombilla', '🎖️':'medalla', '⚒️':'yunque'};
+  '🪐':'planeta', '♾️':'infinito', '📌':'chincheta', '🪄':'varita', '💡':'bombilla', '✋':'mano', '🗑':'papelera', '✔':'check', '❓':'bombilla', '🎖️':'medalla', '⚒️':'yunque', '⏸':'pausa'};
 /** Nombre del modelo de un emoji (con o sin selector de variación U+FE0F). */
 const nombreIcono3D = e => { const b = String(e).replace(/\uFE0F/g, ''); return EMOJI_3D[e] ?? EMOJI_3D[b] ?? EMOJI_3D[b + '\uFE0F']; };
 /** HTML de un icono: modelo 3D si existe (el emoji queda para 2D), si no el emoji tal cual. */

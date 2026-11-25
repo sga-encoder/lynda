@@ -483,7 +483,7 @@ class BattleScene extends Scene {
   abrirCapa(html, onclick){
     this.capaAbierta = true; this.pausado = true; this.app.piezas.cerrar();
     const capa = this.$('capa'); capa.classList.remove('hidden');
-    capa.innerHTML = `<div class="flex h-full flex-col overflow-y-auto bg-zinc-950/95 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">${html}</div>`;
+    capa.innerHTML = `<div class="flex h-full flex-col overflow-y-auto bg-zinc-950/90 px-4 backdrop-blur-md pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">${html}</div>`;
     capa.onclick = e => { e.stopPropagation(); onclick(e); };
   }
   cerrarCapa(){ this.capaAbierta = false; this.pausado = false; this.$('capa').classList.add('hidden'); this.ultimo = performance.now(); }
@@ -554,22 +554,53 @@ class BattleScene extends Scene {
       }};
     });
   }
-  mostrarPausa(){
-    this.abrirCapa(`<div class="m-auto flex w-full max-w-sm flex-col gap-3"><h2 class="text-center text-2xl font-black">⏸ Pausa</h2>
-      <div class="text-sm font-bold">⚡ Potenciadores</div><div class="${UI.card} !p-2.5 text-xs">${Object.entries(this.run.potenciadores ?? {}).map(([id, n]) => `${POTENCIADORES[id].icon} ${POTENCIADORES[id].nombre} ${pips(n)}`).join('<br>') || 'Aún ninguno: se eligen al final de cada oleada.'}${(this.run.supers ?? []).map(id => `<br>🌟 ${SUPERPOTENCIADORES[id].nombre}`).join('')}</div>
-      ${['tactico'].map(tipo => `<div class="text-sm font-bold">${tipo === 'arma' ? '🔫 Armas' : '🧠 Tácticos'} ${this.run.loadout.lista(tipo).length}/${ESPACIOS[tipo]}</div>
-        ${this.run.loadout.lista(tipo).map(b => `<div class="${UI.card} !p-2.5"><div class="flex items-center gap-2"><span class="text-xl">${b.def.icon}</span><b class="flex-1 text-sm">${b.def.name}</b>${pips(b.nivel, b.nivel > 3 ? 4 : 3)}</div><div class="mt-1 flex flex-wrap gap-1">${chipsProps(b.props)}</div></div>`).join('') || '<div class="text-xs text-zinc-500">Sin tácticos todavía</div>'}`).join('')}
-      <button data-a="seguir" class="${UI.btnP}">▶ Continuar</button>
+  mostrarPausa(confirmar = false){
+    const r = this.run, b = r.base, M = r.mundo ? mundoDe(r.mundo) : null, C = this.mundo.clima, ic = (e, c = 'inline-block h-5 w-5 align-[-0.2em]') => vitrina3D() ? icono3D(e, c) : e;
+    const titulo = M ? `${M.icon} ${M.nombre} · ${r.mm < 4 ? M.comandantes[r.mm].name : M.soberano.name}` : `${r.infinito ? '♾️ Modo infinito · ' : ''}Misión ${r.mision}`;
+    const dato = (icono, valor, etq, barra = null, col = '') => `<div class="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-2.5"><div class="flex items-center gap-1.5 text-[11px] text-zinc-400">${icono} ${etq}</div>
+      <b class="mt-0.5 block text-lg leading-tight">${valor}</b>${barra != null ? `<div ${col ? `data-barra3d="${col}"` : ''} class="mt-1 h-1.5 overflow-hidden rounded-full bg-zinc-800"><div class="h-full rounded-full" style="width:${Math.round(barra * 100)}%;background:${col || '#34d399'}"></div></div>` : ''}</div>`;
+    const tipos = [...new Set([...this.mundo.tiposSoldado, ...Object.keys(r.xpTipo ?? {})])].filter(t => SOLDADOS[t]);
+    const tropa = tipos.length ? tipos.map(t => { const pf = perfilSoldado(this.app.progreso, titularDe(this.app, t)), vivos = this.mundo.soldados.filter(s => s.tipo === t).length;
+      return `<div class="flex items-center gap-2 rounded-xl bg-zinc-900/80 px-2.5 py-1.5 text-xs">${vitrina3D() ? `<span data-i3d="${ICONO_TROPA[t]}" class="inline-block h-6 w-6">${SOLDADOS[t].icon}</span>` : SOLDADOS[t].icon}
+        <span class="min-w-0 flex-1"><b>${pf.name}</b> <span class="text-zinc-400">· ${pf.arma}</span></span><span class="text-zinc-400">×${vivos}</span><b class="rounded-full bg-sky-500/15 px-2 text-sky-300">Nv ${r.nivelTipo?.[t] ?? 1}</b></div>`; }).join('')
+      : '<p class="text-xs text-zinc-400">Aún no hay soldados en el campo.</p>';
+    const pots = Object.entries(r.potenciadores ?? {}).map(([id, n]) => `<div class="flex items-center gap-2 text-xs"><span>${POTENCIADORES[id].icon}</span><span class="flex-1">${POTENCIADORES[id].nombre}</span>${pips(n)}</div>`).join('')
+      + (r.supers ?? []).map(id => `<div class="flex items-center gap-2 text-xs"><span>${SUPERPOTENCIADORES[id].icon}</span><b class="flex-1 text-amber-300">${SUPERPOTENCIADORES[id].nombre}</b></div>`).join('');
+    const tacs = r.loadout.lista('tactico').map(bn => `<div class="rounded-xl bg-zinc-900/80 p-2"><div class="flex items-center gap-2"><span class="text-lg">${bn.def.icon}</span><b class="flex-1 text-xs">${bn.def.name}</b>${pips(bn.nivel, bn.nivel > 3 ? 4 : 3)}</div><div class="mt-1 flex flex-wrap gap-1">${chipsProps(bn.props)}</div></div>`).join('');
+    const plegable = (icono, t, n, cuerpo, abierto = false) => `<details class="group rounded-2xl border border-zinc-800 bg-zinc-950/60" ${abierto ? 'open' : ''}><summary class="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm font-bold">${icono} <span class="flex-1">${t}</span><span class="text-xs font-normal text-zinc-400">${n}</span><span class="text-zinc-500 transition-transform group-open:rotate-90">▸</span></summary><div class="grid gap-1.5 px-3 pb-3">${cuerpo}</div></details>`;
+    this.abrirCapa(`<div class="m-auto flex w-full max-w-md flex-col gap-3 py-2">
+      <div class="flex items-center gap-3">${vitrina3D() ? icono3D('⏸', 'block h-12 w-12') : '<span class="text-4xl">⏸</span>'}
+        <div class="min-w-0 flex-1"><h2 class="text-2xl font-black leading-tight">Pausa</h2><p class="truncate text-xs text-zinc-400">${titulo} · Oleada ${r.oleada}/${OLEADAS} · ${C.icon} ${C.name}</p></div></div>
+      <div class="grid grid-cols-3 gap-2">
+        ${dato(ic('❤️'), `${Math.ceil(b.vida)}/${b.vidaMax}`, 'Base', b.vida / b.vidaMax, '#22c55e')}
+        ${dato(ic('⚡'), Math.floor(r.energia.valor), 'Energía', r.energia.valor / r.energia.max, '#fbbf24')}
+        ${dato('⭐', `Nv ${r.nivel}`, 'Nivel', r.xp / r.xpSiguiente, '#38bdf8')}
+        ${dato(ic('🧮'), `${Math.min(this.director.problemasResueltos, this.cfg.problemas)}/${this.cfg.problemas}`, 'Problemas')}
+        ${dato(ic('👽'), r.bajas, 'Bajas')}
+        ${dato(ic('🌊'), `${this.progresoOleada()} %`, 'Oleada', this.progresoOleada() / 100, '#d946ef')}</div>
+      <div class="flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-sm"><span class="flex-1 font-bold">⏩ Velocidad del juego</span>
+        ${[1, 2, 3, 4].map(v => `<button data-pv="${v}" class="h-9 w-10 rounded-xl border text-sm font-black ${this.vel === v ? 'border-emerald-400 bg-emerald-400/15 text-emerald-200' : 'border-zinc-700'}">×${v}</button>`).join('')}</div>
+      ${plegable(ic('🪖'), 'Tu pelotón', `${tipos.length} ${tipos.length === 1 ? 'tipo' : 'tipos'}`, tropa, true)}
+      ${plegable('⚡', 'Potenciadores', `${Object.keys(r.potenciadores ?? {}).length + (r.supers ?? []).length}`, pots || '<p class="text-xs text-zinc-400">Aún ninguno: se eligen al final de cada oleada.</p>')}
+      ${plegable('🧠', 'Tácticos', `${r.loadout.lista('tactico').length}/${ESPACIOS.tactico}`, tacs || '<p class="text-xs text-zinc-400">Aún ninguno.</p>')}
+      <button data-a="seguir" class="${UI.btnP} !min-h-14 text-lg">▶ Continuar</button>
       <div class="grid grid-cols-2 gap-2"><button data-a="guardar" class="${UI.btn} text-sm">💾 Guardar</button><button data-a="json" class="${UI.btn} text-sm">⬇ Descargar JSON</button></div>
       <p data-h="guardado" class="min-h-5 text-center text-xs text-emerald-300"></p>
-      <button data-a="menu" class="${UI.btn}">Abandonar partida</button></div>`,
+      ${confirmar ? `<div class="rounded-2xl border border-rose-500/60 bg-rose-950/40 p-3 text-center text-sm"><b>¿Abandonar la partida?</b><p class="text-xs text-rose-200">Se pierde el avance que no hayas guardado.</p>
+          <div class="mt-2 grid grid-cols-2 gap-2"><button data-a="no-abandonar" class="${UI.btn} text-sm">Volver</button><button data-a="menu" class="rounded-2xl bg-rose-600 px-4 py-2 text-sm font-bold text-white">Sí, abandonar</button></div></div>`
+        : `<button data-a="abandonar" class="${UI.btn} text-sm text-rose-300">🚪 Abandonar partida</button>`}</div>`,
     e => {
+      const pv = e.target.closest('[data-pv]')?.dataset.pv;
+      if (pv){ const P = this.app.progreso; P.data.velocidad = +pv; P.guardar(); this.hud(); return this.mostrarPausa(confirmar); }
       if (e.target.closest('[data-a="seguir"]')) this.cerrarCapa();
       if (e.target.closest('[data-a="guardar"]')){ const ok = new GestorPartidas().guardar(fotoPartida(this)); this.$('guardado').textContent = ok ? '✅ Guardada en 💾 Partidas (sigue desde el inicio de esta oleada).' : '❌ No se pudo guardar.'; }
       if (e.target.closest('[data-a="json"]')) GestorPartidas.descargar(fotoPartida(this));
+      if (e.target.closest('[data-a="abandonar"]')) return this.mostrarPausa(true);
+      if (e.target.closest('[data-a="no-abandonar"]')) return this.mostrarPausa(false);
       if (e.target.closest('[data-a="menu"]')) this.fin(false, true);
     });
   }
+
 
 
   /* ---- Progresión ---- */

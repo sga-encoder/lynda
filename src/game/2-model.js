@@ -168,7 +168,7 @@ class Combo {
     return estados;
   }
 }
-const MAX_CARTAS_COMBO = 5;
+const MAX_CARTAS_COMBO = 10;
 /** Ajuste de dificultad (calibrado con jugadores simulados: más lento al resolver → menos energía). */
 const BALANCE = {energiaPaso:0.85, costoRecluta:3, disparan:0.5, presionMision:0.08, esperaExtra:2.5, bonoProblema:35};
 
@@ -296,3 +296,4 @@ function configOleada(mision, oleada){
   };
 }
 const xpParaNivel = n => 60 + n * 45;
+const xpTipoSiguiente = n => 25 + n * 20;           // XP que necesita un tipo de soldado para subir de nivel

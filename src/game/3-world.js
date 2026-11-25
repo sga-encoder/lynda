@@ -249,7 +249,7 @@ class World {
       this.enemigos.splice(this.enemigos.indexOf(e), 1);
       this.explosion(e.x, e.cy, COLOR_ENEMIGO[e.tipo] ?? '#86efac', e.jefe ? 60 : e.vuela ? 20 : 12);
       if (e.jefe){ this.sacudir(0.8); this.anuncio = `🏆 ¡${e.name} derrotado!`; }
-      if (!e.sinXP) this.bus.emit('enemigo-muerto', {tipo:e.tipo, xp:e.xp, jefe:!!e.jefe});
+      if (!e.sinXP) this.bus.emit('enemigo-muerto', {tipo:e.tipo, xp:e.xp, jefe:!!e.jefe, por:e.ultimoGolpe});
     }
     for (const s of this.soldados.filter(s => s.vida <= 0)){ this.bajasPropias++; this.soldados.splice(this.soldados.indexOf(s), 1); this.explosion(s.x, s.cy, '#fca5a5', 8); }
     if (this.base.vida <= 0) this.bus.emit('base-destruida');
@@ -270,16 +270,17 @@ class World {
         for (let k = 0; k <= ep.extra; k++)                              // Ráfaga Fibonacci: balas extra
           { const fx = s.perfil ? this.fx(s.perfil.armaId) : null;          // partículas propias del arma (cambian con sus potenciadores)
           if (k === 0 && fx) this.chispas(s.x + 6, s.cy - 3, fx.color, 2);   // fogonazo
-          this.disparar({x:s.x + 4, y:s.cy - 3 - k * 2, obj:o, golpe:{dmg, dano:eq, area:Math.max(d.ataque.area ?? 0, Q.area ?? 0) + ep.area, alcance:alc, perf:ep.perf, efecto:ep.congela ? 'congelar' : undefined}, parabola:!!d.ataque.parabola,
+          this.disparar({x:s.x + 4, y:s.cy - 3 - k * 2, obj:o, golpe:{dmg, dano:eq, area:Math.max(d.ataque.area ?? 0, Q.area ?? 0) + ep.area, alcance:alc, perf:ep.perf, efecto:ep.congela ? 'congelar' : undefined, por:s.tipo}, parabola:!!d.ataque.parabola,
             vel:(d.ataque.parabola ? 120 : 260) * (1 - k * 0.08), fx, hist:fx?.estela ? [] : null, color:critico ? '#fde047' : fx?.color ?? (d.ataque.area ? '#fb923c' : '#e5e7eb'), r:(critico ? 1.6 : 1) * (fx?.r ?? 1) * (d.ataque.area ? 1.8 : 1.1)}); }
       }
       if (d.apoyo && (s.apoyoT -= dt) <= 0){
         s.apoyoT = d.apoyo.cd * Math.max(0.35, 1 + ep.cd);
         if (d.apoyo.curar){
           const herido = this.soldados.filter(x => x.vida < x.vidaMax).sort((a, b) => a.vida / a.vidaMax - b.vida / b.vidaMax)[0];
-          if (herido && this.energia.gastar(d.apoyo.costo)){ herido.vida = Math.min(herido.vidaMax, herido.vida + d.apoyo.curar * (s.mult ?? 1) * (1 + ep.dmg)); this.texto(herido.x, herido.cy - 14, '+❤', '#86efac'); }
+          if (herido && this.energia.gastar(d.apoyo.costo)){ this.bus.emit('xp-tipo', {tipo:s.tipo, xp:1.5}); herido.vida = Math.min(herido.vidaMax, herido.vida + d.apoyo.curar * (s.mult ?? 1) * (1 + ep.dmg)); this.texto(herido.x, herido.cy - 14, '+❤', '#86efac'); }
         }
         if (d.apoyo.reparar && this.base.vida < this.base.vidaMax && this.energia.gastar(d.apoyo.costo)){
+          this.bus.emit('xp-tipo', {tipo:s.tipo, xp:1.5});
           this.base.vida = Math.min(this.base.vidaMax, this.base.vida + d.apoyo.reparar * (s.mult ?? 1) * (1 + ep.dmg)); this.texto(this.base.cx, this.base.cy - 22, '+🔧', '#fde68a');
         }
       }
@@ -420,7 +421,8 @@ class World {
   }
   /** Munición equipada para un tipo de soldado (por defecto, la suya). */
   equipoDe(tipo){ return this.peloton?.equipo?.[tipo] ?? SOLDADOS[tipo].ataque?.dano ?? 'fisico'; }
-  golpear(e, {dmg, dano, efecto, perf: perfExtra = 0}){
+  golpear(e, {dmg, dano, efecto, perf: perfExtra = 0, por}){
+    if (por) e.ultimoGolpe = por;                                     // el tipo de soldado que lo golpeó (gana su XP)
     if (e.escudoMental && !(e.escudoT > 0)){ this.texto(e.x, e.cy - 14, '🛡 resuelve un problema', '#f0abfc', 0.6); return; }
     let d = dmg;
     if (e.armadura && dano === 'fisico'){ const perf = Math.min(1, this.loadout.efecto('perforacion', 0) + (efecto === 'perforar' ? 0.5 : 0) + perfExtra); d *= 1 - e.armadura * (1 - perf); }

@@ -120,12 +120,13 @@ class CatalogoScene extends Scene {
     // Fusiones: se sabe que existen, pero no cómo se consiguen (se descubren jugando)
     // ⚡ Potenciadores: 6 superpotenciadores + 6 por cada una de las 15 armas de los soldados
     // Fusiones = superpotenciadores (3 de arma y 3 con táctica) + fusiones entre tácticos
-    if (this.tab === 'fusiones') return [...Object.entries(SUPERPOTENCIADORES).map(([id, x]) => ({kind:'pot', id, d:{icon:x.icon}, x, grupo:'super', ok:this.conocido('potenciadores', id), name:x.nombre})),
+    if (this.tab === 'fusiones') return [...Object.values(FUSIONES_ARMA).map(F => ({kind:'pot', id:F.id, d:{icon:F.icon}, x:{...F, fusionArma:true}, grupo:'fa-' + F.arma, tipo:F.tipo, ok:this.conocido('fusiones', F.id), name:F.nombre})),   // 45: 3 por cada arma
+      ...Object.entries(SUPERPOTENCIADORES).map(([id, x]) => ({kind:'pot', id, d:{icon:x.icon}, x, grupo:'super', ok:this.conocido('potenciadores', id), name:x.nombre})),
       ...FUSIONES.filter(f => BONUS_DEFS[f.a].tipo === 'tactico' && BONUS_DEFS[f.b].tipo === 'tactico').map(f => ({kind:'fusion', grupo:'fus', id:f.resultado, d:BONUS_DEFS[f.resultado], ok:this.conocido('fusiones', f.resultado), name:BONUS_DEFS[f.resultado].name}))];
     // Entidades en dos grupos: 🪖 Soldados y 👽 Alienígenas (comunes, Comandantes y Soberanos)
     const g = id => INFO_ENEMIGO[id].grupo ?? (ENEMIGOS[id](0, {vida:1, velocidad:1}).jefe ? 'soberano' : 'comun');
     const orden = {comun:0, comandante:1, soberano:2};
-    return [...Object.keys(SOLDADOS).map(id => ({kind:'soldado', grupo:'soldados', id, ok:this.conocido('soldados', id), name:SOLDADOS[id].name})),
+    return [...TIPOS_TROPA.flatMap(tipo => SOLDADOS_UNICOS[tipo].map((x, k) => ({kind:'soldado', grupo:'soldados', id:tipo, uid:x[0], x, ok:this.todo || tropaDesbloqueada(this.app, tipo, 'soldado', k), name:x[1]}))),   // los 20 soldados (4 por tipo), también los aún desconocidos
             ...Object.keys(ENEMIGOS).map(id => ({kind:'enemigo', grupo:g(id), id, ok:this.conocido('enemigos', id), name:INFO_ENEMIGO[id].name})).sort((a, b) => orden[a.grupo] - orden[b.grupo])];
   }
   tile(it, i){
@@ -148,7 +149,7 @@ class CatalogoScene extends Scene {
       <p class="mt-1 text-xs text-zinc-400">${this.tab === 'cartas' ? `${ok}/${items.length} cartas disponibles · las demás se desbloquean en la 🗺️ Ruta o avanzando en Aprender`
         : this.tab === 'fusiones' ? `${ok}/${items.length} fusiones descubiertas · existen fusiones entre armas, entre tácticos y entre armas y tácticos. ¿Cuáles? Descúbrelo jugando.`
         : `${ok}/${items.length} descubiertos · se descubren al obtenerlos o verlos en una partida`}</p>
-      <div class="mt-2 grid flex-1 grid-cols-2 content-start gap-2 overflow-y-auto pb-4 sm:grid-cols-3">${items.map((it, i) => (it.grupo && it.grupo !== items[i - 1]?.grupo ? `<div class="col-span-full mt-2 text-sm font-black text-zinc-300">${it.kind === 'potarma' ? `${SOLDADOS[it.tipo].icon} ${it.x.nombre ?? it.name} · ${SOLDADOS[it.tipo].name}` : it.kind === 'pot' ? '🌟 Superpotenciadores' : it.kind === 'fusion' ? '⚗️ Fusiones de tácticos' : {soldados:'🪖 Soldados', comun:'👽 Alienígenas · comunes y de cada mundo', comandante:'🎖️ Alienígenas · Comandantes (subjefes)', soberano:'👑 Alienígenas · Soberanos (jefes)'}[it.grupo]}</div>` : '') + this.tile(it, i)).join('')}</div>
+      <div class="mt-2 grid flex-1 grid-cols-2 content-start gap-2 overflow-y-auto pb-4 sm:grid-cols-3">${items.map((it, i) => (it.grupo && it.grupo !== items[i - 1]?.grupo ? `<div class="col-span-full mt-2 text-sm font-black text-zinc-300">${it.kind === 'potarma' ? `${SOLDADOS[it.tipo].icon} ${it.x.nombre ?? it.name} · ${SOLDADOS[it.tipo].name}` : it.kind === 'pot' ? (it.x.fusionArma ? `⚗️ ${it.x.armaIcon} ${it.x.armaNombre} · ${SOLDADOS[it.tipo].name} (3 fusiones)` : '🌟 Superpotenciadores') : it.kind === 'fusion' ? '⚗️ Fusiones de tácticos' : {soldados:'🪖 Soldados', comun:'👽 Alienígenas · comunes y de cada mundo', comandante:'🎖️ Alienígenas · Comandantes (subjefes)', soberano:'👑 Alienígenas · Soberanos (jefes)'}[it.grupo]}</div>` : '') + this.tile(it, i)).join('')}</div>
       <div data-h="detalle" class="absolute inset-0 z-20 hidden"></div>
     </div>`).onclick = e => this.click(e);
     this.animar();
@@ -197,7 +198,8 @@ class CatalogoScene extends Scene {
     } else if (it.kind === 'pot'){
       const x = it.x;
       vista = `<div class="flex h-36 items-center justify-center"><span class="text-7xl [animation:flotar_2s_ease-in-out_infinite]">${x.icon}</span></div>`;
-      cuerpo = `<p class="text-sm text-zinc-300">${x.desc}</p><p class="mt-2 text-xs text-zinc-400">${x.arma ? `${x.armaIcon} Potencia el arma <b>${x.armaNombre}</b> (${SOLDADOS[x.tipo].name}). Se elige al subir de nivel en la partida; hasta nivel ${MAX_POT}.`
+      cuerpo = x.fusionArma ? `<p class="text-sm text-zinc-300">${x.desc}</p><p class="mt-2 text-xs text-zinc-400">Fusión de ${x.armaIcon} <b>${x.armaNombre}</b> (${SOLDADOS[x.tipo].name}) con el táctico ${BONUS_DEFS[x.tactico].icon} <b>${BONUS_DEFS[x.tactico].name}</b>. Aparece al final de una oleada, cuando esa arma tiene 3 niveles de potenciadores y el táctico está en tu equipo. También cambia sus partículas.</p>`
+        : `<p class="text-sm text-zinc-300">${x.desc}</p><p class="mt-2 text-xs text-zinc-400">${x.arma ? `${x.armaIcon} Potencia el arma <b>${x.armaNombre}</b> (${SOLDADOS[x.tipo].name}). Se elige al final de una oleada, cuando su tipo de soldado sube de nivel; hasta nivel ${MAX_POT}.`
         : `${x.clase === 'arma' ? 'Superpotenciador de arma: aparece cuando tienes 2 potenciadores al máximo.' : 'Superpotenciador con táctica: aparece con 1 potenciador y 1 táctico al máximo.'} Sirve para todas las armas.`}</p>`;
     } else if (it.kind === 'arma' || it.kind === 'tactico' || it.kind === 'fusion'){
       const d = it.d, niveles = d.niveles.map((n, i) => n && [i + 1, n]).filter(Boolean), claves = Object.keys(niveles[0][1]);
@@ -213,7 +215,9 @@ class CatalogoScene extends Scene {
     } else if (it.kind === 'soldado'){
       const d = SOLDADOS[it.id], m = P.nivel('sold-' + it.id), k = 1 + 0.15 * m;
       vista = `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl"></canvas>`;
-      cuerpo = `<p class="text-sm text-zinc-300">${d.icon} ${d.desc}</p><div class="mt-2">${tablaStats(`
+      const [, , icU, modU = {}, descU] = it.x ?? [], ETQ = {cd:'Recarga', dmg:'Daño', rango:'Alcance', vida:'Vida'};
+      const rasgos = Object.entries(modU).map(([kk, v]) => `${ETQ[kk] ?? kk} ×${v}`).join(' · ');
+      cuerpo = `${it.x ? `<p class="text-sm"><b>${icU} ${it.name}</b> · ${d.icon} ${d.name}</p><p class="text-sm text-zinc-300">${descU}${rasgos ? ` <span class="text-xs text-zinc-400">(${rasgos})</span>` : ''}</p>` : ''}<p class="text-sm text-zinc-300">${d.icon} ${d.desc}</p><div class="mt-2">${tablaStats(`
         <tr><td>Vida</td><td>${Math.round(d.vida * k)}</td></tr>
         ${d.ataque ? `<tr><td>Ataque</td><td>${(d.ataque.dmg * k).toFixed(1)} de daño ${d.ataque.dano} · recarga ${d.ataque.cd} s · alcance ${d.ataque.rango}${d.ataque.area ? ' · área ' + d.ataque.area : ''}</td></tr><tr><td>Costo</td><td>${d.ataque.costo} ⚡ por disparo</td></tr>` : ''}
         ${d.apoyo ? `<tr><td>Apoyo</td><td>${d.apoyo.curar ? `cura ${(d.apoyo.curar * k).toFixed(1)}` : `repara ${(d.apoyo.reparar * k).toFixed(1)}`} cada ${d.apoyo.cd} s</td></tr><tr><td>Costo</td><td>${d.apoyo.costo} ⚡</td></tr>` : ''}
@@ -275,7 +279,7 @@ class MazoScene extends Scene {
     <div class="mx-auto flex h-full max-w-xl flex-col px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
       <div class="flex items-center justify-between">${btnVolver}<span class="text-xs text-zinc-400">${lista.length}/${MAX_MAZO} cartas compuestas</span></div>
       <h2 class="mt-3 text-2xl font-black">🃏 Mazo</h2>
-      <p class="text-xs text-zinc-400">Arma <b>cartas compuestas</b> de hasta 5 propiedades (se pueden repetir, por ejemplo ↔️ ↔️ 🧲 🧲 🧮). En batalla se aplican una tras otra; en «Pasar al otro lado» tú eliges el término y si pasa positivo o negativo. Te acompañan en <b>todas</b> las partidas y se usan <b>sin límite</b>. Solo se crean aquí, no durante la partida.</p>
+      <p class="text-xs text-zinc-400">Arma <b>cartas compuestas</b> de hasta  propiedades (se pueden repetir, por ejemplo ↔️ ↔️ 🧲 🧲 🧮). En batalla se aplican una tras otra; en «Pasar al otro lado» tú eliges el término y si pasa positivo o negativo. Te acompañan en <b>todas</b> las partidas y se usan <b>sin límite</b>. Solo se crean aquí, no durante la partida.</p>
       ${tabs([['fund', '🧱', 'Fundamentos'], ['alg', '🔺', 'Álgebra'], ['dif', '📈', 'Diferencial'], ['int', '∫', 'Integral']], this.dom)}
       <div class="mt-2 flex-1 space-y-2 overflow-y-auto pb-4">
         ${this.armando ? this.constructor_(D) : `

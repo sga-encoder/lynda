@@ -131,6 +131,7 @@ class BattleScene extends Scene {
       <div class="relative mx-auto w-full max-w-3xl"><canvas data-h="cv" class="block aspect-[360/200] max-h-[38vh] w-full"></canvas>
         <div data-h="jefe" class="pointer-events-none absolute inset-x-3 top-1.5 hidden"><div class="flex justify-between text-[10px] font-bold text-rose-200"><span data-h="jefeN"></span><span data-h="jefeE"></span></div><div class="h-1.5 overflow-hidden rounded bg-black/60"><div data-h="jefeV" class="h-full bg-rose-500"></div></div></div>
         <div data-h="aviso" class="pointer-events-none absolute inset-x-0 top-1/3 px-2 text-center text-lg font-black text-white drop-shadow"></div></div>
+      <div data-h="tipos" class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 pt-1.5 text-[10px]"></div>
       <div class="grid grid-cols-2 gap-2 px-3 pt-1.5 text-xs">
         <div class="flex items-center gap-1.5">❤<div class="h-2.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="vida" class="h-full bg-emerald-500"></div></div></div>
         <div class="flex items-center gap-1.5">⚡<div class="h-2.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="energia" class="h-full bg-amber-400"></div></div><b data-h="energiaN" class="w-6 text-right"></b></div>
@@ -151,7 +152,8 @@ class BattleScene extends Scene {
     this.app.piezas.host = () => this.$('libre');                  // el paso libre vive dentro de la batalla
     this.renderer = new Renderer(this.$('cv'));
     this.onResize = () => this.renderer.resize(); window.addEventListener('resize', this.onResize);
-    this.bus.on('enemigo-muerto', ({xp, jefe}) => { r.bajas++; if (jefe) r.jefes++; this.ganarXP(xp); });
+    this.bus.on('enemigo-muerto', ({xp, jefe, por}) => { r.bajas++; if (jefe) r.jefes++; if (por) this.ganarXPTipo(por, xp); this.ganarXP(xp * 0.25); });   // la baja da XP al tipo de soldado que la hizo
+    this.bus.on('xp-tipo', ({tipo, xp}) => this.ganarXPTipo(tipo, xp));
     this.bus.on('base-destruida', () => this.fin(false));
     this.app.root.onclick = e => this.click(e);
     this.iniciarOleada();
@@ -235,6 +237,11 @@ class BattleScene extends Scene {
     this.$('oleada').textContent = r.mundo ? `${mundoDe(r.mundo).icon} ${r.mm < 4 ? mundoDe(r.mundo).comandantes[r.mm].name.replace('Comandante ', '') : '👑 ' + mundoDe(r.mundo).soberano.name} · Oleada ${r.oleada}/${OLEADAS}`
       : `${r.infinito ? '♾️ ' : ''}Misión ${r.mision}${r.infinito ? '' : '/' + MISIONES} · Oleada ${r.oleada}/${OLEADAS}`;
     this.$('probs').textContent = `🧮 ${Math.min(this.director.problemasResueltos, this.cfg.problemas)}/${this.cfg.problemas}`;
+    const tipos = [...new Set([...this.mundo.tiposSoldado, ...Object.keys(r.xpTipo ?? {})])].filter(t => SOLDADOS[t]);
+    const firma = tipos.map(t => `${t}${r.nivelTipo?.[t] ?? 1}`).join();
+    if (this.$('tipos').dataset.f !== firma){ this.$('tipos').dataset.f = firma;
+      this.$('tipos').innerHTML = tipos.map(t => `<span class="flex items-center gap-1"><span>${SOLDADOS[t].icon}</span><b>${r.nivelTipo?.[t] ?? 1}</b><span class="h-1.5 w-12 overflow-hidden rounded bg-zinc-800"><span data-xt="${t}" class="block h-full bg-emerald-400"></span></span>${r.potPend?.[t] ? `<b class="text-amber-300">+${r.potPend[t]}⚡</b>` : ''}</span>`).join('') + (r.tacPend ? `<b class="text-sky-300">+${r.tacPend} 🧠</b>` : ''); }
+    for (const t of tipos){ const el = this.$('tipos').querySelector(`[data-xt="${t}"]`); if (el) el.style.width = `${100 * (r.xpTipo?.[t] ?? 0) / xpTipoSiguiente(r.nivelTipo?.[t] ?? 1)}%`; }
     const pr = this.progresoOleada(); this.$('ola').style.width = `${pr}%`; this.$('olaN').textContent = `${pr} %`;
     this.$('vel').textContent = `×${this.vel}`;
     this.$('nivel').textContent = r.nivel;
@@ -452,7 +459,14 @@ class BattleScene extends Scene {
   }
   ganarXP(n){
     const r = this.run; r.xp += n; r.xpTotal += n;
-    if (r.xp >= r.xpSiguiente && !this.capaAbierta){ r.xp -= r.xpSiguiente; r.nivel++; this.elegirBonificadores(); }
+    while (r.xp >= r.xpSiguiente){ r.xp -= r.xpSiguiente; r.nivel++; r.tacPend = (r.tacPend ?? 0) + 1; this.aviso(`⬆️ Nivel ${r.nivel}: al terminar la oleada eliges un táctico`); }
+  }
+  /** XP de un tipo de soldado: todos los de ese tipo llenan la misma barra; cada nivel = 1 potenciador al final de la oleada. */
+  ganarXPTipo(tipo, n){
+    const r = this.run, xp = r.xpTipo ??= {}, nv = r.nivelTipo ??= {}, pend = r.potPend ??= {};
+    xp[tipo] = (xp[tipo] ?? 0) + n;
+    while (xp[tipo] >= xpTipoSiguiente(nv[tipo] ?? 1)){ xp[tipo] -= xpTipoSiguiente(nv[tipo] ?? 1); nv[tipo] = (nv[tipo] ?? 1) + 1; pend[tipo] = (pend[tipo] ?? 0) + 1;
+      this.aviso(`${SOLDADOS[tipo].icon} ${SOLDADOS[tipo].name}: ¡nivel ${nv[tipo]}!`); }
   }
 
   /* ---- Capas: subir de nivel, taller, pausa ---- */
@@ -464,58 +478,75 @@ class BattleScene extends Scene {
   }
   cerrarCapa(){ this.capaAbierta = false; this.pausado = false; this.$('capa').classList.add('hidden'); this.ultimo = performance.now(); }
 
-  elegirBonificadores(){
-    const l = this.run.loadout, rng = this.app.rng, elegido = {};
-    const ops = {arma: l.opciones('arma', rng), tactico: l.opciones('tactico', rng)};
-    this.run.loadout = l; const opsPot = opcionesPotencia(this.app, this.run, rng);     // ⚡ potenciadores de las armas de los soldados
-    const rec = {};
+  /** Final de la oleada: por cada nivel que subió un tipo de soldado se elige 1 potenciador (uno a uno, tipo por tipo)
+      y por cada nivel general, 1 táctico. Después sigue la partida. */
+  elegirFinOleada(seguir){
+    const r = this.run, cola = [];
+    for (const [tipo, n] of Object.entries(r.potPend ?? {})) for (let k = 0; k < n; k++) cola.push({tipo});
+    for (let k = 0; k < (r.tacPend ?? 0); k++) cola.push({tactico:true});
+    r.potPend = {}; r.tacPend = 0;
+    const siguiente = i => {
+      if (i >= cola.length){ this.mundo.sincronizarArmas(); if (this.capaAbierta) this.cerrarCapa(); this.dibujarMano(); return seguir(); }
+      const paso = cola[i], ops = paso.tactico ? this.opcionesTactico() : this.opcionesTipo(paso.tipo);
+      if (!ops.length) return siguiente(i + 1);
+      const titulo = paso.tactico ? '🧠 Elige un táctico' : `${SOLDADOS[paso.tipo].icon} ${SOLDADOS[paso.tipo].name}: elige un potenciador`;
+      const sub = paso.tactico ? 'Subiste de nivel resolviendo cálculos.' : `Tus ${SOLDADOS[paso.tipo].name.toLowerCase()}s subieron de nivel (nivel ${r.nivelTipo?.[paso.tipo] ?? 1}).`;
+      let sel = this.ayuda >= 3 ? ops.findIndex(o => o.sugerido) : -1;
+      const pintar = () => this.abrirCapa(`
+        <h2 class="text-center text-2xl font-black">🌊 Fin de la oleada ${r.oleada}</h2>
+        <p class="text-center text-xs text-zinc-400">Elección ${i + 1} de ${cola.length}</p>
+        <h3 class="mt-3 text-center text-lg font-bold">${titulo}</h3><p class="text-center text-sm text-zinc-400">${sub}</p>
+        <div class="mt-3 grid gap-2">${ops.map((o, k) => `<button data-op="${k}" class="relative flex items-center gap-3 rounded-2xl border-2 p-3 text-left touch-manipulation ${sel === k ? 'border-emerald-400 bg-emerald-400/10' : o.borde ?? 'border-zinc-700 bg-zinc-900'}">${o.cinta ? `<span class="absolute -top-2 right-3 rounded-full ${o.cintaColor ?? 'bg-amber-400'} px-2 text-[10px] font-black text-zinc-950">${o.cinta}</span>` : ''}${o.sugerido && this.ayuda ? '<span class="absolute -top-2 left-3 rounded-full bg-sky-400 px-2 text-[10px] font-black text-zinc-950">⭐ SUGERIDO</span>' : ''}<span class="text-3xl">${o.icon}</span><span><b>${o.nombre}</b><br><small class="text-zinc-400">${o.desc}</small></span></button>`).join('')}</div>
+        <button data-a="ok" class="${UI.btnP} mt-5" ${sel >= 0 ? '' : 'disabled'}>${i + 1 < cola.length ? 'Siguiente ▸' : 'Continuar'}</button>`,
+      e => {
+        const k = e.target.closest('[data-op]')?.dataset.op; if (k != null){ sel = +k; return pintar(); }
+        if (e.target.closest('[data-a="ok"]') && sel >= 0){ ops[sel].aplicar(); siguiente(i + 1); }
+      });
+      pintar();
+    };
+    siguiente(0);
+  }
+  /** Opciones de potenciador para el arma equipada de un tipo: sus 6 potenciadores, sus fusiones disponibles y, a veces, un superpotenciador. */
+  opcionesTipo(tipo){
+    const r = this.run, rng = this.app.rng, arma = tropaDe(this.app.progreso).equipo[tipo]?.arma; if (!arma) return [];
+    const pot = r.potenciadores ??= {}, sup = r.supers ??= [], fus = r.fusionesArma ??= [];
+    const normales = rng.shuffle(PLANTILLAS_POT.map(p => `${arma}:${p.k}`).filter(id => (pot[id] ?? 0) < MAX_POT)).map(id => { const P = POTENCIADORES[id], n = pot[id] ?? 0;
+      return {icon:P.icon, nombre:`${P.nombre.split(' · ')[0]} ${pips(n + 1)}`, desc:`${P.armaIcon} ${P.armaNombre}: ${P.desc}`, aplicar:() => { pot[id] = n + 1; this.app.progreso.descubrir('potenciadores', id); }}; });
+    const fusiones = fusionesDisponibles(r, arma).map(id => { const F = FUSIONES_ARMA[id];
+      return {icon:F.icon, nombre:F.nombre, desc:`Fusión de ${F.armaIcon} ${F.armaNombre} + ${BONUS_DEFS[F.tactico].icon} ${BONUS_DEFS[F.tactico].name}: ${F.desc}`, cinta:'FUSIÓN', cintaColor:'bg-fuchsia-400', borde:'border-fuchsia-400/70 bg-zinc-900',
+        aplicar:() => { fus.push(id); this.app.progreso.descubrir('fusiones', id); }}; });
+    const supers = superDisponibles(this.app, r).slice(0, 1).map(id => { const S = SUPERPOTENCIADORES[id];
+      return {icon:S.icon, nombre:S.nombre, desc:S.desc, cinta:'SÚPER', borde:'border-amber-400/70 bg-zinc-900', aplicar:() => { sup.push(id); this.app.progreso.descubrir('potenciadores', id); }}; });
+    const ops = [...fusiones.slice(0, 1), ...supers, ...normales].slice(0, 3);
+    if (ops.length) ops[0].sugerido = true;
+    return ops;
+  }
+  /** Opciones de táctico (nuevo, mejorar, fusionar tácticos o reparar la base), con la sugerencia del asistente. */
+  opcionesTactico(){
+    const l = this.run.loadout, rng = this.app.rng, ops = l.opciones('tactico', rng);
+    let mejor = -1;
     if (this.ayuda >= 1){
       const w = this.mundo, v = w.vistos, total = Math.max(1, Object.values(v).reduce((a, b) => a + b, 0)), cuenta = ids => ids.reduce((s, id) => s + (v[id] ?? 0), 0) / total;
-      const R = new Recomendador({voladores:cuenta(['nave', 'dron', 'bombardero', 'caza', 'portadrones', 'acorazado', 'mente']), blindados:cuenta(['blindado', 'coloso']), escuderos:cuenta(['escudero']),
+      mejor = new Recomendador({voladores:cuenta(['nave', 'dron', 'bombardero', 'caza', 'portadrones', 'acorazado', 'mente']), blindados:cuenta(['blindado', 'coloso']), escuderos:cuenta(['escudero']),
         rapidos:cuenta(['saltador', 'dron', 'caza']), grupo:w.enemigos.length >= 6 || total > 20, base:w.base.vida / w.base.vidaMax, sinEnergia:w.tiempoSinEnergia / Math.max(1, w.tiempo),
-        bajasPropias:w.bajasPropias, pasoLento:(this.run.tPasos ?? 0) / Math.max(1, this.run.nPasos ?? 1) > 12});
-      for (const tipo of ['tactico']){ rec[tipo] = R.mejor(ops[tipo]); if (this.ayuda >= 3) elegido[tipo] = rec[tipo].i; }
+        bajasPropias:w.bajasPropias, pasoLento:(this.run.tPasos ?? 0) / Math.max(1, this.run.nPasos ?? 1) > 12}).mejor(ops).i;
     }
-    const propsDe = op => op.accion === 'fusionar' ? BONUS_DEFS[op.receta.resultado].props : op.accion === 'mejorar' ? op.bonus.props : op.accion === 'nuevo' ? BONUS_DEFS[op.id].props : null;
-    const etiqueta = op => op.accion === 'reparar' ? ['🔧', 'Reparar base', '+30 de vida'] :
-      op.accion === 'fusionar' ? [BONUS_DEFS[op.receta.resultado].icon, `Fusionar: ${BONUS_DEFS[op.receta.resultado].name}`, `${BONUS_DEFS[op.receta.a].name} + ${BONUS_DEFS[op.receta.b].name} → nivel 4 y libera un espacio`] :
-      op.accion === 'mejorar' ? [op.bonus.def.icon, `${op.bonus.def.name} → Nv ${op.bonus.nivel + 1}`, op.bonus.def.desc] :
-      [BONUS_DEFS[op.id].icon, `${BONUS_DEFS[op.id].name} (nuevo)`, BONUS_DEFS[op.id].desc];
-    const espacios = tipo => `${l.lista(tipo).map(b => `${b.def.icon}<sub>${b.nivel}</sub>`).join(' ')} <span class="text-zinc-500">${l.lista(tipo).length}/${ESPACIOS[tipo]}</span>`;
-    const pintar = () => this.abrirCapa(`
-      <h2 class="text-center text-2xl font-black">⬆️ ¡Nivel ${this.run.nivel}!</h2><p class="text-center text-sm text-zinc-400">Elige ${opsPot.length ? '1 potenciador para las armas de tus soldados y ' : ''}1 táctico</p>
-      ${opsPot.length ? `<div class="mt-4 flex items-baseline justify-between"><b>⚡ Potenciadores de tus soldados</b></div>
-        <div class="mt-2 grid gap-2">${opsPot.map((op, i) => { const on = elegido.pot === i, s = op.accion === 'super' ? SUPERPOTENCIADORES[op.id] : POTENCIADORES[op.id], n = op.accion === 'pot' ? (this.run.potenciadores[op.id] ?? 0) : 0;
-          return `<button data-pot="${i}" class="relative flex items-center gap-3 rounded-2xl border-2 p-3 text-left touch-manipulation ${on ? 'border-emerald-400 bg-emerald-400/10' : op.accion === 'super' ? 'border-amber-400/70 bg-zinc-900' : 'border-zinc-700 bg-zinc-900'}">${op.accion === 'super' ? '<span class="absolute -top-2 right-3 rounded-full bg-amber-400 px-2 text-[10px] font-black text-zinc-950">SÚPER</span>' : ''}<span class="text-3xl">${s.icon}</span><span><b>${s.nombre}</b>${op.accion === 'pot' ? ` ${pips(n + 1)}` : ''}<br><small class="text-zinc-400">${op.accion === 'pot' ? `${s.armaIcon} ${s.armaNombre}: ` : ''}${s.desc}</small></span></button>`; }).join('')}</div>` : ''}
-      ${['tactico'].map(tipo => `
-        <div class="mt-4 flex items-baseline justify-between"><b>${tipo === 'arma' ? '🔫 Armas' : '🧠 Tácticos'}</b><span class="text-sm">${espacios(tipo)}</span></div>
-        <div class="mt-2 grid gap-2">${ops[tipo].map((op, i) => { const [ic, n, d] = etiqueta(op), on = elegido[tipo] === i;
-          const sug = rec[tipo]?.i === i;
-          return `<button data-op="${tipo}|${i}" class="relative flex items-center gap-3 rounded-2xl border-2 p-3 text-left touch-manipulation ${on ? 'border-emerald-400 bg-emerald-400/10' : sug ? 'border-sky-500/70 bg-zinc-900' : 'border-zinc-700 bg-zinc-900'}">${sug ? '<span class="absolute -top-2 right-3 rounded-full bg-sky-400 px-2 text-[10px] font-black text-zinc-950">⭐ SUGERIDO</span>' : ''}<span class="text-3xl">${ic}</span><span><b>${n}</b><br><small class="text-zinc-400">${d}</small>${sug && this.ayuda >= 2 ? `<br><small class="text-sky-300">💡 ${rec[tipo].razon}</small>` : ''}<span class="mt-1 flex flex-wrap gap-1">${chipsProps(propsDe(op))}</span></span></button>`; }).join('')}</div>`).join('')}
-      <button data-a="ok" class="${UI.btnP} mt-5" ${elegido.tactico != null && (!opsPot.length || elegido.pot != null) ? '' : 'disabled'}>Continuar</button>`,
-    e => {
-      const op = e.target.closest('[data-op]')?.dataset.op;
-      if (op){ const [tipo, i] = op.split('|'); elegido[tipo] = +i; return pintar(); }
-      const po = e.target.closest('[data-pot]')?.dataset.pot; if (po != null){ elegido.pot = +po; return pintar(); }
-      if (e.target.closest('[data-a="ok"]')){
-        for (const tipo of ['tactico']){
-          const o = ops[tipo][elegido[tipo]];
-          if (o.accion === 'reparar') this.run.base.vida = Math.min(this.run.base.vidaMax, this.run.base.vida + 30); else l.aplicar(o);
-          const nuevoId = o.accion === 'nuevo' ? o.id : o.accion === 'fusionar' ? o.receta.resultado : null;
-          if (nuevoId) this.app.progreso.descubrir(BONUS_DEFS[nuevoId].fusion ? 'fusiones' : BONUS_DEFS[nuevoId].tipo === 'arma' ? 'armas' : 'tacticos', nuevoId);
-        }
-        const po = opsPot[elegido.pot];
-        if (po){ if (po.accion === 'pot') this.run.potenciadores[po.id] = (this.run.potenciadores[po.id] ?? 0) + 1; else this.run.supers.push(po.id); this.app.progreso.descubrir('potenciadores', po.id); }
-        const b = this.run.base, nuevaMax = this.run.vidaBase + l.efecto('vida', 0);
-        b.vida += Math.max(0, nuevaMax - b.vidaMax); b.vidaMax = nuevaMax;
-        this.mundo.sincronizarArmas(); this.cerrarCapa(); this.dibujarMano();
-      }
+    return ops.map((op, k) => {
+      const [icon, nombre, desc] = op.accion === 'reparar' ? ['🔧', 'Reparar base', '+30 de vida'] :
+        op.accion === 'fusionar' ? [BONUS_DEFS[op.receta.resultado].icon, `Fusionar: ${BONUS_DEFS[op.receta.resultado].name}`, `${BONUS_DEFS[op.receta.a].name} + ${BONUS_DEFS[op.receta.b].name} → nivel 4 y libera un espacio`] :
+        op.accion === 'mejorar' ? [op.bonus.def.icon, `${op.bonus.def.name} → Nv ${op.bonus.nivel + 1}`, op.bonus.def.desc] :
+        [BONUS_DEFS[op.id].icon, `${BONUS_DEFS[op.id].name} (nuevo)`, BONUS_DEFS[op.id].desc];
+      return {icon, nombre, desc, sugerido:k === mejor, aplicar:() => {
+        if (op.accion === 'reparar') this.run.base.vida = Math.min(this.run.base.vidaMax, this.run.base.vida + 30); else l.aplicar(op);
+        const nuevoId = op.accion === 'nuevo' ? op.id : op.accion === 'fusionar' ? op.receta.resultado : null;
+        if (nuevoId) this.app.progreso.descubrir(BONUS_DEFS[nuevoId].fusion ? 'fusiones' : 'tacticos', nuevoId);
+        const b = this.run.base, nuevaMax = this.run.vidaBase + l.efecto('vida', 0); b.vida += Math.max(0, nuevaMax - b.vidaMax); b.vidaMax = nuevaMax;
+      }};
     });
-    pintar();
   }
   mostrarPausa(){
     this.abrirCapa(`<div class="m-auto flex w-full max-w-sm flex-col gap-3"><h2 class="text-center text-2xl font-black">⏸ Pausa</h2>
-      <div class="text-sm font-bold">⚡ Potenciadores</div><div class="${UI.card} !p-2.5 text-xs">${Object.entries(this.run.potenciadores ?? {}).map(([id, n]) => `${POTENCIADORES[id].icon} ${POTENCIADORES[id].nombre} ${pips(n)}`).join('<br>') || 'Aún ninguno: se eligen al subir de nivel.'}${(this.run.supers ?? []).map(id => `<br>🌟 ${SUPERPOTENCIADORES[id].nombre}`).join('')}</div>
+      <div class="text-sm font-bold">⚡ Potenciadores</div><div class="${UI.card} !p-2.5 text-xs">${Object.entries(this.run.potenciadores ?? {}).map(([id, n]) => `${POTENCIADORES[id].icon} ${POTENCIADORES[id].nombre} ${pips(n)}`).join('<br>') || 'Aún ninguno: se eligen al final de cada oleada.'}${(this.run.supers ?? []).map(id => `<br>🌟 ${SUPERPOTENCIADORES[id].nombre}`).join('')}</div>
       ${['tactico'].map(tipo => `<div class="text-sm font-bold">${tipo === 'arma' ? '🔫 Armas' : '🧠 Tácticos'} ${this.run.loadout.lista(tipo).length}/${ESPACIOS[tipo]}</div>
         ${this.run.loadout.lista(tipo).map(b => `<div class="${UI.card} !p-2.5"><div class="flex items-center gap-2"><span class="text-xl">${b.def.icon}</span><b class="flex-1 text-sm">${b.def.name}</b>${pips(b.nivel, b.nivel > 3 ? 4 : 3)}</div><div class="mt-1 flex flex-wrap gap-1">${chipsProps(b.props)}</div></div>`).join('') || '<div class="text-xs text-zinc-500">Sin tácticos todavía</div>'}`).join('')}
       <button data-a="seguir" class="${UI.btnP}">▶ Continuar</button>
@@ -545,9 +576,9 @@ class BattleScene extends Scene {
     if (r.oleada === OLEADAS) this.app.ruta.contar('misiones');
     if (r.oleada === OLEADAS){ const pts = puntosMision(r.mision); this.app.progreso.ganarPuntos(pts); r.puntosMisiones += pts; const m = r.mision; setTimeout(() => this.aviso(`🏅 ¡Misión ${m} cumplida! +${pts} 🔬`), 2700); }
     if (nuevos.length) setTimeout(() => this.aviso(`📚 Nuevo en el catálogo (${nuevos.length})`), 5300);
-    if (r.oleada < OLEADAS){ r.oleada++; return this.iniciarOleada(); }
+    if (r.oleada < OLEADAS) return this.elegirFinOleada(() => { r.oleada++; this.iniciarOleada(); });   // primero se eligen potenciadores y tácticos
     if (r.mundo) return this.misionMundoCumplida();
-    if (r.mision < MISIONES || r.infinito){ r.mision++; r.oleada = 1; r.base.vida = Math.min(r.base.vidaMax, r.base.vida + 25); return this.pausaMision(r.mision - 1); }
+    if (r.mision < MISIONES || r.infinito){ r.mision++; r.oleada = 1; r.base.vida = Math.min(r.base.vidaMax, r.base.vida + 25); return this.elegirFinOleada(() => this.pausaMision(r.mision - 1)); }
     return this.fin(true);
   }
   /** Misión de un mundo ganada: se marca el Comandante (o el Soberano) como derrotado. */

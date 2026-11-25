@@ -106,6 +106,8 @@ const FUSIONES = [
 ];
 const familiaFusion = f => `${BONUS_DEFS[f.a].tipo}+${BONUS_DEFS[f.b].tipo}`;
 const MAX_NIVEL = 3, ESPACIOS = {arma:3, tactico:3};
+/** Veces que hay que jugar una carta en batalla para poder usarla en el 🃏 Mazo. */
+const USOS_MAZO = 10;
 
 class Bonus {
   constructor(id, nivel = 1){ this.id = id; this.nivel = nivel; }
@@ -276,6 +278,10 @@ class Progreso {
   /** Registra algo nuevo para el catálogo. Descubrir o usar algo por primera vez da ⚙️ chatarra de premio. */
   descubrir(cat, id){ const l = this.data.desc[cat]; if (l.includes(id)) return false; l.push(id); this.data.chatarra = (this.data.chatarra ?? 0) + 1; (this.nuevos ??= []).push({cat, id}); this.guardar(); return true; }
   conocido(cat, id){ return this.data.desc[cat].includes(id); }
+  /** Usos de cada carta en batalla: con USOS_MAZO se puede usar en las cartas compuestas del Mazo. */
+  usoCarta(id){ const u = this.data.usoCartas ??= {}; u[id] = (u[id] ?? 0) + 1; this.guardar(); return u[id]; }
+  usos(id){ return this.data.usoCartas?.[id] ?? 0; }
+  enMazo(id){ return !!this.data.todo || this.usos(id) >= USOS_MAZO; }
   disponible(id){ const r = MEJORAS[id].requiere; return !r || this.conocido(...r); }
   ganarPuntos(n){ this.data.puntos += n; this.guardar(); }
   guardarMazo(dom, lista){ this.data.mazo[dom] = lista.slice(0, MAX_MAZO); this.guardar(); }

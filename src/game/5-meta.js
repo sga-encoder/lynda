@@ -216,7 +216,8 @@ class CatalogoScene extends Scene {
           <span class="absolute [animation:cat-a_4s_ease-in-out_infinite]">${texJuego(antes, false)}</span>
           <span class="absolute text-emerald-300 [animation:cat-b_4s_ease-in-out_infinite]">${texJuego(despues, false)}</span></div>
         <p class="mt-1 text-center text-xs text-zinc-500">Ejemplo animado: antes → después</p>
-        <p class="mt-2 text-xs text-zinc-400">Área: ${it.dom.icon} ${it.dom.nombre} · usada en partidas: ${P.conocido('cartas', it.id) ? 'sí' : 'todavía no'}</p>`;
+        <p class="mt-2 text-xs text-zinc-400">Área: ${it.dom.icon} ${it.dom.nombre} · usada en partidas: ${P.conocido('cartas', it.id) ? 'sí' : 'todavía no'}</p>
+        ${it.c.free ? '' : `<p class="mt-1 text-xs ${P.enMazo(it.id) ? 'text-emerald-300' : 'text-zinc-400'}">🃏 Mazo: ${P.enMazo(it.id) ? 'disponible para cartas compuestas' : `🔒 ${P.usos(it.id)}/${USOS_MAZO} usos en batalla para usarla en cartas compuestas`}</p>`}`;
     } else if (it.kind === 'potarma'){
       const x = it.x;
       vista = `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl bg-gradient-to-b from-[#0b1023] to-[#312e81]"></canvas>`;
@@ -347,7 +348,11 @@ class MazoScene extends Scene {
       </div>
       <div class="mt-2 flex gap-2"><input data-nombre value="${a.nombre}" maxlength="24" class="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" placeholder="Nombre">
         <button data-a="cancelar" class="${UI.btn} !min-h-10 !px-3 text-sm">Cancelar</button><button data-a="guardar" class="${UI.btnP} !min-h-10 !px-3 text-sm" ${a.cartas.length >= 2 ? '' : 'disabled'}>Guardar</button></div></div>
-      <div class="mt-3 flex flex-wrap justify-center gap-2">${D.cartas.all().filter(c => !c.free && this.app.cartaDesbloqueada(c.id)).map(c => cartaHTML(c, D, {attr:`data-pick="${c.id}" style="touch-action:none"`, chica:true})).join('')}</div>`;
+      <p class="mt-3 text-center text-xs text-zinc-400">Para usar una carta aquí, juégala <b>${USOS_MAZO} veces</b> en batalla.</p>
+      <div class="mt-2 flex flex-wrap justify-center gap-2">${D.cartas.all().filter(c => !c.free && this.app.cartaDesbloqueada(c.id)).map(c => { const P = this.app.progreso;
+        if (P.enMazo(c.id)) return cartaHTML(c, D, {attr:`data-pick="${c.id}" style="touch-action:none"`, chica:true});
+        return `<span class="relative inline-block" title="Juégala ${USOS_MAZO} veces en batalla"><span class="pointer-events-none block opacity-40 grayscale">${cartaHTML(c, D, {attr:'', chica:true})}</span>
+          <span class="absolute inset-x-1 bottom-2 rounded-lg bg-zinc-950/90 px-1 py-1 text-center text-[10px] font-bold text-amber-300">🔒 ${P.usos(c.id)}/${USOS_MAZO} usos</span></span>`; }).join('')}</div>`;
   }
   click(e){
     const a = e.target.closest('[data-a]')?.dataset.a;

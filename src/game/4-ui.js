@@ -465,7 +465,8 @@ class BattleScene extends Scene {
       this.combo = 0;
       this.mensaje(repetido ? '↩️ Volviste a un paso anterior: sin energía.' : 'Paso válido, pero no te acerca al resultado: sin energía.', 'zinc');
     }
-    if (carta) this.app.progreso.descubrir('cartas', carta.id);
+    if (carta){ this.app.progreso.descubrir('cartas', carta.id);
+      if (this.app.progreso.usoCarta(carta.id) === USOS_MAZO && !this.app.progreso.data.todo) this.aviso(`🔓 ${carta.icon} ${carta.name}: ya la puedes usar en el 🃏 Mazo`); }   // 10 usos desbloquean la carta para el Mazo
     if (this.dom.resuelto(this.raiz)) return this.problemaResuelto();
     if (carta?.id === 'seme' && carta.targets(this.raiz).length) this.mensaje(this.$('msg').innerHTML + ' · 🧲 Aún puedes juntar otro grupo o usar otra propiedad.', avance > 0 ? 'emerald' : 'zinc');
     this.dibujarProblema(); this.dibujarMano();

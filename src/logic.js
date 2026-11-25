@@ -129,7 +129,7 @@ function pageLesson(L){
   <h3 class="${C.h3}">Ejemplos resueltos</h3>
   <p class="${C.src}">Intenta cada uno antes de revelar los pasos.</p>
   ${L.examples.map(exampleCard).join('')}
-  <h3 class="${C.h3}">Ejercicios para ti <small class="${C.src}">(${p.n}/${p.tot} resueltos)</small></h3>
+  <h3 id="ejercicios" class="${C.h3} scroll-mt-20">Ejercicios para ti <small class="${C.src}">(${p.n}/${p.tot} resueltos)</small></h3>
   ${L.exercises.map((ex,k)=>exerciseCard(ex, L.id+'-'+k, k)).join('')}
   <div class="mt-10 flex flex-wrap justify-between gap-2.5">
    ${prev ? link('#/'+prev.id, '◂ '+prev.short) : link('#/bases','◂ Bases')}
@@ -427,15 +427,26 @@ function bloqueosLecciones(){
 }
 /** Lección pendiente que bloquea `href` (o null si está abierta). */
 const bloqueoLeccion = href => bloqueosLecciones().get(href) ?? null;
-function pageBloqueo(b){
-  return `<div class="mx-auto max-w-md py-10 text-center">
-    <div class="text-6xl">🔒</div>
-    <h2 class="${C.h2}">Lección bloqueada</h2>
-    <p class="${C.lead}">Para avanzar, primero termina la lección anterior: resuelve todos sus ejercicios con piezas.</p>
-    <div class="${C.card} text-left"><b>Te falta:</b> ${b.icon} ${b.titulo}
-      ${b.req.map(r => { const [a, n] = rutaApp().avance(r); return `<div class="mt-1.5 text-xs text-stone-600 dark:text-zinc-400">${a}/${n} ${r.txt}</div>`; }).join('')}</div>
-    <div class="mt-4 flex flex-wrap justify-center gap-2"><a class="${C.btnP}" href="${b.href}">Ir a ${b.titulo.split(': ').pop()} ▸</a><a class="${C.btn}" href="#/ruta">🗺️ Ver la ruta</a></div></div>`;
+/** Módulos de la ruta que faltan antes del nivel `idx` (solo lecciones si `soloLecciones`). */
+function pendientesAntes(idx, soloLecciones){
+  const R = rutaApp(); if (R.dev) return [];
+  return R.hitos().slice(1, idx).filter(h => !h.logro && (!soloLecciones || ES_LECCION.test(h.href ?? '')) && !R.cumplido(h));
 }
+function pageFaltan(pend, destino){
+  const R = rutaApp();
+  return `<div class="mx-auto max-w-md py-8 text-center">
+    <div class="text-6xl">🔒</div>
+    <h2 class="${C.h2}">Aún no puedes ver esto</h2>
+    <p class="${C.lead}">${destino ? `Para llegar a <b>${destino}</b>, t` : 'T'}e falta ver ${pend.length === 1 ? 'este módulo' : `estos ${pend.length} módulos`}:</p>
+    <div class="mt-4 flex flex-wrap justify-center gap-2"><button data-estudiar="${pend[0].href ?? '#/ruta'}" class="${C.btnP}">📚 Empezar a estudiar</button><a class="${C.btn}" href="#/ruta">🗺️ Ver la ruta</a></div>
+    <ol class="mt-4 space-y-2 text-left !list-none !pl-0">${pend.map((h, k) => `<li><button data-estudiar="${h.href ?? '#/ruta'}" class="flex w-full items-center gap-3 rounded-xl border p-2.5 text-left text-inherit ${k ? 'border-stone-200 bg-white dark:border-zinc-800 dark:bg-zinc-900' : 'border-blue-400 bg-blue-50 ring-2 ring-blue-300 dark:bg-blue-950/40'}">
+      <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-stone-200 text-xs font-black dark:bg-zinc-800">${h.i + 1}</span>
+      <span class="min-w-0 flex-1"><b class="block text-sm">${h.icon} ${h.titulo}</b>${h.req.map(r => { const [a, n] = R.avance(r); return `<small class="text-stone-500 dark:text-zinc-400">${a}/${n} ${r.txt}</small>`; }).join(' ')}</span><span class="text-blue-600">▸</span></button></li>`).join('')}</ol></div>`;
+}
+const IR_EJ = /^#\/(f|d)\/[^/]+$|^#\/l\d+$/;
+/** Ir a un módulo: si es una lección, directo a sus ejercicios. */
+function irAModulo(href, reemplazar){ if (IR_EJ.test(href)) PENDIENTE_EJ = true; if (location.hash === href) route(); else if (reemplazar) location.replace(href); else location.hash = href; }
+let PENDIENTE_EJ = false;
 function rutaApp(){ return new DefensaAlgebraica.Ruta(new DefensaAlgebraica.Progreso(new DefensaAlgebraica.SaveRepository()), () => Object.keys(done).filter(k => done[k])); }
 function pageRuta(){
   const R = rutaApp().resumen(), sig = R.tiers.find(t=>!t.real);
@@ -449,12 +460,12 @@ function pageRuta(){
     <div class="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-orange-500 font-black text-white shadow"><span class="text-[10px] uppercase">Nivel</span><span class="text-2xl leading-none">${hechos}</span></div>
     <div class="min-w-0 flex-1"><b>${hechos} de ${R.total} niveles</b> <span class="text-sm text-stone-500 dark:text-zinc-400">· ${R.xp} XP</span>
       <div class="mt-1.5 h-3 overflow-hidden rounded-full bg-stone-200 dark:bg-zinc-800"><div class="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500" style="width:${100*hechos/R.total}%"></div></div>
-      <small class="text-stone-500 dark:text-zinc-400">${sig ? `Siguiente: <a class="underline" href="${sig.href||'#/'}">${sig.titulo}</a>` : '¡Ruta completa!'}</small></div></div>
+      <small class="text-stone-500 dark:text-zinc-400">${sig ? `Siguiente: <a class="underline" href="#/ruta/${sig.i}">${sig.titulo}</a>` : '¡Ruta completa!'}</small></div></div>
   <ol class="relative mt-6 !list-none border-l-4 border-stone-200 !pl-6 dark:border-zinc-800">
     ${R.tiers.map(t=>`<li class="relative mb-4" id="ruta-${t.i}">
       <span class="absolute -left-[2.35rem] top-1 flex h-8 w-8 items-center justify-center rounded-full border-4 text-xs font-black ${t.real?'border-amber-400 bg-amber-300 text-amber-950':'border-stone-200 bg-white text-stone-500 dark:border-zinc-800 dark:bg-zinc-900'}">${t.real?'✓':t.i+1}</span>
       <div class="rounded-2xl border p-3 ${t.real?'border-amber-300 bg-white dark:border-amber-700 dark:bg-zinc-900':'border-stone-200 bg-stone-100/60 dark:border-zinc-800 dark:bg-zinc-900/40'} ${sig && sig.i===t.i?'ring-2 ring-blue-400':''}">
-        <div class="flex items-start justify-between gap-2"><a ${t.href?`href="${t.href}"`:''} class="font-bold">${t.icon} Nivel ${t.i+1} · ${t.titulo}${t.titulo2?` <span class="text-amber-600">${t.titulo2}</span>`:''}</a><span class="shrink-0 text-xs text-stone-500 dark:text-zinc-400">${t.real?'✅':'🔒'}</span></div>
+        <div class="flex items-start justify-between gap-2"><a href="#/ruta/${t.i}" class="font-bold">${t.icon} Nivel ${t.i+1} · ${t.titulo}${t.titulo2?` <span class="text-amber-600">${t.titulo2}</span>`:''}</a><span class="shrink-0 text-xs text-stone-500 dark:text-zinc-400">${t.real?'✅':'🔒'}</span></div>
         ${t.req.map(r=>`<div class="mt-1.5 flex items-center gap-2 text-xs text-stone-600 dark:text-zinc-400"><span class="h-1.5 w-24 overflow-hidden rounded-full bg-stone-200 dark:bg-zinc-800"><span class="block h-full bg-emerald-500" style="width:${100*r.a/r.b}%"></span></span>${r.a}/${r.b} ${r.txt}</div>`).join('')}
         ${t.premios.length ? `<div class="mt-2 flex flex-wrap gap-1.5">${t.premios.map(p=>`<span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${TONO[p.tipo]}"><span>${p.icon}</span><span class="opacity-70">${ETQ[p.tipo]}:</span> ${p.nombre}${p.reclamable?` <button data-reclamar="${t.i}" class="ml-1 rounded-full bg-emerald-600 px-2 text-white">Reclamar</button>`:p.reclamado?' ✓':''}</span>`).join('')}</div>` : ''}</div></li>`).join('')}
   </ol>
@@ -482,7 +493,7 @@ function pageSecTopic(sec, T){
   <h3 class="${C.h3}">Ejemplos resueltos</h3>
   <p class="${C.src}">Intenta cada uno antes de revelar los pasos.</p>
   ${T.examples.map(exampleCard).join('')}
-  <h3 class="${C.h3}">Ejercicios con piezas <small class="${C.src}">(${p.n}/${p.tot} resueltos)</small></h3>
+  <h3 id="ejercicios" class="${C.h3} scroll-mt-20">Ejercicios con piezas <small class="${C.src}">(${p.n}/${p.tot} resueltos)</small></h3>
   <p class="${C.src}">Arma cada paso en el lienzo con las piezas de las categorías y pulsa Verificar.</p>
   ${T.lego.map((ex,k)=>legoCard(ex, `${sec}-${T.id}-${k}`, k)).join('')}
   <div class="mt-10 flex flex-wrap justify-between gap-2.5">
@@ -607,7 +618,13 @@ function route(){
   const T = SECCIONES_AP[SEC] && sub ? SECCIONES_AP[SEC].lista().find(x=>x.id===sub) : null;
   let html, title;
   const bloq = (T || L) && bloqueoLeccion(T ? `#/${SEC}/${T.id}` : `#/${L.id}`);
-  if (bloq){ html = pageBloqueo(bloq); title = 'Lección bloqueada'; }
+  const nivelRuta = r==='ruta' && sub != null && sub !== '' ? +sub : null;
+  if (nivelRuta != null){
+    const h = rutaApp().hitos()[nivelRuta], pend = h ? pendientesAntes(nivelRuta, ES_LECCION.test(h.href ?? '')) : [];
+    if (h && !pend.length){ irAModulo(h.href ?? '#/ruta', true); return; }
+    html = pageFaltan(pend.length ? pend : [], h?.titulo); title = 'Ruta';
+  }
+  else if (bloq){ const i = rutaApp().hitos().findIndex(h => h.href === (T ? `#/${SEC}/${T.id}` : `#/${L.id}`)); html = pageFaltan(pendientesAntes(i, true), T ? T.short : L.short); title = 'Lección bloqueada'; }
   else if (T){ html = pageSecTopic(SEC, T); title = T.short; }
   else if (SECCIONES_AP[SEC]){ html = pageSecIndex(SEC); title = SECCIONES_AP[SEC].nombre; }
   else if (r==='jugar'){ html = ''; title = 'Juego'; }
@@ -630,7 +647,8 @@ function route(){
   if (T && !bloq) T.lego.forEach((_,k)=>renderLego(`${SEC}-${T.id}-${k}`));
   if (r==='p' && sub2) montarPractica(sub, sub2);
   toggleMenu(false);
-  const target = sub && !T && r!=='p' && document.getElementById('b-'+sub);
+  const ej = PENDIENTE_EJ && !bloq && document.getElementById('ejercicios'); PENDIENTE_EJ = false;
+  const target = ej || (sub && !T && r!=='p' && document.getElementById('b-'+sub));
   if (target) setTimeout(()=>target.scrollIntoView({behavior:'smooth',block:'start'}),30);
   else window.scrollTo(0,0);
   document.title = title + ' · Integrando';
@@ -758,6 +776,7 @@ document.addEventListener('click', e=>{
     zona.scrollIntoView({behavior:'smooth', block:'start'}); return; }
   const ir = e.target.closest('[data-ir]');
   if (ir){ e.preventDefault(); document.getElementById(ir.dataset.ir)?.scrollIntoView({behavior:'smooth', block:'center'}); return; }
+  const est = e.target.closest('[data-estudiar]'); if (est){ irAModulo(est.dataset.estudiar); return; }
   const rc = e.target.closest('[data-reclamar]');
   if (rc){ const pts = rutaApp().reclamar(+rc.dataset.reclamar); return route(); }
 });

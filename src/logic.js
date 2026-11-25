@@ -70,7 +70,10 @@ function lessonProgress(L){
   const n = L.exercises.filter((_,i)=>done[L.id+'-'+i]).length;
   return {n, tot};
 }
-const tile = (href, title, sub) =>
+const tile = (href, title, sub) => { const b = bloqueoLeccion(href); return b
+  ? `<a href="${href}" class="block rounded-2xl border border-dashed border-stone-300 bg-stone-100/70 p-3.5 sm:p-4 opacity-70 dark:border-zinc-700 dark:bg-zinc-900/40"><b class="mb-1 block">🔒 ${title}</b><small class="text-stone-500 dark:text-zinc-400">Primero termina: ${b.titulo}</small></a>`
+  : tileAbierto(href, title, sub); };
+const tileAbierto = (href, title, sub) =>
   `<a href="${href}" class="block rounded-2xl border border-stone-200 bg-white p-3.5 sm:p-4 shadow-sm touch-manipulation active:scale-[0.98] transition-transform hover:border-blue-500 dark:border-zinc-800 dark:bg-zinc-900"><b class="mb-1 block">${title}</b><small class="text-stone-500 dark:text-zinc-400">${sub}</small></a>`;
 
 /* =====================================================================
@@ -409,6 +412,30 @@ function montarPractica(domId, cartaId){
 }
 
 /* ---------- Ruta (pase de batalla) ---------- */
+/** Lecciones en orden (Fundamentos → Diferencial → Integral): una lección se abre solo si las anteriores están hechas. */
+const ES_LECCION = /^#\/(f|d)\/[^/]+$|^#\/l\d+$/;
+let BLOQ_CACHE = null;
+function bloqueosLecciones(){
+  if (BLOQ_CACHE) return BLOQ_CACHE;
+  const R = rutaApp(), m = new Map();
+  if (!R.dev){
+    let pendiente = null;
+    for (const h of R.hitos()) if (ES_LECCION.test(h.href ?? '')){ if (pendiente) m.set(h.href, pendiente); else if (!R.cumplido(h)) pendiente = h; }
+  }
+  setTimeout(() => { BLOQ_CACHE = null; });   // se recalcula en cada navegación / cambio
+  return BLOQ_CACHE = m;
+}
+/** Lección pendiente que bloquea `href` (o null si está abierta). */
+const bloqueoLeccion = href => bloqueosLecciones().get(href) ?? null;
+function pageBloqueo(b){
+  return `<div class="mx-auto max-w-md py-10 text-center">
+    <div class="text-6xl">🔒</div>
+    <h2 class="${C.h2}">Lección bloqueada</h2>
+    <p class="${C.lead}">Para avanzar, primero termina la lección anterior: resuelve todos sus ejercicios con piezas.</p>
+    <div class="${C.card} text-left"><b>Te falta:</b> ${b.icon} ${b.titulo}
+      ${b.req.map(r => { const [a, n] = rutaApp().avance(r); return `<div class="mt-1.5 text-xs text-stone-600 dark:text-zinc-400">${a}/${n} ${r.txt}</div>`; }).join('')}</div>
+    <div class="mt-4 flex flex-wrap justify-center gap-2"><a class="${C.btnP}" href="${b.href}">Ir a ${b.titulo.split(': ').pop()} ▸</a><a class="${C.btn}" href="#/ruta">🗺️ Ver la ruta</a></div></div>`;
+}
 function rutaApp(){ return new DefensaAlgebraica.Ruta(new DefensaAlgebraica.Progreso(new DefensaAlgebraica.SaveRepository()), () => Object.keys(done).filter(k => done[k])); }
 function pageRuta(){
   const R = rutaApp().resumen(), sig = R.tiers.find(t=>!t.real);
@@ -416,7 +443,7 @@ function pageRuta(){
   const ETQ = {problema:'Problema', carta:'Carta', dificultad:'Dificultad', bonus:'Bonificador', puntos:'Premio'};
   const hechos = R.nivelReal + 1;
   return `<h2 class="${C.h2}">🗺️ Ruta de progreso</h2>
-  <p class="${C.lead}">Un nivel por cada paso de tu aprendizaje: el tutorial, cada tema de Fundamentos, Diferencial e Integral, las cartas de propiedades y logros del juego. Cada nivel cumplido desbloquea contenido del juego. Puedes avanzar en el orden que quieras.</p>
+  <p class="${C.lead}">Un nivel por cada paso de tu aprendizaje: el tutorial, cada tema de Fundamentos, Diferencial e Integral, las cartas de propiedades y logros del juego. Cada nivel cumplido desbloquea contenido del juego. Las lecciones se abren en orden: para pasar a la siguiente, termina la anterior.</p>
   ${R.dev ? `<div class="${C.card} border-amber-400 bg-amber-50 dark:bg-amber-950/30">🧪 <b>Modo desarrollo activo</b>: en el juego todo está desbloqueado (también el catálogo). Se cambia en ⚙️ Configuración. Abajo ves tu avance real.</div>` : ''}
   <div class="${C.card} flex items-center gap-4">
     <div class="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-orange-500 font-black text-white shadow"><span class="text-[10px] uppercase">Nivel</span><span class="text-2xl leading-none">${hechos}</span></div>
@@ -538,7 +565,7 @@ function currentId(){
 }
 function buildNav(cur){
   const grp = (t, href, open) => `<a href="${href}" class="mx-1 mb-1 mt-4 flex items-center justify-between rounded-lg px-1.5 py-1 text-xs font-bold uppercase tracking-wider ${open?'text-blue-700 dark:text-blue-300':'text-stone-500 dark:text-zinc-400'} hover:bg-blue-50 dark:hover:bg-blue-950/40">${t}<span>${open?'▾':'▸'}</span></a>`;
-  const a = (href,label,id,extra='') => `<a href="${href}" class="flex justify-between gap-1.5 rounded-lg px-2.5 py-1.5 text-[0.93rem] hover:bg-blue-50 dark:hover:bg-blue-950/50 ${cur===id?'bg-blue-50 font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300':''}">${label}${extra}</a>`;
+  const a = (href,label,id,extra='') => { const lk = bloqueoLeccion(href); return `<a href="${href}" class="flex justify-between gap-1.5 rounded-lg px-2.5 py-1.5 text-[0.93rem] hover:bg-blue-50 dark:hover:bg-blue-950/50 ${lk?'text-stone-400 dark:text-zinc-500':''} ${cur===id?'bg-blue-50 font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300':''}">${lk?'🔒 ':''}${label}${lk?'':extra}</a>`; };
   const cnt = (n,t) => `<span class="text-xs font-normal text-stone-500 dark:text-zinc-400">${n}/${t}</span>`;
   const sec = cur==='home' ? 'home' : cur==='jugar' ? 'P' : cur==='ruta' ? 'ruta' : cur.startsWith('p/') ? 'props' : cur.startsWith('f') ? 'F' : cur.startsWith('d') ? 'D' : 'I';
   let h = a('#/aprender','🏠 Inicio','home') + a('#/ruta','🗺️ Ruta','ruta') + a('#/jugar','🎮 Juego: Defensa Algebraica','jugar') + `<button data-dict-open class="mt-1 flex w-full rounded-lg px-2.5 py-1.5 text-left text-[0.93rem] hover:bg-blue-50 dark:hover:bg-blue-950/50">📖 Diccionario</button>`;
@@ -579,7 +606,9 @@ function route(){
   const SEC = r==='diferencial' ? 'd' : r;
   const T = SECCIONES_AP[SEC] && sub ? SECCIONES_AP[SEC].lista().find(x=>x.id===sub) : null;
   let html, title;
-  if (T){ html = pageSecTopic(SEC, T); title = T.short; }
+  const bloq = (T || L) && bloqueoLeccion(T ? `#/${SEC}/${T.id}` : `#/${L.id}`);
+  if (bloq){ html = pageBloqueo(bloq); title = 'Lección bloqueada'; }
+  else if (T){ html = pageSecTopic(SEC, T); title = T.short; }
   else if (SECCIONES_AP[SEC]){ html = pageSecIndex(SEC); title = SECCIONES_AP[SEC].nombre; }
   else if (r==='jugar'){ html = ''; title = 'Juego'; }
   else if (!r){ html = pageLanding(); title = 'Inicio'; }
@@ -598,7 +627,7 @@ function route(){
   ponerModo(!r ? 'landing' : r==='jugar' ? 'juego' : 'aprender', r==='jugar' ? 'j-' + (sub || 'inicio') : null);
   buildNavFromHash();
   renderMath(view);
-  if (T) T.lego.forEach((_,k)=>renderLego(`${SEC}-${T.id}-${k}`));
+  if (T && !bloq) T.lego.forEach((_,k)=>renderLego(`${SEC}-${T.id}-${k}`));
   if (r==='p' && sub2) montarPractica(sub, sub2);
   toggleMenu(false);
   const target = sub && !T && r!=='p' && document.getElementById('b-'+sub);

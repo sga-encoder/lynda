@@ -115,7 +115,7 @@ class VistaPrevia extends Renderer {
 /* ---------- Catálogo ---------- */
 class CatalogoScene extends Scene {
   enter(){ this.tab ??= 'cartas'; this.todo = !!this.app.progreso.data.todo; this.pintar(); }   // «ver todo» solo existe con el modo desarrollador   // en modo desarrollo se ve todo
-  exit(){ cancelAnimationFrame(this.raf); }
+  exit(){ cancelAnimationFrame(this.raf); if (this.tecla) document.removeEventListener('keydown', this.tecla); this.tecla = null; }
   conocido(cat, id){ return this.todo || this.app.progreso.conocido(cat, id); }
   dominioDisponible(dom){ const d = this.app.progreso.data; return this.todo || dom.tipos.some(t => d.todo || this.app.tipoDesbloqueado(t)); }
   items(){
@@ -177,9 +177,13 @@ class CatalogoScene extends Scene {
     if (a === 'vertodo'){ this.todo = e.target.checked; return this.pintar(); }
     const tab = e.target.closest('[data-tab]')?.dataset.tab; if (tab){ this.tab = tab; return this.pintar(); }
     const it = e.target.closest('[data-item]')?.dataset.item; if (it != null) return this.abrirDetalle(this.lista[+it]);
+    if (e.target.closest('[data-a="detprev"]')) return this.moverDetalle(-1);
+    if (e.target.closest('[data-a="detnext"]')) return this.moverDetalle(1);
     if (e.target.closest('[data-a="cerrar"]')) this.cerrarDetalle();
   }
   cerrarDetalle(){ this.detalle = null; this.pintar(); }
+  /** Pasa al elemento anterior (−1) o siguiente (+1) sin salir de la pantalla completa. */
+  moverDetalle(d){ const L = this.lista, i = L.indexOf(this.detalle); if (i < 0) return; this.abrirDetalle(L[(i + d + L.length) % L.length]); }
   abrirDetalle(it){
     this.detalle = it;
     const P = this.app.progreso, cont = this.app.root.querySelector('[data-h="detalle"]');
@@ -249,9 +253,17 @@ class CatalogoScene extends Scene {
     }
     cont.classList.remove('hidden');
     cont.innerHTML = `<div class="flex h-full flex-col overflow-y-auto bg-zinc-950 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
-      <div class="mx-auto w-full max-w-md"><div class="flex items-center justify-between"><b class="text-lg">${it.ok ? it.name : 'Desconocido'}</b><button data-a="cerrar" class="${UI.btn} !min-h-10 !px-3">✕</button></div>
+      <div class="mx-auto w-full max-w-md"><div class="flex items-center justify-between gap-2"><b class="min-w-0 truncate text-lg">${it.ok ? it.name : 'Desconocido'}</b><button data-a="cerrar" class="${UI.btn} !min-h-10 !px-3">✕</button></div>
+      <div class="mt-2 flex items-center justify-between gap-2"><button data-a="detprev" class="${UI.btn} !min-h-10 !px-4" aria-label="Anterior">◀</button><span class="text-xs text-zinc-400">${this.lista.indexOf(it) + 1} de ${this.lista.length} · desliza o usa las flechas</span><button data-a="detnext" class="${UI.btn} !min-h-10 !px-4" aria-label="Siguiente">▶</button></div>
       <div class="mt-3">${vista}</div><div class="mt-3">${cuerpo}</div></div></div>`;
     cancelAnimationFrame(this.raf); this.animar();
+    // Deslizar a los lados (o ← → en el teclado) pasa al elemento anterior/siguiente del catálogo
+    let ini = null;
+    cont.onpointerdown = e => { ini = {x:e.clientX, y:e.clientY, t:performance.now()}; };
+    cont.onpointerup = e => { if (!ini) return; const dx = e.clientX - ini.x, dy = e.clientY - ini.y, rapido = performance.now() - ini.t < 700; ini = null;
+      if (rapido && Math.abs(dx) > 60 && Math.abs(dx) > 1.5 * Math.abs(dy)) this.moverDetalle(dx < 0 ? 1 : -1); };
+    cont.onpointercancel = () => { ini = null; };
+    if (!this.tecla){ this.tecla = e => { if (!this.detalle) return; if (e.key === 'ArrowRight') this.moverDetalle(1); if (e.key === 'ArrowLeft') this.moverDetalle(-1); if (e.key === 'Escape') this.cerrarDetalle(); }; document.addEventListener('keydown', this.tecla); }
   }
 }
 

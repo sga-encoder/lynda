@@ -115,6 +115,8 @@ function comboHTML(cb, dom){
     </span></button>`;
 }
 
+/** Cartas que se aplican solas al tocar dónde usarlas (no hay nada que calcular ni elegir). */
+const CARTAS_AUTOMATICAS = new Set(['dist', 'mover', 'div', 'p-cero', 'p-uno', 'l-inv', 'd-suma', 'd-cte', 'i-c']);
 /* ---------- Batalla ---------- */
 class BattleScene extends Scene {
   constructor(app, run){ super(app); this.run = run; this.bus = new EventBus(); this.puntuador = new Puntuador([new ReglaVelocidad(), new ReglaCombo(), new ReglaCadena(), new ReglaCreatividad()]); }
@@ -345,23 +347,9 @@ class BattleScene extends Scene {
   }
   /** Semiautomático: el jugador elige cuál es el resultado correcto de aplicar la carta. */
   resultadoDe(c, path){
-    if (c.id === 'dist'){ this.aplicar(c.apply(this.raiz, path), {carta:c}); return this.seguirCombo(); }   // distributiva: elegido el polinomio, se aplica sin preguntar
-    if (c.id === 'mover' && this.raiz instanceof Eq){   // guiado: ¿el término llega positivo o negativo al otro lado?
-      const t = this.raiz.children[path[0]].terms[path[1]], llega = negate(t), opuesto = t;
-      const neg = n => this.dom.tex(n).trim().startsWith('-');
-      const ops = [llega, opuesto].sort((a, b) => neg(a) - neg(b));     // primero el positivo, luego el negativo
-      this.quiz = {lado:true, carta:c, path, correcta:ops.indexOf(llega), opciones:ops.map(n => ({texto:`${neg(n) ? '➖ Pasa negativo' : '➕ Pasa positivo'} &nbsp; ${texJuego(this.dom.tex(n), false)}`}))};
-      this.dibujarProblema(); this.dibujarMano();
-      return this.mensaje(`🃏 <b>Pasar al otro lado</b>: el término marcado, ¿pasa positivo o negativo?`, 'amber');
-    }
-    if (c.id === 'div' && this.raiz instanceof Eq){        // guiado: el número pasa a dividir con su mismo signo
-      const k = new Num(this.raiz.children[path[0]].k), neg = k.q.n < 0;
-      const pos = neg ? negate(k) : k, ops = [pos, negate(pos)];
-      this.quiz = {lado:true, carta:c, path, correcta:neg ? 1 : 0, error:'❌ Al pasar a dividir, el número conserva su signo: si multiplica positivo, divide positivo; si multiplica negativo, divide negativo.',
-        opciones:ops.map((n, i) => ({texto:`${i ? '➖ Divide negativo' : '➕ Divide positivo'} &nbsp; ${texJuego(this.dom.tex(n), false)}`}))};
-      this.dibujarProblema(); this.dibujarMano();
-      return this.mensaje(`🃏 <b>Dividir ambos lados</b>: el número que multiplica pasa a dividir. ¿Con qué signo queda?`, 'amber');
-    }
+    // Cartas mecánicas: basta con señalar dónde aplicarlas y se aplican solas (sin preguntar signo ni resultado).
+    // «Pasar al otro lado»: el término pasa al lado contrario con el signo cambiado; «Dividir ambos lados»: el número pasa a dividir con su signo.
+    if (CARTAS_AUTOMATICAS.has(c.id)){ this.aplicar(c.apply(this.raiz, path), {carta:c}); return this.seguirCombo(); }
     const correcto = c.apply(this.raiz, path);
     if (c.opcionesCortas && this.app.progreso.data.semi){                // solo el resultado del grupo, no toda la expresión
       const o = c.opcionesCortas(this.raiz, path, this.app.rng, this.ayuda >= 3 ? 1 : 2);
@@ -402,13 +390,13 @@ class BattleScene extends Scene {
     this.cadena = {cb, i:0, hechos:0};
     this.seguirCombo();
   }
-  /** Ejecuta la carta compuesta carta por carta; «Pasar al otro lado» se detiene a preguntar (término y signo). */
+  /** Ejecuta la carta compuesta carta por carta; «Pasar al otro lado» se detiene a que toques el término (y se aplica solo). */
   seguirCombo(){
     const C = this.cadena; if (!C || this.resuelto) return (this.cadena = null);
     while (C.i < C.cb.cartas.length){
       const carta = this.dom.cartas.get(C.cb.cartas[C.i++]); if (!carta) continue;
       let objs = carta.targets(this.raiz); if (!objs.length) continue;
-      if (carta.id === 'div' && this.raiz instanceof Eq){ C.hechos++; return this.resultadoDe(carta, objs[0]); }   // pregunta el signo
+      if (carta.id === 'div' && this.raiz instanceof Eq){ C.hechos++; return this.resultadoDe(carta, objs[0]); }   // pasa a dividir solo
       if (carta.id === 'dist'){ C.hechos++; this.carta = carta; this.objetivos = objs; this.dibujarProblema(); this.dibujarMano();   // tocar el polinomio
         return this.mensaje(`🔗 <b>${C.cb.nombre}</b> · paso ${C.i}/${C.cb.cartas.length}: toca el <b>polinomio</b> al que aplicas la distributiva.`, 'amber'); }
       if (carta.id === 'mover' && this.raiz instanceof Eq){
@@ -466,7 +454,7 @@ class BattleScene extends Scene {
       this.mensaje(repetido ? '↩️ Volviste a un paso anterior: sin energía.' : 'Paso válido, pero no te acerca al resultado: sin energía.', 'zinc');
     }
     if (carta){ this.app.progreso.descubrir('cartas', carta.id);
-      if (this.app.progreso.usoCarta(carta.id) === USOS_MAZO && !this.app.progreso.data.todo) this.aviso(`🔓 ${carta.icon} ${carta.name}: ya la puedes usar en el 🃏 Mazo`); }   // 10 usos desbloquean la carta para el Mazo
+      if (!this.cadena && this.app.progreso.usoCarta(carta.id) === USOS_MAZO && !this.app.progreso.data.todo) this.aviso(`🔓 ${carta.icon} ${carta.name}: ya la puedes usar en el 🃏 Mazo`); }   // 10 usos desbloquean la carta para el Mazo
     if (this.dom.resuelto(this.raiz)) return this.problemaResuelto();
     if (carta?.id === 'seme' && carta.targets(this.raiz).length) this.mensaje(this.$('msg').innerHTML + ' · 🧲 Aún puedes juntar otro grupo o usar otra propiedad.', avance > 0 ? 'emerald' : 'zinc');
     this.dibujarProblema(); this.dibujarMano();

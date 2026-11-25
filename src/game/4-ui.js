@@ -124,19 +124,19 @@ class BattleScene extends Scene {
     this.app.html(`
     <div class="relative flex h-full flex-col bg-zinc-950 text-zinc-100">
       <div class="flex items-center gap-2 px-3 pb-1.5 pt-[max(0.5rem,env(safe-area-inset-top))] text-xs">
-        <button data-a="pausa" class="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-700 text-base" aria-label="Pausa"><span data-t3d="icono">⏸</span></button>
-        <button data-a="vel" data-h="vel" data-t3d="texto" class="flex h-9 min-w-11 items-center justify-center rounded-xl border border-zinc-700 px-1.5 text-sm font-black" aria-label="Velocidad del juego">×1</button>
-        <div class="flex-1"><div class="flex justify-between gap-2"><b data-h="oleada" data-t3d="texto" class="min-w-0 truncate"></b><span data-h="probs" data-t3d="texto"></span></div>
-          <div class="mt-1 flex items-center gap-1.5"><span data-t3d="texto">Nv <b data-h="nivel"></b></span><div data-barra3d="#38bdf8" class="h-1.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="xp" class="h-full bg-sky-400"></div></div><span class="flex items-center gap-0.5 rounded-full bg-zinc-800/80 py-0.5 pl-0.5 pr-2">${vitrina3D() ? (Emblemas.vigilar(), '<canvas data-h="climaG" data-emblema="🌙" data-color="#6366f1" aria-hidden="true" class="-my-1.5 h-7 w-7"></canvas>') : ''}<span data-h="clima" data-t3d="texto"></span></span></div>
-          <div class="mt-1 flex items-center gap-1.5"><span data-t3d="icono">🌊</span><div data-barra3d="#d946ef" class="h-2 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="ola" class="h-full rounded bg-gradient-to-r from-violet-500 to-fuchsia-400 transition-[width] duration-300"></div></div><b data-h="olaN" data-t3d="texto" class="w-9 text-right tabular-nums">0 %</b></div></div>
+        <button data-a="pausa" class="flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-700 text-base" aria-label="Pausa"><span data-i3d="pausa" class="flex h-5 w-5 items-center justify-center">⏸</span></button>
+        <button data-a="vel" data-h="vel" class="flex h-9 min-w-11 items-center justify-center rounded-xl border border-zinc-700 px-1.5 text-sm font-black" aria-label="Velocidad del juego">×1</button>
+        <div class="flex-1"><div class="flex justify-between gap-2"><b data-h="oleada" class="min-w-0 truncate"></b><span class="flex items-center gap-1"><span data-i3d="abaco" class="inline-block h-4 w-4">🧮</span><span data-h="probs"></span></span></div>
+          <div class="mt-1 flex items-center gap-1.5"><span>Nv <b data-h="nivel"></b></span><div data-barra3d="#38bdf8" class="h-1.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="xp" class="h-full bg-sky-400"></div></div><span class="flex items-center gap-0.5 rounded-full bg-zinc-800/80 py-0.5 pl-0.5 pr-2">${vitrina3D() ? '<span data-h="climaI" data-i3d="luna" class="mx-0.5 inline-block h-4 w-4"></span>' : ''}<span data-h="clima"></span></span></div>
+          <div class="mt-1 flex items-center gap-1.5"><span data-i3d="ola" class="inline-block h-4 w-4">🌊</span><div data-barra3d="#d946ef" class="h-2 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="ola" class="h-full rounded bg-gradient-to-r from-violet-500 to-fuchsia-400 transition-[width] duration-300"></div></div><b data-h="olaN" class="w-9 text-right tabular-nums">0 %</b></div></div>
       </div>
       <div class="relative mx-auto w-full max-w-3xl"><canvas data-h="cv" class="block aspect-[360/200] max-h-[38vh] w-full"></canvas>
         <div data-h="jefe" class="pointer-events-none absolute inset-x-3 top-1.5 hidden"><div class="flex justify-between text-[10px] font-bold text-rose-200"><span data-h="jefeN"></span><span data-h="jefeE"></span></div><div data-barra3d="#f43f5e" class="h-1.5 overflow-hidden rounded bg-black/60"><div data-h="jefeV" class="h-full bg-rose-500"></div></div></div>
         <div data-h="aviso" class="pointer-events-none absolute inset-x-0 top-1/3 px-2 text-center text-lg font-black text-white drop-shadow"></div></div>
       <div data-h="tipos" class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 pt-1.5 text-[10px]"></div>
       <div class="grid grid-cols-2 gap-2 px-3 pt-1.5 text-xs">
-        <div class="flex items-center gap-1.5"><span data-t3d="icono">❤️</span><div data-barra3d="#22c55e" class="h-2.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="vida" class="h-full bg-emerald-500"></div></div></div>
-        <div class="flex items-center gap-1.5"><span data-t3d="icono">⚡</span><div data-barra3d="#fbbf24" class="h-2.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="energia" class="h-full bg-amber-400"></div></div><b data-h="energiaN" data-t3d="texto" class="w-6 text-right"></b></div>
+        <div class="flex items-center gap-1.5"><span data-i3d="corazon" class="inline-block h-4 w-4">❤️</span><div data-barra3d="#22c55e" class="h-2.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="vida" class="h-full bg-emerald-500"></div></div></div>
+        <div class="flex items-center gap-1.5"><span data-i3d="rayo" class="inline-block h-4 w-4">⚡</span><div data-barra3d="#fbbf24" class="h-2.5 flex-1 overflow-hidden rounded bg-zinc-800"><div data-h="energia" class="h-full bg-amber-400"></div></div><b data-h="energiaN" class="w-6 text-right"></b></div>
       </div>
       <div data-h="zona" class="relative flex min-h-0 flex-1 flex-col">
         <div class="flex min-h-0 flex-1 flex-col px-3 pt-1.5">
@@ -239,17 +239,18 @@ class BattleScene extends Scene {
     const pon = (n, v) => { const e = this.$(n); v = String(v); if (e.dataset.v !== v){ e.dataset.v = v; e.textContent = v; } };   // solo si cambia (rehace su rótulo 3D)
     pon('oleada', r.mundo ? `${mundoDe(r.mundo).icon} ${r.mm < 4 ? mundoDe(r.mundo).comandantes[r.mm].name.replace('Comandante ', '') : '👑 ' + mundoDe(r.mundo).soberano.name} · Oleada ${r.oleada}/${OLEADAS}`
       : `${r.infinito ? '♾️ ' : ''}Misión ${r.mision}${r.infinito ? '' : '/' + MISIONES} · Oleada ${r.oleada}/${OLEADAS}`);
-    pon('probs', `🧮 ${Math.min(this.director.problemasResueltos, this.cfg.problemas)}/${this.cfg.problemas}`);
+    pon('probs', `${vitrina3D() ? '' : '🧮 '}${Math.min(this.director.problemasResueltos, this.cfg.problemas)}/${this.cfg.problemas}`);
     const tipos = [...new Set([...this.mundo.tiposSoldado, ...Object.keys(r.xpTipo ?? {})])].filter(t => SOLDADOS[t]);
     const firma = tipos.map(t => `${t}${r.nivelTipo?.[t] ?? 1}`).join();
     if (this.$('tipos').dataset.f !== firma){ this.$('tipos').dataset.f = firma;
-      this.$('tipos').innerHTML = tipos.map(t => `<span class="flex items-center gap-1"><span data-t3d="icono">${SOLDADOS[t].icon}</span><b data-t3d="texto">${r.nivelTipo?.[t] ?? 1}</b><span data-barra3d="#34d399" class="h-1.5 w-12 overflow-hidden rounded bg-zinc-800"><span data-xt="${t}" class="block h-full bg-emerald-400"></span></span>${r.potPend?.[t] ? `<b class="text-amber-300">+${r.potPend[t]}⚡</b>` : ''}</span>`).join('') + (r.tacPend ? `<b class="text-sky-300">+${r.tacPend} 🧠</b>` : ''); }
+      this.$('tipos').innerHTML = tipos.map(t => `<span class="flex items-center gap-1"><span data-i3d="${ICONO_TROPA[t]}" class="inline-block h-5 w-5">${SOLDADOS[t].icon}</span><b>${r.nivelTipo?.[t] ?? 1}</b><span data-barra3d="#34d399" class="h-1.5 w-12 overflow-hidden rounded bg-zinc-800"><span data-xt="${t}" class="block h-full bg-emerald-400"></span></span>${r.potPend?.[t] ? `<b class="text-amber-300">+${r.potPend[t]}⚡</b>` : ''}</span>`).join('') + (r.tacPend ? `<b class="text-sky-300">+${r.tacPend} 🧠</b>` : ''); }
     for (const t of tipos){ const el = this.$('tipos').querySelector(`[data-xt="${t}"]`); if (el) el.style.width = `${100 * (r.xpTipo?.[t] ?? 0) / xpTipoSiguiente(r.nivelTipo?.[t] ?? 1)}%`; }
     const pr = this.progresoOleada(); this.$('ola').style.width = `${pr}%`; pon('olaN', `${pr} %`);
     pon('vel', `×${this.vel}`);
     pon('nivel', r.nivel);
     pon('clima', vitrina3D() ? this.mundo.clima.name : `${this.mundo.clima.icon} ${this.mundo.clima.name}`);
-    if (this.$('climaG')) this.$('climaG').dataset.emblema = this.mundo.clima.icon;   // gema 3D con el icono del clima
+    const climaI = this.$('climaI'), idClima = Object.keys(CLIMAS).find(k => CLIMAS[k] === this.mundo.clima);
+    if (climaI && climaI.dataset.i3d !== ICONO_CLIMA[idClima]) climaI.dataset.i3d = ICONO_CLIMA[idClima] ?? 'luna';   // icono 3D del clima
     this.$('xp').style.width = `${100 * r.xp / r.xpSiguiente}%`;
     this.$('vida').style.width = `${100 * b.vida / b.vidaMax}%`;
     this.$('energia').style.width = `${r.energia.valor}%`;

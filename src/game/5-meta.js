@@ -48,7 +48,7 @@ const fusionAnim = (icon, oculto) => `<div class="relative flex h-[4.4rem] items
   <span class="relative text-4xl [animation:fusion-pop_2.6s_ease-in-out_infinite] ${oculto ? 'brightness-0 opacity-60' : ''}">${icon}</span></div>`;
 
 /** ¿Se usan las vitrinas 3D del catálogo? (gráficos 3D activos y Three.js disponible) */
-const vitrina3D = () => Graficos.es3D && !!Kit3D;
+const vitrina3D = () => Graficos.ui3d && !!Kit3D && Lienzos3D.autoprueba();
 /* ---------- Vista previa animada (keyframes en canvas) ---------- */
 class VistaPrevia extends Renderer {
   constructor(cv, item){ super(cv); this.item = item; }

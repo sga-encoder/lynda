@@ -26,17 +26,21 @@
   .lego-scroll::-webkit-scrollbar-thumb{background:#3b82f6;border-radius:9999px}
   .dark .lego-scroll{scrollbar-color:#60a5fa #27272a}
   .dark .lego-scroll::-webkit-scrollbar-track{background:#27272a}
-  /* ---------- Iconos, letras y barras 3D (Three.js, pintados por Lienzos3D) ---------- */
+  /* ---------- Iconos y barras 3D (Three.js, pintados por Lienzos3D) ---------- */
   html.cartas3d .t3d-on{position:relative;-webkit-text-fill-color:transparent}
-  html.cartas3d .t3d-on > canvas.t3d{position:absolute;left:-.45em;top:-.45em;width:calc(100% + .9em);height:calc(100% + .9em);pointer-events:none}
+  html.cartas3d .t3d-on > canvas.t3d{position:absolute;left:-25%;top:-25%;width:150%;height:150%;pointer-events:none}
   html.cartas3d [data-barra3d]{position:relative;background:transparent !important;overflow:visible !important;height:12px !important;border-radius:9999px}
   html.cartas3d [data-barra3d] > :not(canvas){opacity:0}
   html.cartas3d [data-barra3d] > canvas.lienzo3d{position:absolute;left:0;top:-1px;width:100%;height:calc(100% + 2px);pointer-events:none}
   html:not(.cartas3d) canvas.t3d, html:not(.cartas3d) canvas.lienzo3d{display:none}
-  /* Expresión del problema: letras con volumen (capas de profundidad) y leve inclinación; sigue siendo tocable */
-  @keyframes expr3d{0%,100%{transform:perspective(500px) rotateX(10deg) rotateY(-4deg)}50%{transform:perspective(500px) rotateX(10deg) rotateY(4deg)}}
-  html.cartas3d [data-h="expr"] .katex{text-shadow:1px 1px 0 #818cf8,2px 2px 0 #4f46e5,3px 3px 0 #312e81,4px 5px 8px rgba(0,0,0,.65);animation:expr3d 6s ease-in-out infinite}
-  html.cartas3d [data-h="expr"] .katex svg{filter:drop-shadow(1px 1px 0 #818cf8) drop-shadow(1px 1px 0 #4f46e5) drop-shadow(1px 1px 0 #312e81)}
+  /* Expresión del problema: números nítidos con brillo suave; los términos tocables, pastillas de cristal con contorno de luz */
+  html.cartas3d [data-h="expr"] .katex{color:#f8fafc;text-shadow:0 0 14px rgba(165,180,252,.28)}
+  html.cartas3d [data-h="expr"] [data-t]{--c:251,191,36;background:linear-gradient(180deg,rgba(var(--c),.24),rgba(var(--c),.07)) !important;outline:none !important;border-radius:.6rem !important;
+    box-shadow:inset 0 0 0 1.5px rgba(var(--c),.9),inset 0 1px 0 1.5px rgba(255,255,255,.18),0 0 0 3px rgba(var(--c),.1),0 6px 16px -6px rgba(var(--c),.55);transition:transform .15s,box-shadow .15s;padding:0 .1em}
+  html.cartas3d [data-h="expr"] [data-t]:hover{transform:translateY(-2px);box-shadow:inset 0 0 0 1.5px rgba(var(--c),1),inset 0 1px 0 1.5px rgba(255,255,255,.25),0 0 0 4px rgba(var(--c),.16),0 10px 20px -6px rgba(var(--c),.7)}
+  html.cartas3d [data-h="expr"] [data-t='1']{--c:56,189,248} html.cartas3d [data-h="expr"] [data-t='2']{--c:232,121,249} html.cartas3d [data-h="expr"] [data-t='3']{--c:163,230,53}
+  html.cartas3d [data-h="expr"] [data-mejor]{--c:52,211,153;animation:pastilla 1.6s ease-in-out infinite}
+  @keyframes pastilla{50%{box-shadow:inset 0 0 0 2px rgba(var(--c),1),0 0 0 6px rgba(var(--c),.22),0 10px 22px -6px rgba(var(--c),.8)}}
   /* ---------- Cartas con estética 3D (Three.js): inclinación, vaivén y brillo holográfico ---------- */
   @property --ay{syntax:'<angle>';inherits:false;initial-value:0deg}
   @keyframes carta-vaiven{0%,100%{--ay:-5deg}50%{--ay:5deg}}
@@ -148,13 +152,13 @@
 </head>
 <body class="bg-stone-50 text-stone-900 antialiased [-webkit-tap-highlight-color:transparent] dark:bg-zinc-950 dark:text-zinc-100 font-sans leading-relaxed">
 <header id="cabecera" class="sticky top-0 z-30 flex items-center gap-2 border-b border-stone-200 bg-white/95 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-4 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
-  <button id="menuBtn" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 text-lg touch-manipulation dark:border-zinc-700" aria-label="Temas de la sección"><span data-t3d="icono">☰</span></button>
-  <a href="#/" class="flex shrink-0 items-center gap-1.5 font-black" aria-label="Inicio"><span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 text-lg text-white shadow"><span data-t3d="icono">∫</span></span><span data-t3d="texto" class="hidden sm:inline">Integrando</span></a>
+  <button id="menuBtn" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 text-lg touch-manipulation dark:border-zinc-700" aria-label="Temas de la sección"><span data-i3d="menu" class="flex h-6 w-6 items-center justify-center">☰</span></button>
+  <a href="#/" class="flex shrink-0 items-center gap-1.5 font-black" aria-label="Inicio"><span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 text-lg text-white shadow"><span data-i3d="integral" class="flex h-8 w-8 items-center justify-center">∫</span></span><span class="hidden sm:inline">Integrando</span></a>
   <div id="selectorModo" class="ml-auto flex rounded-full border border-stone-200 bg-stone-100 p-1 text-sm font-semibold dark:border-zinc-700 dark:bg-zinc-800" role="tablist" aria-label="Modo">
-    <a href="#/jugar" data-modo-app="juego" class="rounded-full px-3.5 py-1.5 touch-manipulation"><span data-t3d="texto">🎮 Jugar</span></a>
-    <a href="#/aprender" data-modo-app="aprender" class="rounded-full px-3.5 py-1.5 touch-manipulation"><span data-t3d="texto">📚 Aprender</span></a>
+    <a href="#/jugar" data-modo-app="juego" class="rounded-full px-3.5 py-1.5 touch-manipulation"><span data-i3d="mando" class="inline-block h-[1.15em] w-[1.4em] align-[-0.25em]">🎮</span> Jugar</a>
+    <a href="#/aprender" data-modo-app="aprender" class="rounded-full px-3.5 py-1.5 touch-manipulation"><span data-i3d="libros" class="inline-block h-[1.15em] w-[1.4em] align-[-0.25em]">📚</span> Aprender</a>
   </div>
-  <button data-ajustes class="ml-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 text-lg touch-manipulation hover:border-blue-500 dark:border-zinc-700" aria-label="Configuración" title="Configuración"><span data-t3d="icono">⚙️</span></button>
+  <button data-ajustes class="ml-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-stone-200 text-lg touch-manipulation hover:border-blue-500 dark:border-zinc-700" aria-label="Configuración" title="Configuración"><span data-i3d="engrane" class="flex h-6 w-6 items-center justify-center">⚙️</span></button>
 </header>
 <div class="mx-auto flex max-w-6xl">
   <nav id="side" class="fixed left-0 top-0 z-40 h-dvh w-[82vw] max-w-72 pt-[max(1rem,env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))] md:top-[57px] md:z-20 md:h-[calc(100dvh-57px)] md:w-64 md:pt-4 shrink-0 -translate-x-full overflow-y-auto border-r border-stone-200 bg-white px-3 py-4 shadow-2xl transition-transform md:sticky md:translate-x-0 md:bg-transparent md:shadow-none dark:border-zinc-800 dark:bg-zinc-900 md:dark:bg-transparent"></nav>
@@ -177,17 +181,17 @@
 <!-- Barra de navegación inferior (celular) -->
 <nav id="bottomNav" class="fixed inset-x-0 bottom-0 z-30 border-t border-stone-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95" aria-label="Menú">
   <div data-navset="aprender" class="mx-auto flex max-w-xl">
-    <a href="#/aprender" data-bn="home" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span data-t3d="icono" class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🏠</span><span data-t3d="texto">Inicio</span></a>
-    <a href="#/ruta" data-bn="ruta" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span data-t3d="icono" class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🗺️</span><span data-t3d="texto">Ruta</span></a>
-    <button data-dict-open data-bn="dict" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span data-t3d="icono" class="flex h-7 w-12 items-center justify-center rounded-full text-lg">📖</span><span data-t3d="texto">Diccionario</span></button>
-    <button data-ajustes data-bn="ajustes" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span data-t3d="icono" class="flex h-7 w-12 items-center justify-center rounded-full text-lg">⚙️</span><span data-t3d="texto">Ajustes</span></button>
+    <a href="#/aprender" data-bn="home" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span data-i3d="casa" class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🏠</span><span>Inicio</span></a>
+    <a href="#/ruta" data-bn="ruta" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span data-i3d="mapa" class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🗺️</span><span>Ruta</span></a>
+    <button data-dict-open data-bn="dict" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span data-i3d="libro" class="flex h-7 w-12 items-center justify-center rounded-full text-lg">📖</span><span>Diccionario</span></button>
+    <button data-ajustes data-bn="ajustes" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span data-i3d="engrane" class="flex h-7 w-12 items-center justify-center rounded-full text-lg">⚙️</span><span>Ajustes</span></button>
   </div>
   <div data-navset="juego" class="mx-auto flex hidden max-w-xl">
-    <a href="#/jugar" data-bn="j-inicio" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span data-t3d="icono" class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🎮</span><span data-t3d="texto">Partidas</span></a>
-    <a href="#/jugar/catalogo" data-bn="j-catalogo" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span data-t3d="icono" class="flex h-7 w-12 items-center justify-center rounded-full text-lg">📚</span><span data-t3d="texto">Catálogo</span></a>
-    <a href="#/jugar/mazo" data-bn="j-mazo" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span data-t3d="icono" class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🃏</span><span data-t3d="texto">Mazo</span></a>
-    <a href="#/jugar/peloton" data-bn="j-peloton" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span data-t3d="icono" class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🪖</span><span data-t3d="texto">Pelotón</span></a>
-    <a href="#/jugar/mejoras" data-bn="j-mejoras" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span data-t3d="icono" class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🛠</span><span data-t3d="texto">Mejoras</span></a>
+    <a href="#/jugar" data-bn="j-inicio" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span data-i3d="mando" class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🎮</span><span>Partidas</span></a>
+    <a href="#/jugar/catalogo" data-bn="j-catalogo" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span data-i3d="libros" class="flex h-7 w-12 items-center justify-center rounded-full text-lg">📚</span><span>Catálogo</span></a>
+    <a href="#/jugar/mazo" data-bn="j-mazo" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span data-i3d="cartas" class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🃏</span><span>Mazo</span></a>
+    <a href="#/jugar/peloton" data-bn="j-peloton" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span data-i3d="casco" class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🪖</span><span>Pelotón</span></a>
+    <a href="#/jugar/mejoras" data-bn="j-mejoras" class="flex flex-1 flex-col items-center gap-0.5 pt-1.5 pb-1 text-[11px] text-stone-500 touch-manipulation dark:text-zinc-400"><span data-i3d="herramientas" class="flex h-7 w-12 items-center justify-center rounded-full text-lg">🛠</span><span>Mejoras</span></a>
   </div>
 </nav>
 

@@ -268,7 +268,8 @@ function base3D(){
 /* ---------- Escenario ---------- */
 const CIELO_3D = {despejado:['#050816', '#1b1958', '#3b2f7a'], lluvia:['#050a14', '#132238', '#2b3b5c'], niebla:['#1f2937', '#475569', '#7c8798'],
   nieve:['#0b1220', '#1e293b', '#4b5f7a'], tormenta:['#020208', '#0b0b1f', '#1e1b4b'], viento:['#070a1a', '#1f1a4a', '#4c3a73']};
-const NIEBLA_3D = {despejado:[600, 1500], lluvia:[300, 1000], niebla:[60, 420], nieve:[260, 1000], tormenta:[300, 1100], viento:[500, 1400]};
+/** Niebla de la escena: [inicio, fin] en múltiplos de la distancia de la cámara al campo (el campo siempre se ve; el fondo se difumina). */
+const NIEBLA_3D = {despejado:[1.8, 4.5], lluvia:[1.15, 3.2], niebla:[1.05, 2.1], nieve:[1.1, 3.2], tormenta:[1.15, 3.4], viento:[1.6, 4.2]};
 
 function rngSemilla(s){ return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; }
 function texturaSuelo(nieve){
@@ -426,7 +427,7 @@ class Renderer3D {
     const objetivo = (CIELO_3D[id] ?? CIELO_3D.despejado).map(c => Kit3D.color(c)), k = Math.min(1, dt * 2 + (this.climaId === null ? 1 : 0));
     this.cieloCol.forEach((c, i) => c.lerp(objetivo[i], k)); u.c0.value.copy(this.cieloCol[0]); u.c1.value.copy(this.cieloCol[1]); u.c2.value.copy(this.cieloCol[2]);
     this.scene.fog.color.copy(this.cieloCol[2]);
-    const [n0, n1] = NIEBLA_3D[id] ?? NIEBLA_3D.despejado; this.scene.fog.near += (n0 - this.scene.fog.near) * k; this.scene.fog.far += (n1 - this.scene.fog.far) * k;
+    const [n0, n1] = (NIEBLA_3D[id] ?? NIEBLA_3D.despejado).map(f => f * (this.dist ?? 340)); this.scene.fog.near += (n0 - this.scene.fog.near) * k; this.scene.fog.far += (n1 - this.scene.fog.far) * k;
     if (id !== this.climaId){ this.climaId = id; this.sueloMat.map = id === 'nieve' ? this.texNieve : this.texTierra; this.sueloMat.needsUpdate = true; }
     const flash = m.flash ?? 0; u.flash.value = flash * 0.35; this.hemi.intensity = 0.85 + flash * 3;
     this.estrellas.visible = id !== 'tormenta' && id !== 'niebla'; this.estrellas.material.opacity = 0.65 + Math.sin(t * 1.7) * 0.25;
@@ -441,7 +442,8 @@ class Renderer3D {
       this.gotas.forEach((g, i) => { g[1] -= dt * 26 * g[3]; if (g[1] < 0) g[1] = 260; p.set([g[0] + Math.sin(t + g[2]) * 8, g[1], g[2]], i * 3); });
       this.nieve.geometry.attributes.position.needsUpdate = true; }
     const niebla = id === 'niebla';
-    this.nubes.forEach((s, i) => { s.material.opacity += ((niebla ? 0.22 + (i % 3) * 0.05 : 0) - s.material.opacity) * k; s.visible = s.material.opacity > 0.01; s.position.x = -40 + i * 45 + Math.sin(t * 0.2 + i) * 20; });
+    this.nubes.forEach((s, i) => { s.material.opacity += ((niebla ? 0.1 + (i % 3) * 0.03 : 0) - s.material.opacity) * k; s.visible = s.material.opacity > 0.01;   // bancos tenues, detrás y del lado enemigo
+      s.position.set(40 + i * 22 + Math.sin(t * 0.2 + i) * 15, 30 + (i % 3) * 25, -60 - (i % 4) * 35); });
     this.viento = id === 'viento';
     this.tViento = t;
   }

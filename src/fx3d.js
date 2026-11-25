@@ -28,8 +28,11 @@ const Graficos = {
   },
   set nivel(v){ try { localStorage.setItem(this.CLAVE, v); } catch {} document.dispatchEvent(new CustomEvent('graficos:cambio', {detail:v})); },
   get es3D(){ return this.nivel !== '2d'; },
+  /** Iconos, barras, cartas y vitrinas 3D: además del 3D, que copiar del renderer compartido funcione (autoprueba). */
+  ui3dRoto:false,
+  get ui3d(){ return this.es3D && !this.ui3dRoto; },
   /** Clase en <html> para el estilo 3D de las cartas (inclinación y brillo holográfico). */
-  marcar(){ document.documentElement.classList.toggle('cartas3d', this.es3D); },
+  marcar(){ document.documentElement.classList.toggle('cartas3d', this.ui3d); },
   get alta(){ return this.nivel === 'alta'; },
   /** Resolución de dibujo (la ligera dibuja a menos píxeles). */
   get dpr(){ return Math.min(window.devicePixelRatio || 1, this.alta ? 2 : 1.25); },
@@ -231,12 +234,159 @@ const FX3D = (() => {
 
 Graficos.marcar(); document.addEventListener('graficos:cambio', () => Graficos.marcar());
 
+/* ---------- Iconos 3D (sin emojis) ----------
+   Modelos hechos con Three.js: formas extruidas con bisel, tubos y primitivas,
+   con acabado brillante (barniz). Cada icono se construye una vez y se reutiliza.
+   Uso en el HTML: <span data-i3d="mando">🎮</span> (el emoji solo queda para 2D). */
+const Iconos3D = (() => {
+  if (!Kit3D) return {crear:() => null, nombres:[]};
+  const T = THREE, cache = new Map(), mats = new Map();
+  /** Material con barniz (aspecto de juguete de vinilo); m = metal. */
+  const mat = (c, o = {}) => { const k = c + JSON.stringify(o); let m = mats.get(k);
+    if (!m){ m = new T.MeshPhysicalMaterial({color:Kit3D.color(c), roughness:o.r ?? 0.32, metalness:o.m ?? 0.05, clearcoat:o.m ? 0.4 : 1, clearcoatRoughness:0.15,
+      emissive:o.e ? Kit3D.color(o.e) : new T.Color(0), emissiveIntensity:o.ei ?? 1, side:T.DoubleSide}); mats.set(k, m); }
+    return m; };
+  const malla = (g, m, p = [0, 0, 0], r = [0, 0, 0], s = [1, 1, 1]) => { const x = new T.Mesh(g, m); x.position.set(...p); x.rotation.set(...r); x.scale.set(...s); return x; };
+  const extruir = (forma, prof = 0.3, bisel = 0.08) => { const g = new T.ExtrudeGeometry(forma, {depth:prof, bevelEnabled:true, bevelThickness:bisel, bevelSize:bisel, bevelSegments:3, curveSegments:18}); g.center(); return g; };
+  const rect = (w, h, r) => { const s = new T.Shape(), x = -w / 2, y = -h / 2;
+    s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r); s.lineTo(x + w, y + h - r); s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    s.lineTo(x + r, y + h); s.quadraticCurveTo(x, y + h, x, y + h - r); s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y); return s; };
+  const poli = pts => { const s = new T.Shape(); pts.forEach(([x, y], i) => i ? s.lineTo(x, y) : s.moveTo(x, y)); s.closePath(); return s; };
+  const estrella = (R, r, n = 5) => poli(Array.from({length:n * 2}, (_, i) => { const a = Math.PI / 2 + i * Math.PI / n, q = i % 2 ? r : R; return [Math.cos(a) * q, Math.sin(a) * q]; }));
+  const tubo = (pts, r, m, cerrado = false) => new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts.map(p => new T.Vector3(...p)), cerrado), 64, r, 10, cerrado), m);
+  const box = (w, h, d) => new T.BoxGeometry(w, h, d, 1, 1, 1);
+  const esfera = r => new T.SphereGeometry(r, 24, 16);
+  const nube = (g, c, y = 0.2) => { const m = mat(c, {r:0.5}); [[-0.55, 0, 0.55], [0.05, 0.25, 0.75], [0.6, 0.02, 0.5], [0.1, -0.15, 0.6]].forEach(([x, yy, r]) => g.add(malla(esfera(1), m, [x, yy + y, 0], [0, 0, 0], [r, r * 0.85, r * 0.7]))); };
+  const rayoForma = () => poli([[0.15, 1], [-0.45, -0.05], [-0.02, -0.05], [-0.25, -1], [0.5, 0.15], [0.05, 0.15], [0.35, 1]]);
+  const corazonForma = () => { const s = new T.Shape(); s.moveTo(0, -0.9); s.bezierCurveTo(-0.2, -0.6, -1.1, -0.2, -1.1, 0.35); s.bezierCurveTo(-1.1, 0.85, -0.6, 1.05, -0.3, 1.0);
+    s.bezierCurveTo(-0.1, 0.95, 0, 0.8, 0, 0.65); s.bezierCurveTo(0, 0.8, 0.1, 0.95, 0.3, 1.0); s.bezierCurveTo(0.6, 1.05, 1.1, 0.85, 1.1, 0.35); s.bezierCurveTo(1.1, -0.2, 0.2, -0.6, 0, -0.9); return s; };
+  const llave = (c = '#94a3b8') => { const g = new T.Group(), m = mat(c, {m:0.85, r:0.25});
+    g.add(malla(extruir(rect(0.32, 1.7, 0.14), 0.16, 0.05), m, [0, -0.35, 0]));
+    g.add(malla(new T.TorusGeometry(0.38, 0.14, 12, 28, Math.PI * 1.55), m, [0, 0.72, 0], [0, 0, -Math.PI * 0.27 + Math.PI / 2]));
+    return g; };
+  const F = {
+    mando(){ const g = new T.Group();
+      g.add(malla(extruir(rect(2.4, 1.25, 0.55), 0.45, 0.12), mat('#4f46e5')));
+      for (const x of [-0.95, 0.95]) g.add(malla(esfera(1), mat('#4338ca'), [x, -0.45, -0.02], [0, 0, x * 0.4], [0.5, 0.68, 0.38]));
+      const cruz = mat('#e0e7ff'); g.add(malla(box(0.55, 0.17, 0.16), cruz, [-0.65, 0.08, 0.33])); g.add(malla(box(0.17, 0.55, 0.16), cruz, [-0.65, 0.08, 0.33]));
+      [['#ef4444', 0.65, 0.28], ['#22c55e', 0.85, 0.08], ['#3b82f6', 0.45, 0.08], ['#facc15', 0.65, -0.12]].forEach(([c, x, y]) => g.add(malla(esfera(0.12), mat(c, {e:c, ei:0.25}), [x, y, 0.3])));
+      return g; },
+    libros(){ const g = new T.Group(), pag = mat('#f8fafc', {r:0.6});
+      [['#ef4444', -0.55, 0.06], ['#2563eb', 0, -0.05], ['#16a34a', 0.55, 0.04]].forEach(([c, y, r]) => { const l = new T.Group(); l.position.y = y; l.rotation.z = r;
+        l.add(malla(box(2.1, 0.46, 1.3), mat(c))); l.add(malla(box(1.95, 0.36, 1.32), pag, [0.08, 0, 0.01])); l.add(malla(box(0.06, 0.48, 1.32), mat('#fbbf24', {m:0.7}), [-0.7, 0, 0])); g.add(l); });
+      return g; },
+    cartas(){ const g = new T.Group();
+      const atras = malla(extruir(rect(1.25, 1.75, 0.16), 0.05, 0.03), mat('#2563eb'), [-0.35, 0.05, -0.1], [0, 0, 0.28]); g.add(atras);
+      const fr = new T.Group(); fr.position.set(0.3, -0.05, 0.1); fr.rotation.z = -0.18; g.add(fr);
+      fr.add(malla(extruir(rect(1.25, 1.75, 0.16), 0.05, 0.03), mat('#f8fafc', {r:0.5})));
+      fr.add(malla(extruir(poli([[0, 0.5], [0.36, 0], [0, -0.5], [-0.36, 0]]), 0.05, 0.03), mat('#e11d48'), [0, 0, 0.09]));
+      return g; },
+    casco(){ const g = new T.Group(), v = mat('#4d7c0f', {r:0.45});
+      g.add(malla(new T.SphereGeometry(1, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), v, [0, -0.25, 0], [0, 0, 0], [1.05, 0.95, 1.05]));
+      g.add(malla(new T.CylinderGeometry(1.25, 1.25, 0.08, 40), mat('#3f6212'), [0, -0.27, 0.12]));
+      g.add(malla(new T.TorusGeometry(1.04, 0.07, 10, 40), mat('#365314'), [0, -0.15, 0], [Math.PI / 2, 0, 0]));
+      g.add(malla(extruir(estrella(0.26, 0.11), 0.05, 0.02), mat('#facc15', {m:0.6}), [0, 0.25, 0.92], [-0.35, 0, 0]));
+      g.rotation.x = 0.35; return g; },
+    herramientas(){ const g = new T.Group(); const w = llave(); w.rotation.z = -0.75; w.position.set(0.15, 0, 0); g.add(w);
+      const h = new T.Group(); h.rotation.z = 0.75; h.position.set(-0.1, 0, 0.18); g.add(h);
+      h.add(malla(new T.CylinderGeometry(0.12, 0.14, 1.9, 14), mat('#b45309', {r:0.55}), [0, -0.2, 0]));
+      h.add(malla(box(0.95, 0.38, 0.38), mat('#475569', {m:0.8, r:0.3}), [0, 0.78, 0]));
+      return g; },
+    casa(){ const g = new T.Group();
+      g.add(malla(extruir(rect(1.5, 1.1, 0.08), 0.9, 0.06), mat('#f8fafc', {r:0.5}), [0, -0.4, 0]));
+      g.add(malla(extruir(poli([[-1, 0], [0, 0.85], [1, 0]]), 1.1, 0.08), mat('#ef4444'), [0, 0.45, 0]));
+      g.add(malla(box(0.38, 0.62, 0.1), mat('#92400e'), [0, -0.62, 0.55]));
+      g.add(malla(box(0.32, 0.3, 0.1), mat('#7dd3fc', {e:'#38bdf8', ei:0.4}), [0.45, -0.3, 0.55]));
+      return g; },
+    mapa(){ const g = new T.Group();
+      [['#fde68a', -0.7, 0.35], ['#bbf7d0', 0, -0.35], ['#fde68a', 0.7, 0.35]].forEach(([c, x, r]) => g.add(malla(box(0.72, 1.7, 0.06), mat(c, {r:0.6}), [x, 0, 0], [0, r, 0])));
+      g.add(tubo([[-0.9, -0.4, 0.2], [-0.3, 0.1, 0.2], [0.2, -0.2, 0.2], [0.8, 0.3, 0.2]], 0.04, mat('#2563eb')));
+      g.add(malla(new T.ConeGeometry(0.18, 0.55, 16), mat('#e11d48'), [0.45, 0.35, 0.35], [Math.PI, 0, 0])); g.add(malla(esfera(0.24), mat('#e11d48'), [0.45, 0.72, 0.35]));
+      return g; },
+    libro(){ const g = new T.Group(), pag = mat('#f8fafc', {r:0.55});
+      g.add(malla(box(2.3, 0.12, 1.5), mat('#7c3aed'), [0, -0.12, 0]));
+      for (const s of [-1, 1]){ const p = malla(box(1.05, 0.12, 1.4), pag, [s * 0.55, 0.02, 0], [0, 0, -s * 0.12]); g.add(p);
+        for (let i = 0; i < 4; i++) g.add(malla(box(0.7, 0.02, 0.06), mat('#94a3b8'), [s * 0.55, 0.12 + 0.002, -0.45 + i * 0.28], [0, 0, -s * 0.12])); }
+      g.rotation.x = 0.9; return g; },
+    engrane(){ const s = new T.Shape(), n = 10;
+      for (let i = 0; i <= n * 4; i++){ const a = i / (n * 4) * Math.PI * 2, R = (i % 4 < 2) ? 1.0 : 0.78; i ? s.lineTo(Math.cos(a) * R, Math.sin(a) * R) : s.moveTo(Math.cos(a) * R, Math.sin(a) * R); }
+      const h = new T.Path(); h.absarc(0, 0, 0.32, 0, Math.PI * 2, true); s.holes.push(h);
+      const g = new T.Group(); g.add(malla(extruir(s, 0.32, 0.06), mat('#94a3b8', {m:0.9, r:0.22}))); g.add(malla(new T.TorusGeometry(0.32, 0.07, 10, 30), mat('#38bdf8', {e:'#0ea5e9', ei:0.4})));
+      return g; },
+    menu(){ const g = new T.Group(); for (const y of [-0.55, 0, 0.55]) g.add(malla(extruir(rect(1.8, 0.3, 0.15), 0.16, 0.05), mat('#6366f1'), [0, y, 0])); return g; },
+    integral(){ const g = new T.Group();
+      g.add(tubo([[0.55, 1.05, 0], [0.35, 1.25, 0], [0.12, 1.05, 0], [0.02, 0.4, 0], [-0.02, -0.4, 0], [-0.12, -1.05, 0], [-0.35, -1.25, 0], [-0.55, -1.05, 0]], 0.15, mat('#ffffff', {e:'#c7d2fe', ei:0.25})));
+      return g; },
+    pausa(){ const g = new T.Group(); for (const x of [-0.38, 0.38]) g.add(malla(extruir(rect(0.42, 1.6, 0.16), 0.3, 0.07), mat('#f59e0b'), [x, 0, 0])); return g; },
+    corazon(){ const g = new T.Group(); g.add(malla(extruir(corazonForma(), 0.45, 0.14), mat('#e11d48'), [0, 0, 0], [0, 0, 0])); return g; },
+    rayo(){ const g = new T.Group(); g.add(malla(extruir(rayoForma(), 0.28, 0.07), mat('#facc15', {e:'#f59e0b', ei:0.35}))); return g; },
+    ola(){ const g = new T.Group(), m = mat('#06b6d4');
+      g.add(tubo([[-1.2, -0.2, 0], [-0.6, 0.3, 0], [0, -0.2, 0], [0.6, 0.3, 0], [1.2, -0.2, 0]], 0.16, m));
+      g.add(tubo([[-1.2, -0.75, 0], [-0.6, -0.25, 0], [0, -0.75, 0], [0.6, -0.25, 0], [1.2, -0.75, 0]], 0.13, mat('#22d3ee')));
+      [-0.6, 0.6].forEach(x => g.add(malla(esfera(0.12), mat('#f0f9ff'), [x, 0.42, 0])));
+      return g; },
+    abaco(){ const g = new T.Group(), mad = mat('#92400e', {r:0.5}), cols = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6'];
+      g.add(malla(box(2, 0.16, 0.25), mad, [0, 0.85, 0])); g.add(malla(box(2, 0.16, 0.25), mad, [0, -0.85, 0]));
+      g.add(malla(box(0.16, 1.86, 0.25), mad, [-0.95, 0, 0])); g.add(malla(box(0.16, 1.86, 0.25), mad, [0.95, 0, 0]));
+      [-0.45, 0.05, 0.5].forEach((y, k) => { g.add(malla(new T.CylinderGeometry(0.03, 0.03, 1.8, 8), mat('#d6d3d1', {m:0.8}), [0, y, 0], [0, 0, Math.PI / 2]));
+        for (let i = 0; i < 3; i++) g.add(malla(esfera(0.17), mat(cols[(i + k) % 4]), [-0.6 + i * 0.36 + (k % 2) * 0.35, y, 0], [0, 0, 0], [1, 0.8, 0.8])); });
+      return g; },
+    rifle(){ const g = new T.Group(), met = mat('#334155', {m:0.8, r:0.3});
+      g.add(malla(box(1.6, 0.32, 0.22), met)); g.add(malla(new T.CylinderGeometry(0.07, 0.07, 1.1, 12), met, [1.3, 0.05, 0], [0, 0, Math.PI / 2]));
+      g.add(malla(new T.CylinderGeometry(0.1, 0.1, 0.7, 12), mat('#0ea5e9', {e:'#38bdf8', ei:0.4}), [0.1, 0.3, 0], [0, 0, Math.PI / 2]));
+      g.add(malla(extruir(poli([[-0.8, 0.15], [-1.5, 0.05], [-1.5, -0.4], [-0.8, -0.15]]), 0.18, 0.04), mat('#b45309', {r:0.5})));
+      g.add(malla(box(0.18, 0.45, 0.18), met, [0.1, -0.3, 0], [0, 0, -0.25]));
+      g.rotation.z = 0.25; return g; },
+    escudo(){ const g = new T.Group(), s = poli([[-0.9, 1], [0.9, 1], [0.9, 0.1], [0, -1.1], [-0.9, 0.1]]);
+      g.add(malla(extruir(s, 0.25, 0.1), mat('#64748b', {m:0.8, r:0.25})));
+      g.add(malla(extruir(poli([[-0.55, 0.7], [0.55, 0.7], [0.55, 0.05], [0, -0.65], [-0.55, 0.05]]), 0.1, 0.04), mat('#2563eb'), [0, 0.05, 0.2]));
+      return g; },
+    bomba(){ const g = new T.Group(); g.add(malla(esfera(0.85), mat('#1f2937', {r:0.25})));
+      g.add(malla(new T.CylinderGeometry(0.22, 0.25, 0.3, 16), mat('#94a3b8', {m:0.8}), [0.45, 0.7, 0], [0, 0, -0.55]));
+      g.add(tubo([[0.55, 0.85, 0], [0.7, 1.1, 0], [0.95, 1.15, 0]], 0.04, mat('#a16207')));
+      g.add(malla(esfera(0.13), mat('#fde047', {e:'#f97316', ei:1.5}), [0.98, 1.16, 0]));
+      g.add(malla(esfera(0.2), mat('#ffffff', {r:0.1}), [-0.3, 0.35, 0.65], [0, 0, 0], [1, 0.6, 0.4]));
+      return g; },
+    cruz(){ const g = new T.Group(); g.add(malla(new T.CylinderGeometry(1, 1, 0.25, 40), mat('#f8fafc', {r:0.4}), [0, 0, -0.1], [Math.PI / 2, 0, 0]));
+      const c = poli([[-0.2, 0.65], [0.2, 0.65], [0.2, 0.2], [0.65, 0.2], [0.65, -0.2], [0.2, -0.2], [0.2, -0.65], [-0.2, -0.65], [-0.2, -0.2], [-0.65, -0.2], [-0.65, 0.2], [-0.2, 0.2]]);
+      g.add(malla(extruir(c, 0.15, 0.05), mat('#dc2626'), [0, 0, 0.12])); return g; },
+    llave(){ return llave('#facc15'); },
+    luna(){ const g = new T.Group(), gm = new T.IcosahedronGeometry(1, 3);
+      g.add(malla(gm, mat('#fef3c7', {r:0.7, e:'#fde68a', ei:0.25})));
+      [[0.35, 0.3, 0.88, 0.2], [-0.4, -0.2, 0.86, 0.16], [0.1, -0.5, 0.85, 0.12]].forEach(([x, y, z, r]) => g.add(malla(esfera(r), mat('#fcd34d', {r:0.9}), [x, y, z], [0, 0, 0], [1, 1, 0.35])));
+      g.add(malla(extruir(estrella(0.3, 0.12), 0.06, 0.03), mat('#fde047', {e:'#facc15', ei:0.8}), [1.05, 0.8, 0.2])); return g; },
+    lluvia(){ const g = new T.Group(); nube(g, '#cbd5e1', 0.35);
+      [-0.5, 0, 0.5].forEach((x, i) => g.add(malla(esfera(0.13), mat('#38bdf8', {e:'#0ea5e9', ei:0.3}), [x, -0.55 - (i % 2) * 0.2, 0.2], [0, 0, 0], [0.8, 1.5, 0.8]))); return g; },
+    nieve(){ const g = new T.Group(), m = mat('#bae6fd', {e:'#7dd3fc', ei:0.3, r:0.2});
+      for (let i = 0; i < 3; i++){ g.add(malla(box(2.1, 0.16, 0.16), m, [0, 0, 0], [0, 0, i * Math.PI / 3]));
+        for (const s of [-1, 1]) for (const k of [0.55, 0.8]){ const a = i * Math.PI / 3; g.add(malla(box(0.4, 0.1, 0.1), m, [Math.cos(a) * k * s, Math.sin(a) * k * s, 0], [0, 0, a + Math.PI / 4])); g.add(malla(box(0.4, 0.1, 0.1), m, [Math.cos(a) * k * s, Math.sin(a) * k * s, 0], [0, 0, a - Math.PI / 4])); } }
+      return g; },
+    niebla(){ const g = new T.Group(); [[0.5, 1.8, 0], [0, 1.5, 0.25], [-0.5, 1.9, -0.15]].forEach(([y, w, x]) => g.add(malla(new T.CapsuleGeometry(0.2, w, 6, 14), mat('#cbd5e1', {r:0.7}), [x, y, 0], [0, 0, Math.PI / 2]))); return g; },
+    tormenta(){ const g = new T.Group(); nube(g, '#64748b', 0.45); g.add(malla(extruir(rayoForma(), 0.18, 0.05), mat('#facc15', {e:'#f59e0b', ei:0.6}), [0.1, -0.5, 0.35], [0, 0, 0], [0.55, 0.55, 0.55])); return g; },
+    viento(){ const g = new T.Group(), m = mat('#a5f3fc', {e:'#67e8f9', ei:0.2});
+      g.add(tubo([[-1.1, 0.45, 0], [0.4, 0.45, 0], [0.75, 0.7, 0], [0.55, 0.95, 0], [0.35, 0.8, 0]], 0.09, m));
+      g.add(tubo([[-1.2, 0, 0], [0.8, 0, 0], [1.1, -0.25, 0], [0.9, -0.5, 0], [0.7, -0.35, 0]], 0.09, m));
+      g.add(tubo([[-0.9, -0.5, 0], [0.1, -0.5, 0]], 0.08, m)); return g; },
+  };
+  /** Modelo listo para dibujar: centrado y del mismo tamaño (cabe en 2,2 unidades). */
+  function crear(nombre){
+    if (cache.has(nombre)) return cache.get(nombre);
+    const f = F[nombre]; if (!f) return null;
+    const raiz = new T.Group(), g = f(); raiz.add(g);
+    const caja = new T.Box3().setFromObject(raiz), tam = caja.getSize(new T.Vector3()), c = caja.getCenter(new T.Vector3());
+    g.position.sub(c); raiz.scale.setScalar(2.2 / Math.max(tam.x, tam.y, tam.z * 0.7));
+    cache.set(nombre, raiz); return raiz;
+  }
+  return {crear, nombres:Object.keys(F)};
+})();
+/** Icono 3D de cada clima y de cada tipo de soldado. */
+const ICONO_CLIMA = {despejado:'luna', lluvia:'lluvia', niebla:'niebla', nieve:'nieve', tormenta:'tormenta', viento:'viento'};
+const ICONO_TROPA = {fusilero:'rifle', pesado:'escudo', granadero:'bomba', medico:'cruz', ingeniero:'llave'};
+
 /* ---------- Lienzos 3D de la interfaz ----------
    Con un solo renderer compartido convierte en 3D los elementos marcados:
-   - data-t3d="texto": letras con volumen (capas de profundidad), reflejo que las
-     recorre y un leve balanceo. El texto del DOM sigue ahí (transparente) para
-     que la página mida, se lea con lector de pantalla y se pueda tocar.
-   - data-t3d="icono": el emoji como objeto 3D con grosor que flota y gira.
+   - data-i3d="nombre": icono 3D modelado (Iconos3D) que flota y se balancea; el emoji
+     del HTML queda oculto (solo se ve con gráficos 2D).
    - data-barra3d="#color": barra de progreso como tubo de cristal con energía líquida.
    Se dibujan solo los visibles, a ~30 cuadros/s, y nada con gráficos 2D.
    Las vitrinas del Catálogo y los emblemas de las cartas usan este mismo renderer. */
@@ -247,7 +397,7 @@ const Lienzos3D = (() => {
   /** Renderer compartido. */
   function renderer(){
     if (R) return R;
-    R = new T.WebGLRenderer({canvas:document.createElement('canvas'), antialias:true, alpha:true});
+    R = new T.WebGLRenderer({canvas:document.createElement('canvas'), antialias:true, alpha:true, preserveDrawingBuffer:true});   // sin esto, algunos navegadores (Safari) copian el lienzo vacío
     R.setPixelRatio(1); R.outputColorSpace = T.SRGBColorSpace; R.toneMapping = T.ACESFilmicToneMapping; R.toneMappingExposure = 1.25;
     R.shadowMap.enabled = Graficos.alta; R.shadowMap.type = T.PCFSoftShadowMap; R.setClearColor(0x000000, 0);
     return R;
@@ -286,61 +436,42 @@ const Lienzos3D = (() => {
       gl_FragColor = vec4(col, 1.0 - smoothstep(0.0, 1.0, d));
       #include <colorspace_fragment>
     }`;
-  /* ---- Rótulos: capas con la textura del texto (frente nítido + fondo oscuro = volumen) ---- */
-  const CAPAS = 6;
-  const FRAG_BRILLO = `uniform sampler2D map; uniform float t; varying vec2 vUv;
-    void main(){ float a = texture2D(map, vUv).a; float x = vUv.x * 1.6 - vUv.y * 0.5; float b = exp(-pow((x - mod(t * 0.45, 2.6) + 0.5) * 7.0, 2.0));
-      gl_FragColor = vec4(vec3(1.0, 0.98, 0.9) * b * 0.85 * a, b * a * 0.85); }`;
-  let sB, camB, quadBarra, matBarra, sR, camR, grupo, frente, fondos, brillo;
+  let sB, camB, quadBarra, matBarra, sI, camI, soporte;
   function preparar(){
     sB = new T.Scene(); camB = new T.PerspectiveCamera(40, 3, 1, 10);
     matBarra = new T.ShaderMaterial({vertexShader:VERT, fragmentShader:FRAG_BARRA, transparent:true, depthWrite:false, depthTest:false,
       uniforms:{t:{value:0}, res:{value:new T.Vector2(1, 1)}, c1:{value:new T.Color()}, c2:{value:new T.Color()}, claro:{value:0}, frac:{value:0}, bajo:{value:0}}});
     quadBarra = new T.Mesh(new T.PlaneGeometry(2, 2), matBarra); quadBarra.frustumCulled = false; sB.add(quadBarra);
-    sR = new T.Scene(); camR = new T.PerspectiveCamera(20, 1, 1, 5000); grupo = new T.Group(); sR.add(grupo);
-    const g = new T.PlaneGeometry(1, 1);
-    fondos = Array.from({length:CAPAS}, (_, k) => { const m = new T.Mesh(g, new T.MeshBasicMaterial({transparent:true, depthWrite:false, toneMapped:false})); m.renderOrder = -k - 1; grupo.add(m); return m; });
-    frente = new T.Mesh(g, new T.MeshBasicMaterial({transparent:true, depthWrite:false, toneMapped:false})); frente.renderOrder = 1; grupo.add(frente);
-    brillo = new T.Mesh(g, new T.ShaderMaterial({uniforms:{map:{value:null}, t:{value:0}}, vertexShader:`varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-      fragmentShader:FRAG_BRILLO, transparent:true, depthWrite:false, blending:T.AdditiveBlending})); brillo.renderOrder = 2; grupo.add(brillo);
+    // Escena de iconos: luces de estudio y un soporte donde se cuelga el modelo de cada icono
+    sI = new T.Scene(); camI = new T.PerspectiveCamera(30, 1, 0.1, 50); soporte = new T.Group(); sI.add(soporte);
+    sI.add(new T.HemisphereLight(0xffffff, 0x334155, 1.4));
+    const k = new T.DirectionalLight(0xffffff, 2.6); k.position.set(2, 3, 4); sI.add(k);
+    const r = new T.DirectionalLight(0xa5b4fc, 1.6); r.position.set(-3, 1, -2); sI.add(r);
   }
-  /** Cualquier color CSS (también oklch de Tailwind 4) a THREE.Color, pintando un píxel. */
-  const rgbCache = new Map(); let px1 = null;
-  function rgbDe(css){
-    let c = rgbCache.get(css); if (c) return c;
-    px1 ??= document.createElement('canvas').getContext('2d', {willReadFrequently:true});
-    px1.clearRect(0, 0, 1, 1); px1.fillStyle = '#000'; px1.fillStyle = css; px1.fillRect(0, 0, 1, 1);
-    const [r, g, b] = px1.getImageData(0, 0, 1, 1).data; c = new T.Color(`rgb(${r},${g},${b})`); rgbCache.set(css, c); return c;
-  }
-  /** Textura del texto con la misma letra, color y posición que el elemento del DOM. */
-  const texturas = new Map();
-  function textura(el, cvR, w, h, k){
-    const cs = getComputedStyle(el), txt = (cs.textTransform === 'uppercase' ? el.textContent.toUpperCase() : el.textContent).trim();
-    const er = el.getBoundingClientRect(), pl = parseFloat(cs.paddingLeft) || 0, pr = parseFloat(cs.paddingRight) || 0;
-    const centro = cs.textAlign === 'center' || (/flex/.test(cs.display) && cs.justifyContent === 'center') || el.tagName === 'BUTTON', derecha = cs.textAlign === 'right';
-    const x = centro ? (er.left + er.right) / 2 : derecha ? er.right - pr : er.left + pl, y = (er.top + er.bottom) / 2;
-    const clave = [txt, cs.font, cs.color, w, h, Math.round((x - cvR.left) * k), Math.round((y - cvR.top) * k), centro, derecha].join('|');
-    let e = texturas.get(clave);
-    if (!e){
-      if (texturas.size > 220){ const [c0, v0] = texturas.entries().next().value; v0.dispose(); texturas.delete(c0); }
-      const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d');
-      g.font = `${cs.fontStyle} ${cs.fontWeight} ${parseFloat(cs.fontSize) * k}px ${cs.fontFamily}`; g.fillStyle = cs.color;
-      g.textAlign = centro ? 'center' : derecha ? 'right' : 'left'; g.textBaseline = 'middle';
-      g.fillText(txt, (x - cvR.left) * k, (y - cvR.top) * k + parseFloat(cs.fontSize) * k * 0.06);
-      e = new T.CanvasTexture(cv); e.colorSpace = T.SRGBColorSpace; e.minFilter = T.LinearFilter; e.generateMipmaps = false; e.color = cs.color;
-      texturas.set(clave, e);
-    }
-    return e;
+  /** Autoprueba: pinta un cuadro rojo con el renderer compartido, lo copia y lee el píxel.
+      Si sale vacío, la interfaz 3D se apaga y todo vuelve a verse con iconos y textos normales. */
+  let probado = false;
+  function autoprueba(){
+    if (probado) return !Graficos.ui3dRoto; probado = true;
+    try {
+      const S = new T.Scene(), cam = new T.OrthographicCamera(-1, 1, 1, -1, 0, 2), m = new T.Mesh(new T.PlaneGeometry(2, 2), new T.MeshBasicMaterial({color:0xff0000, toneMapped:false}));
+      S.add(m); cam.position.z = 1;
+      const cv = document.createElement('canvas'); cv.width = cv.height = 8; const ctx = cv.getContext('2d', {willReadFrequently:true});
+      pintarEn({cv, ctx, S, cam});
+      const [r, , , a] = ctx.getImageData(4, 4, 1, 1).data; m.geometry.dispose(); m.material.dispose();
+      if (!(r > 150 && a > 150)) throw new Error('copia vacía');
+    } catch (err){ console.warn('Interfaz 3D desactivada:', err.message); Graficos.ui3dRoto = true; Graficos.marcar(); }
+    return !Graficos.ui3dRoto;
   }
   const lista = new Set(), vis = new WeakMap();
   let io = null, raf = 0, ultimo = 0;
   function registrar(el){
-    if (lista.has(el) || !Graficos.es3D) return;
+    if (lista.has(el) || !Graficos.ui3d || !autoprueba()) return;
     if (!sB) preparar();
     io ??= new IntersectionObserver(es => es.forEach(e => vis.set(e.target, e.isIntersecting)));
-    const cv = document.createElement('canvas'); cv.className = el.dataset.t3d != null ? 't3d' : 'lienzo3d'; cv.setAttribute('aria-hidden', 'true');
+    const cv = document.createElement('canvas'); cv.className = el.dataset.i3d != null ? 't3d' : 'lienzo3d'; cv.setAttribute('aria-hidden', 'true');
     el.l3 = {cv, ctx:cv.getContext('2d'), fase:Math.random() * 10};
-    if (el.dataset.t3d != null){
+    if (el.dataset.i3d != null){
       el.classList.add('t3d-on'); el.append(cv);
       // La app cambia el texto con textContent (eso borra el lienzo): se vuelve a poner antes de pintar la pantalla
       el.l3.mo = new MutationObserver(() => { if (cv.parentNode !== el) el.append(cv); }); el.l3.mo.observe(el, {childList:true});
@@ -353,7 +484,7 @@ const Lienzos3D = (() => {
     raf = 0;
     if (now - ultimo >= 33){ ultimo = now; const t = now / 1000, claro = document.documentElement.classList.contains('dark') ? 0 : 1;
       for (const el of lista){
-        if (!el.isConnected || !Graficos.es3D){ soltar(el); continue; }
+        if (!el.isConnected || !Graficos.ui3d){ soltar(el); continue; }
         if (vis.get(el) === false) continue;
         const L = el.l3, b = L.cv.getBoundingClientRect(); if (b.width < 2 || b.height < 2) continue;
         const k = Math.min(window.devicePixelRatio || 1, 2) * (Graficos.alta ? 1 : 0.75), w = Math.round(b.width * k), h = Math.round(b.height * k);
@@ -368,21 +499,14 @@ const Lienzos3D = (() => {
           pintarEn({cv:L.cv, ctx:L.ctx, S:sB, cam:camB});
           continue;
         }
-        // Rótulo o icono 3D
-        if (!el.textContent.trim()){ L.ctx.clearRect(0, 0, w, h); continue; }
-        const tex = textura(el, b, w, h, k), icono = el.dataset.t3d === 'icono', fs = parseFloat(getComputedStyle(el).fontSize) * k;
-        const luz = claro && !el.closest('#juego:not(.juego-menu)');                 // tema claro (la batalla siempre es de noche)
-        const oscuro = luz ? rgbDe(tex.color).clone().lerp(Kit3D.color('#ffffff'), icono ? 0.25 : 0.55) : rgbDe(tex.color).clone().multiplyScalar(icono ? 0.3 : 0.28);
-        const prof = Math.max(0.6, fs * (icono ? 0.045 : luz ? 0.014 : 0.026));       // grosor de cada capa
-        frente.material.map = tex; frente.scale.set(w, h, 1); frente.position.set(0, 0, 0);
-        fondos.forEach((m, i) => { m.material.map = tex; m.material.color.copy(oscuro).lerp(Kit3D.color(luz ? '#cbd5e1' : '#000000'), i / CAPAS * 0.5);
-          m.scale.set(w, h, 1); m.position.set(prof * (i + 1) * 0.55, -prof * (i + 1) * 0.75, -prof * (i + 1)); });
-        brillo.material.uniforms.map.value = tex; brillo.material.uniforms.t.value = t + L.fase; brillo.scale.set(w, h, 1); brillo.position.z = 0.1;
-        const f = t + L.fase;
-        if (icono){ grupo.rotation.set(Math.sin(f * 1.3) * 0.18, Math.sin(f * 1.1) * 0.55 + ((f % 7) < 0.9 ? (f % 7) / 0.9 * 6.283 : 0), 0); grupo.position.set(0, Math.sin(f * 2) * h * 0.04, 0); }
-        else { grupo.rotation.set(Math.sin(f * 0.9) * 0.06, Math.sin(f * 0.7) * 0.1, 0); grupo.position.set(0, 0, 0); }
-        camR.aspect = w / h; camR.position.set(0, 0, (h / 2) / Math.tan(10 * Math.PI / 180)); camR.near = camR.position.z * 0.3; camR.far = camR.position.z * 3; camR.updateProjectionMatrix();
-        pintarEn({cv:L.cv, ctx:L.ctx, S:sR, cam:camR});
+        // Icono 3D: se cuelga su modelo en el soporte, se balancea y se dibuja
+        const modelo = Iconos3D.crear(el.dataset.i3d); if (!modelo){ L.ctx.clearRect(0, 0, w, h); continue; }
+        soporte.clear(); soporte.add(modelo);
+        const f = t * 1.1 + L.fase, giro = (f % 9) < 1.2 ? (f % 9) / 1.2 * Math.PI * 2 : 0;   // de vez en cuando da una vuelta
+        soporte.rotation.set(0.12 + Math.sin(f * 0.8) * 0.12, Math.sin(f) * 0.45 + giro, Math.sin(f * 0.6) * 0.05); soporte.position.y = Math.sin(f * 1.6) * 0.06;
+        const lado = Math.min(w, h) / h;   // el icono ocupa el lado menor del lienzo
+        camI.aspect = w / h; camI.position.set(0, 0, 1.55 / Math.tan(15 * Math.PI / 180) / lado); camI.lookAt(0, 0, 0); camI.updateProjectionMatrix();
+        pintarEn({cv:L.cv, ctx:L.ctx, S:sI, cam:camI});
       }
     }
     if (lista.size) raf = requestAnimationFrame(paso);
@@ -390,11 +514,11 @@ const Lienzos3D = (() => {
   /** Busca elementos marcados que aparezcan en la página (la app pinta con innerHTML). */
   function vigilar(){
     if (vigilar.hecho) return; vigilar.hecho = true;
-    const buscar = n => { if (n.nodeType !== 1) return; if (n.matches('[data-t3d],[data-barra3d]')) registrar(n); n.querySelectorAll('[data-t3d],[data-barra3d]').forEach(registrar); };
+    const buscar = n => { if (n.nodeType !== 1) return; if (n.matches('[data-i3d],[data-barra3d]')) registrar(n); n.querySelectorAll('[data-i3d],[data-barra3d]').forEach(registrar); };
     new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(buscar))).observe(document.body, {childList:true, subtree:true});
     buscar(document.body);
-    document.addEventListener('graficos:cambio', () => { if (Graficos.es3D) buscar(document.body); });
+    document.addEventListener('graficos:cambio', () => { if (Graficos.ui3d) buscar(document.body); });
   }
-  return {pintarEn, vigilar, renderer, pulso:() => {}};
+  return {pintarEn, vigilar, renderer, autoprueba, pulso:() => {}};
 })();
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => Lienzos3D.vigilar()); else Lienzos3D.vigilar();

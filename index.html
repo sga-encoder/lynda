@@ -5082,7 +5082,8 @@ class WaveDirector {
 class World {
   enemigos = []; soldados = []; balas = []; balasEnemigas = []; particulas = []; rayos = []; textos = [];
   #balas = new Pool(() => ({})); #parts = new Pool(() => ({}));
-  constructor({bus, loadout, energia, base, extraSoldados = 0, mej = () => 0, torreta = 0, peloton = null, soldadosOk = () => true, perfil = null, titular = null, potencia = () => null, fx = () => null}){
+  constructor({bus, loadout, energia, base, extraSoldados = 0, mej = () => 0, torreta = 0, peloton = null, soldadosOk = () => true, perfil = null, titular = null, potencia = () => null, fx = () => null, fusionesDe = () => 0}){
+    this.fusionesDe = fusionesDe;                    // cuántas fusiones activas tiene un arma (encienden las activas)
     this.fx = fx;
     this.potencia = potencia;                        // efecto de los potenciadores de la partida para un arma
     this.perfil = perfil; this.titular = titular;   // perfil(uid) → estadísticas del soldado concreto; titular(tipo) → soldado por defecto del tipo
@@ -5173,7 +5174,13 @@ class World {
   apoyoSoldados(dt){
     for (const s of this.soldados){
       const d = s.def;
-      const ep = (s.perfil && this.potencia(s.perfil.armaId)) || {dmg:0, cd:0, rango:0, area:0, perf:0, crit:0, extra:0, costo:0};   // potenciadores
+      const ep = {...((s.perfil && this.potencia(s.perfil.armaId)) || {dmg:0, cd:0, rango:0, area:0, perf:0, crit:0, extra:0, costo:0})};   // potenciadores
+      const pas = s.perfil?.pasiva ?? {};                                // pasiva propia del soldado
+      for (const k of ['dmg', 'cd', 'rango', 'area', 'perf', 'crit', 'costo']) ep[k] = (ep[k] ?? 0) + (pas[k] ?? 0);
+      if (pas.congelaProb && Math.random() < pas.congelaProb) ep.congela = true;
+      if (s.furiaT > 0){ s.furiaT -= dt; ep.cd -= 0.5; }                // activa «Furia»: el doble de rápido
+      if (s.escudoT > 0) s.escudoT -= dt;
+      this.activas(s, dt);
       if (d.ataque && (s.apoyoT -= dt) <= 0){
         const alc = d.ataque.parabola ? 'tierra' : 'ambos';             // las armas de disparo recto también derriban naves
         const o = this.elegir({alcance:alc, prioridad:d.ataque.parabola ? 'cercano' : 'aire', desde:{x:s.x, y:s.cy}});
@@ -5183,7 +5190,7 @@ class World {
         const eq = s.perfil ? d.ataque.dano : this.equipoDe(s.tipo), Q = s.perfil ? {} : EQUIPO[eq] ?? {};   // con perfil, el tipo de daño lo da el arma equipada
         const critico = Math.random() < ep.crit, dmg = d.ataque.dmg * (s.mult ?? 1) * (eq === d.ataque.dano ? 1 : Q.mult ?? 1) * (1 + ep.dmg) * (critico ? 2 : 1);
         for (let k = 0; k <= ep.extra; k++)                              // Ráfaga Fibonacci: balas extra
-          { const fx = s.perfil ? this.fx(s.perfil.armaId) : null;          // partículas propias del arma (cambian con sus potenciadores)
+          { const fx = s.perfil ? {...this.fx(s.perfil.armaId), ...(s.perfil.bala ? {color:s.perfil.bala} : {})} : null;   // forma del arma (cambia con potenciadores y fusiones), color propio del soldado
           if (k === 0 && fx) this.chispas(s.x + 6, s.cy - 3, fx.color, 2);   // fogonazo
           this.disparar({x:s.x + 4, y:s.cy - 3 - k * 2, obj:o, golpe:{dmg, dano:eq, area:Math.max(d.ataque.area ?? 0, Q.area ?? 0) + ep.area, alcance:alc, perf:ep.perf, efecto:ep.congela ? 'congelar' : undefined, por:s.tipo}, parabola:!!d.ataque.parabola,
             vel:(d.ataque.parabola ? 120 : 260) * (1 - k * 0.08), fx, hist:fx?.estela ? [] : null, color:critico ? '#fde047' : fx?.color ?? (d.ataque.area ? '#fb923c' : '#e5e7eb'), r:(critico ? 1.6 : 1) * (fx?.r ?? 1) * (d.ataque.area ? 1.8 : 1.1)}); }
@@ -5347,7 +5354,41 @@ class World {
     if (efecto === 'congelar' && !e.jefe) e.congelado = 2.5;
     e.vida -= d; this.texto(e.x, e.cy - 10 * e.escala, `-${Math.round(d * 10) / 10}${d > dmg ? '!' : ''}`, d < dmg ? '#cbd5e1' : d > dmg ? '#fde047' : '#fecaca', 0.5);
   }
-  dañarSoldado(s, n){ s.vida -= n * (1 - (s.perfil?.reduccion ?? 0)); }   // el blindaje reduce el daño
+  dañarSoldado(s, n){ if (s.escudoT > 0) return; s.vida -= n * (1 - (s.perfil?.reduccion ?? 0)); }   // el blindaje reduce el daño; un escudo activo lo anula
+  /** Habilidades activas del soldado: la 1.ª se enciende con 1 fusión activa de su arma y la 2.ª con 2. */
+  activas(s, dt){
+    const A = s.perfil?.activas; if (!A?.length) return;
+    const n = Math.min(A.length, this.fusionesDe(s.perfil.armaId));
+    for (let k = 0; k < n; k++){
+      const a = A[k]; s.actT ??= [];
+      if ((s.actT[k] = (s.actT[k] ?? a.cd * 0.4) - dt) > 0) continue;
+      s.actT[k] = this.usarActiva(s, a) ? a.cd : 0.5;
+    }
+  }
+  usarActiva(s, a){
+    const P = s.perfil, base = P.ataque?.dmg ?? 1, color = P.bala ?? '#fde047';
+    const o = this.elegir({alcance:'ambos', prioridad:'cercano', desde:{x:s.x, y:s.cy}});
+    const cerca = o && o.x - s.x <= Math.max(150, P.ataque?.rango ?? 0) * (this.clima.rango ?? 1);
+    const tiro = (dmg, k, r) => this.disparar({x:s.x + 4, y:s.cy - 3 - k * 2, obj:o, golpe:{dmg, dano:P.ataque?.dano ?? 'fisico', area:P.ataque?.area ?? 0, alcance:'ambos', por:s.tipo},
+      parabola:!!P.ataque?.parabola, vel:(P.ataque?.parabola ? 120 : 280) * (1 - k * 0.06), color, r, fx:{color, forma:'bala', estela:2}, hist:[]});
+    switch (a.tipo){
+      case 'rafaga': if (!cerca) return false; for (let k = 0; k < a.n; k++) tiro(base, k, 1.3); break;
+      case 'cargado': if (!cerca) return false; tiro(base * a.mult, 0, 2.6); break;
+      case 'granada': if (!cerca) return false;
+        for (const e of [...this.enemigos]) if (!e.bajoTierra && Math.hypot(e.x - o.x, e.cy - o.cy) <= a.area) this.golpear(e, {dmg:a.dmg, dano:'explosivo', por:s.tipo});
+        this.explosion(o.x, o.cy, color, 18); this.sacudir(0.15); break;
+      case 'congelar': { const v = this.enemigos.filter(e => !e.bajoTierra && Math.abs(e.x - s.x) <= a.radio); if (!v.length) return false; v.forEach(e => e.congelado = e.jefe ? a.t / 2 : a.t); break; }
+      case 'furia': if (!cerca) return false; s.furiaT = a.t; break;
+      case 'furiaGrupo': if (!this.enemigos.length) return false; this.soldados.forEach(x => x.furiaT = a.t); break;
+      case 'escudo': if (!cerca) return false; s.escudoT = a.t; break;
+      case 'escudoGrupo': if (!cerca) return false; this.soldados.forEach(x => x.escudoT = a.t); break;
+      case 'curaGrupo': { const h = this.soldados.filter(x => x.vida < x.vidaMax); if (!h.length) return false; h.forEach(x => x.vida = Math.min(x.vidaMax, x.vida + a.v)); break; }
+      case 'reparar': if (this.base.vida >= this.base.vidaMax) return false; this.base.vida = Math.min(this.base.vidaMax, this.base.vida + a.v); break;
+      default: return false;
+    }
+    this.texto(s.x, s.cy - 22, `${a.icon} ${a.nombre}`, color, 1.1);
+    return true;
+  }
   impacto(b, vivo){
     b.muerta = true;
     if (b.fx) this.chispas(b.tx, b.ty, b.color, b.fx.anillo ? 6 : 3);   // chispas del impacto con el color del arma
@@ -5452,9 +5493,12 @@ class Renderer {
   }
   soldado(c, s){
     const y = MUNDO.suelo, d = s.def;
-    c.fillStyle = d.cuerpo; c.fillRect(s.x - 2, y - 11, s.tipo === 'pesado' ? 6 : 5, 7);
+    if (s.escudoT > 0){ c.strokeStyle = '#93c5fdcc'; c.lineWidth = 1; c.beginPath(); c.arc(s.x + 1, y - 9, 10, 0, 6.28); c.stroke(); }   // escudo activo
+    c.fillStyle = s.perfil?.cuerpo ?? d.cuerpo; c.fillRect(s.x - 2, y - 11, s.tipo === 'pesado' ? 6 : 5, 7);
     c.fillStyle = '#fcd34d'; c.fillRect(s.x - 1.5, y - 15, 4, 4);
-    c.fillStyle = d.casco; c.fillRect(s.x - 2.5, y - 16.5, 6, 2);
+    c.fillStyle = s.perfil?.casco ?? d.casco; c.fillRect(s.x - 2.5, y - 16.5, 6, 2);
+    if (s.perfil?.bala){ c.fillStyle = s.perfil.bala; c.fillRect(s.x - 2.5, y - 17.5, 6, 1); }   // franja con su color de bala
+    if (s.furiaT > 0){ c.fillStyle = '#f9731688'; c.fillRect(s.x - 3, y - 18, 8, 18); }
     if (s.tipo === 'medico'){ c.fillStyle = '#dc2626'; c.fillRect(s.x - 0.5, y - 10, 2, 5); c.fillRect(s.x - 1.5, y - 9, 4, 2); }
     else if (s.tipo === 'ingeniero'){ c.fillStyle = '#9ca3af'; c.fillRect(s.x + 2, y - 9, 4, 1.4); c.fillRect(s.x + 5, y - 10, 1.4, 3); }
     else if (s.tipo === 'pesado'){ c.fillStyle = '#94a3b8'; c.fillRect(s.x + 3, y - 12, 2.5, 9); }
@@ -5644,6 +5688,51 @@ const SOLDADOS_UNICOS = {
              ['ing-leo', 'Leo «Forja»', '🔩', {dmg:1.4, cd:1.15}, 'Reparaciones grandes.'],
              ['ing-mia', 'Mía «Blindaje»', '🦾', {vida:1.5}, 'Muy difícil de derribar.']],
 };
+/** Rasgos de cada soldado: aspecto (uniforme, casco), color de bala, 1 pasiva (siempre) y 2 activas
+    (la 1.ª se enciende con 1 fusión activa de su arma y la 2.ª con 2). Todo ligado a su tipo. */
+const A_ = (icon, nombre, tipo, cd, extra = {}, desc = '') => ({icon, nombre, tipo, cd, desc, ...extra});
+const RASGOS_SOLDADO = {
+  'fus-ana': {cuerpo:'#15803d', casco:'#14532d', bala:'#facc15', pasiva:{nombre:'Puntería estable', desc:'+10 % de daño doble.', ef:{crit:0.1}},
+    activas:[A_('🔫', 'Ráfaga triple', 'rafaga', 9, {n:3}, 'Dispara 3 balas seguidas.'), A_('🔥', 'Furia', 'furia', 14, {t:4}, 'Dispara el doble de rápido 4 s.')]},
+  'fus-teo': {cuerpo:'#0d9488', casco:'#134e4a', bala:'#5eead4', pasiva:{nombre:'Gatillo ligero', desc:'Dispara 10 % más seguido.', ef:{cd:-0.1}},
+    activas:[A_('💨', 'Ráfaga de 5', 'rafaga', 10, {n:5}, 'Dispara 5 balas seguidas.'), A_('🔥', 'Furia', 'furia', 12, {t:4}, 'Dispara el doble de rápido 4 s.')]},
+  'fus-luz': {cuerpo:'#4338ca', casco:'#1e1b4b', bala:'#a5b4fc', pasiva:{nombre:'Ojo de halcón', desc:'+15 % de alcance e ignora 20 % de armadura.', ef:{rango:0.15, perf:0.2}},
+    activas:[A_('🎯', 'Tiro cargado', 'cargado', 8, {mult:4}, 'Un disparo con 4× daño.'), A_('❄️', 'Marca helada', 'congelar', 15, {t:2.5, radio:150}, 'Congela a los enemigos cercanos.')]},
+  'fus-max': {cuerpo:'#57534e', casco:'#292524', bala:'#fdba74', pasiva:{nombre:'Piel dura', desc:'Recibe 15 % menos daño.', ef:{reduccion:0.15}},
+    activas:[A_('🛡️', 'Cubrirse', 'escudo', 12, {t:3}, 'Inmune al daño 3 s.'), A_('🔫', 'Ráfaga triple', 'rafaga', 10, {n:3}, 'Dispara 3 balas seguidas.')]},
+  'pes-bruno': {cuerpo:'#475569', casco:'#0f172a', bala:'#fbbf24', pasiva:{nombre:'Empuje', desc:'15 % de probabilidad de frenar al enemigo.', ef:{congelaProb:0.15}},
+    activas:[A_('💥', 'Onda de choque', 'granada', 10, {dmg:6, area:30}, 'Explosión alrededor del objetivo.'), A_('🛡️', 'Muro', 'escudo', 14, {t:3}, 'Inmune al daño 3 s.')]},
+  'pes-olga': {cuerpo:'#78716c', casco:'#44403c', bala:'#e7e5e4', pasiva:{nombre:'Roca', desc:'Regenera vida poco a poco.', ef:{regen:0.4}},
+    activas:[A_('🛡️', 'Muro', 'escudo', 11, {t:3}, 'Inmune al daño 3 s.'), A_('📣', 'Grito de ánimo', 'curaGrupo', 15, {v:3}, 'Cura 3 a todo el pelotón.')]},
+  'pes-iker': {cuerpo:'#b91c1c', casco:'#450a0a', bala:'#f87171', pasiva:{nombre:'Sin miedo', desc:'+15 % de daño.', ef:{dmg:0.15}},
+    activas:[A_('💥', 'Impacto', 'granada', 9, {dmg:8, area:26}, 'Golpe explosivo en área.'), A_('🔥', 'Furia', 'furia', 13, {t:4}, 'Ataca el doble de rápido 4 s.')]},
+  'pes-nora': {cuerpo:'#7c3aed', casco:'#2e1065', bala:'#c4b5fd', pasiva:{nombre:'Campo magnético', desc:'25 % de probabilidad de frenar al enemigo.', ef:{congelaProb:0.25}},
+    activas:[A_('🧲', 'Atracción helada', 'congelar', 12, {t:2.5, radio:130}, 'Congela a los enemigos cercanos.'), A_('🛡️', 'Barrera', 'escudo', 14, {t:3}, 'Inmune al daño 3 s.')]},
+  'gra-rita': {cuerpo:'#b45309', casco:'#78350f', bala:'#fb923c', pasiva:{nombre:'Mecha corta', desc:'+6 de área en sus explosiones.', ef:{area:6}},
+    activas:[A_('💣', 'Granada grande', 'granada', 10, {dmg:6, area:34}, 'Explosión grande.'), A_('💣', 'Doble lanzamiento', 'rafaga', 12, {n:2}, 'Lanza 2 granadas.')]},
+  'gra-dani': {cuerpo:'#0369a1', casco:'#0c4a6e', bala:'#7dd3fc', pasiva:{nombre:'Bolsillos llenos', desc:'Sus disparos cuestan 20 % menos energía.', ef:{costo:-0.2}},
+    activas:[A_('🌧️', 'Lluvia de granadas', 'rafaga', 11, {n:4}, 'Lanza 4 granadas.'), A_('🔥', 'Furia', 'furia', 14, {t:4}, 'Lanza el doble de rápido 4 s.')]},
+  'gra-paco': {cuerpo:'#9a3412', casco:'#431407', bala:'#fdba74', pasiva:{nombre:'Pólvora extra', desc:'+20 % de daño.', ef:{dmg:0.2}},
+    activas:[A_('🌋', 'Cráter', 'granada', 13, {dmg:12, area:40}, 'Explosión enorme.'), A_('🌫️', 'Humo helado', 'congelar', 15, {t:2, radio:140}, 'Frena a los enemigos cercanos.')]},
+  'gra-sol': {cuerpo:'#ca8a04', casco:'#713f12', bala:'#fde047', pasiva:{nombre:'Trayectoria perfecta', desc:'+10 % de alcance y de daño doble.', ef:{rango:0.1, crit:0.1}},
+    activas:[A_('📐', 'Granada de precisión', 'granada', 10, {dmg:7, area:28}, 'Explosión certera.'), A_('🔥', 'Furia', 'furia', 14, {t:4}, 'Lanza el doble de rápido 4 s.')]},
+  'med-eva': {cuerpo:'#f1f5f9', casco:'#dc2626', bala:'#86efac', pasiva:{nombre:'Manos rápidas', desc:'Cura 10 % más seguido.', ef:{cd:-0.1}},
+    activas:[A_('💚', 'Curación en grupo', 'curaGrupo', 12, {v:4}, 'Cura 4 a todo el pelotón.'), A_('🛡️', 'Escudo médico', 'escudoGrupo', 16, {t:2}, 'Todo el pelotón inmune 2 s.')]},
+  'med-tom': {cuerpo:'#fce7f3', casco:'#be185d', bala:'#f9a8d4', pasiva:{nombre:'Ritmo', desc:'Se regenera solo.', ef:{regen:0.3}},
+    activas:[A_('💓', 'Pulso', 'curaGrupo', 9, {v:3}, 'Cura 3 a todo el pelotón.'), A_('⚡', 'Adrenalina', 'furiaGrupo', 16, {t:3}, 'Todo el pelotón ataca el doble de rápido 3 s.')]},
+  'med-ines': {cuerpo:'#ecfccb', casco:'#15803d', bala:'#bef264', pasiva:{nombre:'Herbolaria', desc:'Sus curaciones son 20 % más grandes.', ef:{dmg:0.2}},
+    activas:[A_('🌿', 'Gran curación', 'curaGrupo', 14, {v:6}, 'Cura 6 a todo el pelotón.'), A_('🛡️', 'Escudo de hojas', 'escudoGrupo', 16, {t:2}, 'Todo el pelotón inmune 2 s.')]},
+  'med-raul': {cuerpo:'#d6d3d1', casco:'#57534e', bala:'#a7f3d0', pasiva:{nombre:'Curtido', desc:'Recibe 15 % menos daño.', ef:{reduccion:0.15}},
+    activas:[A_('🏕️', 'Campamento', 'curaGrupo', 12, {v:4}, 'Cura 4 a todo el pelotón.'), A_('🛡️', 'Trinchera', 'escudoGrupo', 15, {t:2}, 'Todo el pelotón inmune 2 s.')]},
+  'ing-hugo': {cuerpo:'#ca8a04', casco:'#a16207', bala:'#fde68a', pasiva:{nombre:'Mantenimiento', desc:'Repara 10 % más seguido.', ef:{cd:-0.1}},
+    activas:[A_('🔧', 'Reparación rápida', 'reparar', 12, {v:8}, 'Repara 8 de la base.'), A_('🛡️', 'Blindar al pelotón', 'escudoGrupo', 16, {t:2}, 'Todo el pelotón inmune 2 s.')]},
+  'ing-vera': {cuerpo:'#ea580c', casco:'#7c2d12', bala:'#fdba74', pasiva:{nombre:'Turbo', desc:'Sus reparaciones cuestan 20 % menos energía.', ef:{costo:-0.2}},
+    activas:[A_('⚙️', 'Reparación turbo', 'reparar', 9, {v:6}, 'Repara 6 de la base.'), A_('⚡', 'Sobrecarga', 'furiaGrupo', 16, {t:3}, 'Todo el pelotón ataca el doble de rápido 3 s.')]},
+  'ing-leo': {cuerpo:'#525252', casco:'#171717', bala:'#fca5a5', pasiva:{nombre:'Forja', desc:'Sus reparaciones son 20 % más grandes.', ef:{dmg:0.2}},
+    activas:[A_('🔩', 'Gran reparación', 'reparar', 14, {v:12}, 'Repara 12 de la base.'), A_('💥', 'Mina', 'granada', 12, {dmg:6, area:30}, 'Una mina explota sobre el enemigo más cercano.')]},
+  'ing-mia': {cuerpo:'#0e7490', casco:'#164e63', bala:'#67e8f9', pasiva:{nombre:'Exoesqueleto', desc:'Recibe 20 % menos daño.', ef:{reduccion:0.2}},
+    activas:[A_('🦾', 'Refuerzo', 'reparar', 12, {v:7}, 'Repara 7 de la base.'), A_('🛡️', 'Campo de fuerza', 'escudoGrupo', 15, {t:2}, 'Todo el pelotón inmune 2 s.')]},
+};
 /** Armas por tipo: [id, nombre, icono, {dano, dmg, cd, rango, area, parabola}, desc]. En apoyo: {cura|repara, cd}. */
 const ARMAS_TROPA = {
   fusilero: [['rifle-vector', 'Rifle Vector', '🔫', {dano:'fisico', dmg:1, cd:1, rango:130}, 'Balas rectas y fiables.'],
@@ -5696,8 +5785,9 @@ function perfilSoldado(P, uid){
   const arma = ARMAS_TROPA[tipo].find(a => a[0] === T.equipo[tipo].arma) ?? ARMAS_TROPA[tipo][0], na = nivelTropa(P, arma[0]), fa = 1 + 0.15 * (na - 1), A = arma[3];
   const bl = BLINDAJES_TROPA[tipo].find(b => b[0] === T.equipo[tipo].blindaje), nb = bl ? nivelTropa(P, bl[0]) : 0, B = bl ? bl[3] : {}, fb = 1 + 0.2 * Math.max(0, nb - 1);
   const ataqueBase = base.ataque ? {...base.ataque, costo:base.ataque.costo * 0.9} : {dmg:1, cd:0.9, costo:1.2, rango:130, dano:'fisico'};   // disparar gasta más energía
-  const perfil = {uid:s[0], tipo, name:s[1], icon:s[2], vida:base.vida * (m.vida ?? 1) * fs + (B.vida ?? 0) * fb, reduccion:Math.min(0.6, (B.reduccion ?? 0) * fb), regen:(B.regen ?? 0) * fb,
-    arma:arma[1], armaId:arma[0], blindaje:bl?.[1] ?? null};
+  const R = RASGOS_SOLDADO[s[0]] ?? {}, pas = R.pasiva?.ef ?? {};
+  const perfil = {uid:s[0], tipo, name:s[1], icon:s[2], vida:base.vida * (m.vida ?? 1) * fs + (B.vida ?? 0) * fb, reduccion:Math.min(0.7, (B.reduccion ?? 0) * fb + (pas.reduccion ?? 0)), regen:(B.regen ?? 0) * fb + (pas.regen ?? 0),
+    arma:arma[1], armaId:arma[0], blindaje:bl?.[1] ?? null, cuerpo:R.cuerpo, casco:R.casco, bala:R.bala, pasiva:pas, activas:R.activas ?? []};
   if (base.apoyo) perfil.apoyo = {...base.apoyo, costo:base.apoyo.costo * 1.5, curar:base.apoyo.curar && base.apoyo.curar * (A.cura ?? 1) * (m.dmg ?? 1) * fs * fa, reparar:base.apoyo.reparar && base.apoyo.reparar * (A.repara ?? 1) * (m.dmg ?? 1) * fs * fa, cd:base.apoyo.cd * (A.cd ?? 1) * (m.cd ?? 1)};
   else perfil.ataque = {...ataqueBase, dano:A.dano ?? ataqueBase.dano, dmg:ataqueBase.dmg * (A.dmg ?? 1) * (m.dmg ?? 1) * fs * fa, cd:ataqueBase.cd * (A.cd ?? 1) * (m.cd ?? 1),
     rango:(A.rango ?? ataqueBase.rango) * (m.rango ?? 1), area:A.area ?? ataqueBase.area ?? 0, parabola:A.parabola ?? !!ataqueBase.parabola};
@@ -5989,7 +6079,7 @@ class BattleScene extends Scene {
     Object.assign(this.cfg, {velocidad:this.cfg.velocidad * df.vel, vida:this.cfg.vida * df.vida, minimo:Math.round(this.cfg.minimo * df.cantidad), intervalo:this.cfg.intervalo / df.cantidad});
     this.director = new WaveDirector(this.cfg, this.app.rng);
     const P = this.app.progreso;
-    this.mundo ??= new World({bus:this.bus, loadout:r.loadout, energia:r.energia, base:r.base, extraSoldados:r.extraSoldados, mej:id => P.nivel(id), torreta:P.total('torreta'), soldadosOk:id => this.app.soldadoDesbloqueado(id), perfil:uid => perfilSoldado(P, uid), titular:tipo => titularDe(this.app, tipo), potencia:armaId => efectoPotencia(r, armaId), fx:armaId => fxDisparo(r, armaId), peloton:this.app.pelotonActivo() ? P.data.peloton : null});
+    this.mundo ??= new World({bus:this.bus, loadout:r.loadout, energia:r.energia, base:r.base, extraSoldados:r.extraSoldados, mej:id => P.nivel(id), torreta:P.total('torreta'), soldadosOk:id => this.app.soldadoDesbloqueado(id), perfil:uid => perfilSoldado(P, uid), titular:tipo => titularDe(this.app, tipo), potencia:armaId => efectoPotencia(r, armaId), fx:armaId => fxDisparo(r, armaId), fusionesDe:armaId => (r.fusionesArma ?? []).filter(id => FUSIONES_ARMA[id]?.arma === armaId).length, peloton:this.app.pelotonActivo() ? P.data.peloton : null});
     const clima = r.mision === 1 && r.oleada === 1 ? 'despejado' : this.app.rng.pick(CLIMAS_ROTACION);
     this.mundo.ponerClima(clima);
     const C = CLIMAS[clima];
@@ -6575,12 +6665,14 @@ class VistaPrevia extends Renderer {
     c.setTransform(s, 0, 0, s, 0, s * (58 - suelo));                  // coordenadas del mundo con el suelo en y = 58
     if (it.kind === 'potarma') return this.armaSoldado(c, it, t);
     if (it.kind === 'arma') return this.arma(c, it.id, t);
-    if (it.kind === 'soldado') return this.soldadoAnim(c, it.id, t);
+    if (it.kind === 'soldado') return this.soldadoAnim(c, it.id, t, it.uid);
     return this.enemigoAnim(c, it.id, t);
   }
-  soldadoAnim(c, tipo, t){
-    const s = new Soldado(0, tipo); s.x = 50; this.soldado(c, s);
-    if (SOLDADOS[tipo].ataque || tipo === 'fusilero'){ const u = (t % 1) / 1; c.fillStyle = '#fde047'; c.beginPath(); c.arc(56 + u * 60, MUNDO.suelo - 10 - (tipo === 'granadero' ? 25 * Math.sin(Math.PI * u) : 0), 1.3, 0, 6.28); c.fill(); }
+  soldadoAnim(c, tipo, t, uid = null){
+    const s = new Soldado(0, tipo), R = uid ? RASGOS_SOLDADO[uid] : null; s.x = 50;
+    if (R) s.perfil = {cuerpo:R.cuerpo, casco:R.casco, bala:R.bala};      // aspecto propio del soldado
+    this.soldado(c, s);
+    if (SOLDADOS[tipo].ataque || tipo === 'fusilero'){ const u = (t % 1) / 1; c.fillStyle = R?.bala ?? '#fde047'; c.beginPath(); c.arc(56 + u * 60, MUNDO.suelo - 10 - (tipo === 'granadero' ? 25 * Math.sin(Math.PI * u) : 0), 1.3, 0, 6.28); c.fill(); }
     if (SOLDADOS[tipo].apoyo){ c.globalAlpha = 0.5 + 0.5 * Math.sin(t * 4); c.font = 'bold 9px system-ui'; c.textAlign = 'center'; c.fillText(tipo === 'medico' ? '+❤' : '+🔧', 50, MUNDO.suelo - 26 - (t * 10 % 8)); c.globalAlpha = 1; }
   }
   enemigoAnim(c, id, t){
@@ -6734,7 +6826,11 @@ class CatalogoScene extends Scene {
       vista = `<canvas data-grande class="block aspect-[120/70] w-full rounded-2xl"></canvas>`;
       const [, , icU, modU = {}, descU] = it.x ?? [], ETQ = {cd:'Recarga', dmg:'Daño', rango:'Alcance', vida:'Vida'};
       const rasgos = Object.entries(modU).map(([kk, v]) => `${ETQ[kk] ?? kk} ×${v}`).join(' · ');
-      cuerpo = `${it.x ? `<p class="text-sm"><b>${icU} ${it.name}</b> · ${d.icon} ${d.name}</p><p class="text-sm text-zinc-300">${descU}${rasgos ? ` <span class="text-xs text-zinc-400">(${rasgos})</span>` : ''}</p>` : ''}<p class="text-sm text-zinc-300">${d.icon} ${d.desc}</p><div class="mt-2">${tablaStats(`
+      const RS = it.uid ? RASGOS_SOLDADO[it.uid] : null;
+      const habil = RS ? `<div class="mt-2 grid gap-1.5 text-sm">
+          <div class="rounded-xl border border-zinc-700 p-2"><span class="inline-block h-3 w-3 rounded-full align-middle" style="background:${RS.bala}"></span> <b>Pasiva · ${RS.pasiva.nombre}</b><br><span class="text-xs text-zinc-400">${RS.pasiva.desc} Siempre activa.</span></div>
+          ${RS.activas.map((a, k) => `<div class="rounded-xl border border-zinc-700 p-2"><b>${a.icon} Activa ${k + 1} · ${a.nombre}</b> <span class="text-xs text-zinc-400">(cada ${a.cd} s)</span><br><span class="text-xs text-zinc-400">${a.desc} Se enciende con ${k + 1} fusión${k ? 'es' : ''} activa${k ? 's' : ''} de su arma.</span></div>`).join('')}</div>` : '';
+      cuerpo = `${it.x ? `<p class="text-sm"><b>${icU} ${it.name}</b> · ${d.icon} ${d.name}</p><p class="text-sm text-zinc-300">${descU}${rasgos ? ` <span class="text-xs text-zinc-400">(${rasgos})</span>` : ''}</p>${habil}` : ''}<p class="text-sm text-zinc-300">${d.icon} ${d.desc}</p><div class="mt-2">${tablaStats(`
         <tr><td>Vida</td><td>${Math.round(d.vida * k)}</td></tr>
         ${d.ataque ? `<tr><td>Ataque</td><td>${(d.ataque.dmg * k).toFixed(1)} de daño ${d.ataque.dano} · recarga ${d.ataque.cd} s · alcance ${d.ataque.rango}${d.ataque.area ? ' · área ' + d.ataque.area : ''}</td></tr><tr><td>Costo</td><td>${d.ataque.costo} ⚡ por disparo</td></tr>` : ''}
         ${d.apoyo ? `<tr><td>Apoyo</td><td>${d.apoyo.curar ? `cura ${(d.apoyo.curar * k).toFixed(1)}` : `repara ${(d.apoyo.reparar * k).toFixed(1)}`} cada ${d.apoyo.cd} s</td></tr><tr><td>Costo</td><td>${d.apoyo.costo} ⚡</td></tr>` : ''}
@@ -6879,7 +6975,8 @@ class PelotonScene extends Scene {
     const fila = (it, accion) => { const max = it.nivel >= MAX_NIVEL_TROPA, costo = costoTropa(it.nivel);
       return `<div class="${UI.card} !p-2.5 ${it.libre ? '' : 'opacity-50'} ${it.equipado ? 'ring-2 ring-emerald-400' : ''}">
         <div class="flex items-center gap-2"><span class="text-2xl">${it.libre ? it.icon : '🔒'}</span><span class="min-w-0 flex-1"><b class="text-sm">${it.libre ? it.name : 'Bloqueado'}</b> ${it.libre ? pips(it.nivel, MAX_NIVEL_TROPA) : ''}
-          <span class="block text-[11px] text-zinc-400">${it.libre ? it.desc : 'Se desbloquea más adelante en la 🗺️ Ruta.'}</span></span></div>
+          <span class="block text-[11px] text-zinc-400">${it.libre ? it.desc : 'Se desbloquea más adelante en la 🗺️ Ruta.'}</span>
+          ${it.libre && it.clase === 'soldado' && RASGOS_SOLDADO[it.id] ? `<span class="mt-0.5 block text-[11px]"><span class="inline-block h-2.5 w-2.5 rounded-full align-middle" style="background:${RASGOS_SOLDADO[it.id].bala}"></span> <b>${RASGOS_SOLDADO[it.id].pasiva.nombre}:</b> <span class="text-zinc-400">${RASGOS_SOLDADO[it.id].pasiva.desc}</span><br><span class="text-zinc-400">Activas: ${RASGOS_SOLDADO[it.id].activas.map(a => `${a.icon} ${a.nombre}`).join(' · ')} (con fusiones de su arma)</span></span>` : ''}</span></div>
         ${it.libre ? `<div class="mt-2 flex gap-1.5">${accion ?? ''}<button data-subir="${it.id}" class="${UI.btn} !min-h-9 flex-1 !px-2 text-xs" ${max || chat < costo ? 'disabled' : ''}>${max ? 'Nivel máximo' : `⬆ Nivel ${it.nivel + 1} · ⚙️ ${costo}`}</button></div>` : ''}</div>`; };
     const uids = tipos.flatMap(t => SOLDADOS_UNICOS[t].filter((x, k) => tropaDesbloqueada(this.app, t, 'soldado', k)).map(x => x[0]));
     const pl = d.peloton ??= {orden:ORDEN_RECLUTA.slice(0, SLOTS_PELOTON), equipo:{}};

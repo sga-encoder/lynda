@@ -442,11 +442,50 @@ const Iconos3D = (() => {
       g.add(malla(esfera(1), mat('#4ade80', {r:0.4}), [0, 0, 0], [0, 0, 0], [0.85, 1.05, 0.8]));
       for (const s of [-1, 1]) g.add(malla(esfera(0.32), mat('#020617', {r:0.1}), [s * 0.36, 0.1, 0.62], [0, 0, s * -0.5], [1, 1.5, 0.6]));
       return g; },
+    planeta(){ const g = new T.Group();
+      g.add(malla(new T.IcosahedronGeometry(0.85, 3), mat('#a855f7', {r:0.5, e:'#581c87', ei:0.3})));
+      g.add(malla(new T.TorusGeometry(1.25, 0.09, 10, 48), mat('#f0abfc', {e:'#e879f9', ei:0.3}), [0, 0, 0], [Math.PI / 2 - 0.35, 0.3, 0], [1, 1, 0.25]));
+      g.add(malla(esfera(0.18), mat('#e2e8f0', {r:0.8}), [1.15, 0.65, 0.3]));
+      return g; },
+    infinito(){ const g = new T.Group(), pts = [];
+      for (let i = 0; i < 64; i++){ const a = i / 64 * Math.PI * 2, d = 1 + Math.sin(a) ** 2; pts.push([1.1 * Math.cos(a) / d, 1.1 * Math.sin(a) * Math.cos(a) / d, 0.15 * Math.sin(a)]); }
+      g.add(tubo(pts, 0.14, mat('#22d3ee', {e:'#06b6d4', ei:0.3}), true)); return g; },
+    chincheta(){ const g = new T.Group();
+      g.add(malla(new T.CylinderGeometry(0.55, 0.55, 0.25, 32), mat('#ef4444'), [0, 0.65, 0])); g.add(malla(new T.CylinderGeometry(0.25, 0.4, 0.55, 24), mat('#ef4444'), [0, 0.3, 0]));
+      g.add(malla(new T.ConeGeometry(0.07, 0.8, 10), mat('#cbd5e1', {m:0.9}), [0, -0.35, 0], [Math.PI, 0, 0])); g.rotation.z = -0.5; return g; },
+    varita(){ const g = new T.Group(); g.add(malla(new T.CylinderGeometry(0.08, 0.08, 1.9, 12), mat('#1f2937'), [-0.25, -0.35, 0], [0, 0, 0.6]));
+      g.add(malla(new T.CylinderGeometry(0.085, 0.085, 0.3, 12), mat('#f8fafc'), [-0.75, -0.95, 0], [0, 0, 0.6]));
+      g.add(malla(extruir(estrella(0.5, 0.21), 0.12, 0.04), mat('#facc15', {e:'#f59e0b', ei:0.6}), [0.35, 0.55, 0]));
+      [[0.9, 0.95], [0.75, 0.05], [-0.05, 1.0]].forEach(([x, y]) => g.add(malla(esfera(0.07), mat('#fef08a', {e:'#facc15', ei:1}), [x, y, 0]))); return g; },
+    bombilla(){ const g = new T.Group(), vidrio = new T.MeshPhysicalMaterial({color:0xfef9c3, emissive:0xfde047, emissiveIntensity:0.5, transparent:true, opacity:0.85, roughness:0.1, clearcoat:1});
+      g.add(malla(esfera(0.75), vidrio, [0, 0.3, 0])); g.add(malla(new T.CylinderGeometry(0.32, 0.38, 0.4, 20), vidrio, [0, -0.35, 0]));
+      for (let i = 0; i < 3; i++) g.add(malla(new T.CylinderGeometry(0.33, 0.33, 0.1, 20), mat('#94a3b8', {m:0.8}), [0, -0.62 - i * 0.13, 0]));
+      g.add(malla(new T.TorusGeometry(0.18, 0.03, 6, 16, Math.PI), mat('#f59e0b', {e:'#f97316', ei:1}), [0, 0.25, 0])); return g; },
+    mano(){ const g = new T.Group(), piel = mat('#fbbf24', {r:0.45});
+      g.add(malla(extruir(rect(1.1, 1.0, 0.35), 0.35, 0.1), piel, [0, -0.4, 0]));
+      [[-0.4, 0.75], [-0.13, 0.95], [0.14, 0.9], [0.41, 0.72]].forEach(([x, l]) => g.add(malla(new T.CapsuleGeometry(0.13, l, 6, 12), piel, [x, 0.15 + l / 2, 0])));
+      g.add(malla(new T.CapsuleGeometry(0.14, 0.55, 6, 12), piel, [-0.7, -0.3, 0], [0, 0, 0.8])); return g; },
+    papelera(){ const g = new T.Group(), m = mat('#64748b', {m:0.6, r:0.35});
+      g.add(malla(new T.CylinderGeometry(0.65, 0.5, 1.4, 24, 1, true), m, [0, -0.2, 0])); g.add(malla(new T.CylinderGeometry(0.5, 0.5, 0.06, 24), m, [0, -0.9, 0]));
+      g.add(malla(new T.CylinderGeometry(0.75, 0.75, 0.15, 24), mat('#475569', {m:0.7}), [0, 0.6, 0])); g.add(malla(new T.TorusGeometry(0.2, 0.05, 8, 16, Math.PI), m, [0, 0.7, 0])); return g; },
   };
   /** Modelo listo para dibujar: centrado y del mismo tamaño (cabe en 2,2 unidades). */
+  /** Gema hexagonal con un símbolo matemático grabado (𝑥, ±, ½, √…): para glifos que no son dibujos. */
+  function gema(glifo){
+    const cv = document.createElement('canvas'); cv.width = cv.height = 256; const c = cv.getContext('2d');
+    const gr = c.createRadialGradient(110, 100, 10, 128, 128, 140); gr.addColorStop(0, '#c4b5fd'); gr.addColorStop(1, '#4c1d95'); c.fillStyle = gr; c.fillRect(0, 0, 256, 256);
+    const letra = /^[a-zA-Z]$/.test(glifo = glifo.normalize('NFKC'));   // 𝑥 (letra matemática) → x en cursiva
+    c.fillStyle = '#ffffff'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `${letra ? 'italic ' : ''}bold ${glifo.length > 2 ? 92 : 150}px "Times New Roman", serif`;
+    c.shadowColor = 'rgba(30,10,60,.6)'; c.shadowBlur = 8; c.fillText(glifo, 128, 138);
+    const tex = new T.CanvasTexture(cv); tex.colorSpace = T.SRGBColorSpace;
+    const lado = mat('#7c3aed', {m:0.6, r:0.25}), cara = new T.MeshPhysicalMaterial({map:tex, roughness:0.3, clearcoat:1, emissive:0xffffff, emissiveMap:tex, emissiveIntensity:0.25});
+    const g = new T.Group(); g.add(malla(new T.CylinderGeometry(1, 1, 0.4, 6), [lado, cara, cara], [0, 0, 0], [Math.PI / 2, Math.PI / 6, 0]));
+    g.add(malla(new T.TorusGeometry(1.02, 0.06, 6, 6), mat('#e9d5ff', {m:0.8}), [0, 0, 0], [0, 0, Math.PI / 6]));
+    return g;
+  }
   function crear(nombre){
     if (cache.has(nombre)) return cache.get(nombre);
-    const f = F[nombre]; if (!f) return null;
+    const f = nombre.startsWith('glifo:') ? () => gema(decodeURIComponent(nombre.slice(6))) : F[nombre]; if (!f) return null;
     const raiz = new T.Group(), g = f(); raiz.add(g);
     const caja = new T.Box3().setFromObject(raiz), tam = caja.getSize(new T.Vector3()), c = caja.getCenter(new T.Vector3());
     g.position.sub(c); raiz.scale.setScalar(2.2 / Math.max(tam.x, tam.y, tam.z * 0.7));
@@ -457,13 +496,17 @@ const Iconos3D = (() => {
 /** Emojis de la app que tienen icono 3D modelado. */
 const EMOJI_3D = {'🧩':'puzzle', '🧱':'ladrillos', '📈':'grafica', '∫':'integral', '🎮':'mando', '🗺️':'mapa', '🏠':'casa', '📖':'libro', '📚':'libros', '🃏':'cartas',
   '🚩':'bandera', '⚡':'rayo', '🪖':'casco', '🔬':'matraz', '🌱':'planta', '⚔️':'espadas', '🔥':'fuego', '💀':'calavera', '✅':'check', '✓':'check', '🔒':'candado',
-  '👽':'alien', '🔫':'rifle', '💣':'bomba', '🛡️':'escudo', '⛑️':'cruz', '🔧':'llave', '❤️':'corazon', '🌊':'ola', '⚙️':'engrane', '🛠':'herramientas', '🏆':'trofeo', '🏅':'medalla', '🧮':'abaco'};
+  '👽':'alien', '🔫':'rifle', '💣':'bomba', '🛡️':'escudo', '⛑️':'cruz', '🔧':'llave', '❤️':'corazon', '🌊':'ola', '⚙️':'engrane', '🛠':'herramientas', '🏆':'trofeo', '🏅':'medalla', '🧮':'abaco',
+  '🪐':'planeta', '♾️':'infinito', '📌':'chincheta', '🪄':'varita', '💡':'bombilla', '✋':'mano', '🗑':'papelera', '✔':'check', '❓':'bombilla', '🎖️':'medalla'};
 /** Nombre del modelo de un emoji (con o sin selector de variación U+FE0F). */
 const nombreIcono3D = e => { const b = String(e).replace(/\uFE0F/g, ''); return EMOJI_3D[e] ?? EMOJI_3D[b] ?? EMOJI_3D[b + '\uFE0F']; };
 /** HTML de un icono: modelo 3D si existe (el emoji queda para 2D), si no el emoji tal cual. */
 function icono3D(emoji, clases = 'inline-block h-[1.2em] w-[1.3em] align-[-0.25em]'){
-  const n = nombreIcono3D(emoji);
-  return n ? `<span data-i3d="${n}" class="${clases}">${emoji}</span>` : emoji;
+  const glifo = {'🔢':'123', '🔤':'abc', '🔣':'+−'}[emoji], n = glifo ? null : nombreIcono3D(emoji); if (glifo) emoji = glifo;   // categorías de fichas: el símbolo grabado
+  if (n) return `<span data-i3d="${n}" class="${clases}">${emoji}</span>`;
+  // Símbolos que no son dibujos (𝑥, ±, ½, √, 123…): grabados en una gema 3D
+  if (emoji && String(emoji).length <= 4 && !/\p{Extended_Pictographic}/u.test(emoji)) return `<span data-i3d="glifo:${encodeURIComponent(emoji)}" class="${clases}">${emoji}</span>`;
+  return emoji;
 }
 /** Separa un emoji inicial de su texto («🏠 Inicio») y lo vuelve icono 3D. */
 const conIcono3D = (txt, clases) => { const m = /^(\S+)\s+([\s\S]*)$/.exec(txt); return m && nombreIcono3D(m[1]) ? `${icono3D(m[1], clases)} ${m[2]}` : txt; };

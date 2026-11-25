@@ -393,8 +393,8 @@ function pageTutorial(){
   DEMO_N = 0;
   if (!done['t-visto']){ done['t-visto'] = true; store.set('done', done); }
   const tarjeta = (cab, cuerpo) => `<div class="${C.card} overflow-hidden">${cab}${cuerpo}</div>`;
-  const demos = DEMOS(), indice = demos.map((d,i)=>`<a href="#/tutorial" data-ir="demo-${i}" class="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-900">${d.icon} ${d.titulo}</a>`).join(' ');
-  return `<div class="text-sm text-stone-500 dark:text-zinc-400"><a href="#/aprender" class="underline">Inicio</a> › Tutorial</div>
+  const demos = DEMOS(), indice = demos.map((d,i)=>`<a href="#/tutorial" data-ir="demo-${i}" class="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-900">${icono3D(d.icon)} ${d.titulo}</a>`).join(' ');
+  return (`<div class="text-sm text-stone-500 dark:text-zinc-400"><a href="#/aprender" class="underline">Inicio</a> › Tutorial</div>
   <h2 class="${C.h2}">🧩 Tutorial: cómo se usa cada ficha</h2>
   <p class="${C.lead}">Aquí no hay ejercicios: solo mira cómo funciona cada ficha. Las animaciones se repiten solas. Después practica en <a href="#/f" class="underline">Fundamentos</a>.</p>
   ${DEMO_FICHAS}
@@ -408,17 +408,17 @@ function pageTutorial(){
       [lienzoDemo([hoja('2'), hoja('x'), hoja('+'), hoja('1')]), lienzoDemo([nz('frac',[hoja('x')],[])]), lienzoDemo([nz('frac',[hoja('x')],[hoja('2')]), hoja('+')])]))}
   <h3 class="${C.h3}">🪄 Gestos del lienzo</h3>
   <p class="${C.src}">Tocar, mantener, juntar y pasar al otro lado: lo que puedes hacer con las fichas que ya están en el lienzo.</p>
-  <div class="mt-3 grid gap-3 md:grid-cols-2">${GESTOS().map(g=>tarjeta(`<div class="flex items-center gap-2"><span class="flex h-10 min-w-10 items-center justify-center rounded-xl bg-amber-100 px-2 font-serif text-lg dark:bg-amber-950">${g.icon}</span><b class="text-lg">${g.titulo}</b></div>
+  <div class="mt-3 grid gap-3 md:grid-cols-2">${GESTOS().map(g=>tarjeta(`<div class="flex items-center gap-2"><span class="flex h-10 min-w-10 items-center justify-center rounded-xl bg-amber-100 px-2 font-serif text-lg dark:bg-amber-950">${icono3D(g.icon, 'block h-8 w-8')}</span><b class="text-lg">${g.titulo}</b></div>
       <p class="!my-2 text-sm">${g.txt}</p>`, escenas(g.pasos, g.frames))).join('')}</div>
   <h3 class="${C.h3}">🧱 Ficha por ficha</h3>
   <div class="flex flex-wrap gap-1.5">${indice}</div>
-  <div class="mt-3 grid gap-3 md:grid-cols-2">${demos.map((d,i)=>tarjeta(`<div id="demo-${i}" class="flex items-center gap-2"><span class="flex h-10 min-w-10 items-center justify-center rounded-xl bg-violet-100 px-2 font-serif text-lg dark:bg-violet-950">${d.icon}</span><b class="text-lg">${d.titulo}</b><span class="ml-auto text-xs text-stone-500 dark:text-zinc-400">${d.cat}</span></div>
+  <div class="mt-3 grid gap-3 md:grid-cols-2">${demos.map((d,i)=>tarjeta(`<div id="demo-${i}" class="flex items-center gap-2"><span class="flex h-10 min-w-10 items-center justify-center rounded-xl bg-violet-100 px-2 font-serif text-lg dark:bg-violet-950">${icono3D(d.icon, 'block h-8 w-8')}</span><b class="text-lg">${d.titulo}</b><span class="ml-auto text-xs text-stone-500 dark:text-zinc-400">${d.cat}</span></div>
       <p class="!my-2 text-sm">${d.txt}</p><div class="pointer-events-none mb-3 flex flex-wrap gap-1.5">${d.fichas.map(t=>bankPiece('demo', t)).join('')}</div>`, escenas(d.pasos, d.frames, i))).join('')}</div>
   <h3 class="${C.h3}">✔ Verificar, pista y propiedades</h3>
   ${tarjeta('', `<ul class="text-sm"><li><b>✔ Verificar</b> revisa el paso; si está bien pasas al siguiente.</li><li><b>💡 Pista</b> y <b>👁 Solución</b> ayudan si te atascas.</li><li><b>↶ Deshacer</b> y <b>🗑 Limpiar</b> corrigen el lienzo.</li><li><b>🃏 Propiedades</b> (en Fundamentos) aplica una carta del juego a lo que armaste.</li><li><b>💻 En computador</b>: arrastra con el mouse; «mantener presionado» es dejar el clic apretado. <kbd>Supr</kbd> elimina la ficha marcada con 🗑 y <kbd>Esc</kbd> la desmarca o cierra el editor.</li><li><b>📝 Tu proceso hasta aquí</b>: arriba del lienzo ves los pasos que ya verificaste; con <b>📋 Empezar desde mi paso anterior</b> copias el último.</li></ul>`)}
   <h3 class="${C.h3}">🗺️ La Ruta y las lecciones</h3>
   ${tarjeta('', `<ul class="text-sm"><li>Las lecciones se abren <b>en orden</b>: para entrar a la siguiente, termina los ejercicios con piezas de la anterior (🔒 = bloqueada).</li><li>En la 🗺️ Ruta, <b>toca un nivel</b>: si ya puedes, te lleva directo a sus ejercicios; si no, te muestra los módulos que te faltan y el botón <b>📚 Empezar a estudiar</b>.</li><li>Cada tema también desbloquea cosas del juego: problemas, cartas y los <b>Comandantes</b> de cada mundo.</li></ul>`)}
-  <div class="mt-8 flex justify-end"><a class="${C.btnP}" href="#/f">Practicar en Fundamentos ▸</a></div>`;
+  <div class="mt-8 flex justify-end"><a class="${C.btnP}" href="#/f">Practicar en Fundamentos ▸</a></div>`).replace(/(<h[23] class="[^"]*">)(\S+)\s/g, (m, h, e) => nombreIcono3D(e) || /\p{Extended_Pictographic}/u.test(e) ? `${h}${icono3D(e)} ` : m);   // títulos con icono 3D
 }
 
 /* ---------- Propiedades: índice por área y práctica de una carta ---------- */

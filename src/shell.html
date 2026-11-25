@@ -56,12 +56,11 @@
   html:not(.dark) #juego.juego-menu .border-emerald-700{border-color:#6ee7b7}
   html:not(.dark) #juego.juego-menu .from-indigo-950\/60{--tw-gradient-from:#e0e7ff}
   html:not(.dark) #juego.juego-menu .to-zinc-950{--tw-gradient-to:#f5f5f4}
-  /* las cartas y vistas previas conservan su arte oscuro */
-  html:not(.dark) #juego.juego-menu [data-arte]{color:#f4f4f5}
-  html:not(.dark) #juego.juego-menu [data-arte] :is(.bg-zinc-950,.bg-zinc-950\/95){background-color:rgb(9 9 11/.95)}
-  html:not(.dark) #juego.juego-menu [data-arte] .bg-zinc-900{background-color:#18181b}
-  html:not(.dark) #juego.juego-menu [data-arte] :is(.text-zinc-300,.text-zinc-400){color:#a1a1aa}
-  html:not(.dark) #juego.juego-menu [data-arte] .text-zinc-100{color:#f4f4f5}
+  /* cartas en tema claro: fondo claro, texto oscuro y borde de color (en todas partes) */
+  html:not(.dark) [data-arte]{color:#1c1917;--tw-shadow-color:rgba(0,0,0,.18)}
+  html:not(.dark) [data-arte] :is(.bg-zinc-950,.bg-zinc-950\/95), html:not(.dark) #juego [data-arte] :is(.bg-zinc-950,.bg-zinc-950\/95){background-color:rgba(255,255,255,.96)}
+  html:not(.dark) [data-arte] :is(.text-white,.text-zinc-100), html:not(.dark) #juego [data-arte] :is(.text-white,.text-zinc-100){color:#1c1917}
+  html:not(.dark) [data-arte] :is(.text-zinc-300,.text-zinc-400), html:not(.dark) #juego [data-arte] :is(.text-zinc-300,.text-zinc-400){color:#57534e}
   #juego.juego-menu{top:var(--alto-cab,57px);bottom:calc(3.85rem + env(safe-area-inset-bottom));z-index:25}
   body.modo-landing #bottomNav, body.modo-landing #menuBtn, body.modo-landing #selectorModo, body.modo-juego #menuBtn{display:none}
   body:not(.modo-aprender) #side{display:none}

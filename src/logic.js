@@ -225,16 +225,35 @@ function propsBloque(domId, titulo){
   const pp = propsProgreso(domId);
   return `<h3 class="${C.h3}">🃏 Cartas de propiedades · ${titulo}</h3><p class="${C.src}">Las mismas cartas del juego, con 3 ejercicios cada una: toca la carta, elige dónde aplicarla y escoge el resultado (${pp.n}/${pp.tot} hechos).</p>${propsGrid(domId)}`;
 }
-/** Portada de toda la aplicación: logo y dos caminos. */
+/** Portada de toda la aplicación: logo, tu progreso, los dos caminos y accesos rápidos. */
 function pageLanding(){
-  return `<div class="flex min-h-[calc(100dvh-9rem)] flex-col items-center justify-center gap-6 text-center">
-    <div class="flex h-28 w-28 items-center justify-center rounded-[2rem] bg-gradient-to-br from-blue-600 via-violet-600 to-fuchsia-500 text-6xl font-black text-white shadow-2xl [animation:flotar_3s_ease-in-out_infinite]">∫</div>
-    <div><h2 class="text-4xl font-black tracking-tight">Integrando</h2><p class="font-semibold text-violet-700 dark:text-violet-300">Cálculo paso a paso</p><p class="mt-1 text-stone-600 dark:text-zinc-400">Aprende con fichas y ponlo a prueba defendiendo la Tierra.</p></div>
-    <div class="grid w-full max-w-sm gap-3">
-      <a href="#/jugar" class="flex min-h-16 items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-indigo-900 to-violet-700 text-xl font-black text-white shadow-lg active:scale-[0.98] transition-transform">🎮 Jugar</a>
-      <a href="#/aprender" class="flex min-h-16 items-center justify-center gap-3 rounded-2xl border-2 border-blue-600 bg-white text-xl font-black text-blue-700 shadow active:scale-[0.98] transition-transform dark:bg-zinc-900 dark:text-blue-300">📚 Aprender</a>
-      <button data-ajustes class="mt-1 text-sm font-semibold text-stone-600 underline dark:text-zinc-400">⚙️ Configuración</button>
-    </div></div>`;
+  const R = rutaApp().resumen(), sig = R.tiers.find(t => !t.real), nivel = R.nivelReal + 1;
+  const fAll = FUND.reduce((a, T) => a + T.lego.length, 0), fOk = FUND.reduce((a, T) => a + fundProgress(T).n, 0), dT = secTotales('d');
+  const iAll = LESSONS.reduce((a, L) => a + L.exercises.length, 0), iOk = LESSONS.reduce((a, L) => a + lessonProgress(L).n, 0);
+  const apOk = fOk + dT.n + iOk, apTot = fAll + dT.tot + iAll, pct = apTot ? Math.round(100 * apOk / apTot) : 0;
+  const J = progresoJuego().data, partidas = J.partidas ?? 0, misiones = J.misiones ?? 0;
+  const ic = (e, c) => icono3D(e, c);
+  const acceso = (href, e, t, attr = '') => `<${href ? `a href="${href}"` : 'button'} ${attr} class="flex flex-col items-center gap-1 rounded-2xl border border-stone-200 bg-white/80 px-1 py-2.5 text-xs font-semibold shadow-sm transition-transform active:scale-95 dark:border-zinc-800 dark:bg-zinc-900/80">${ic(e, 'block h-8 w-8')}${t}</${href ? 'a' : 'button'}>`;
+  return `<div class="mx-auto flex min-h-[calc(100dvh-9rem)] max-w-md flex-col justify-center gap-5 py-4">
+    <div class="flex items-center gap-4">
+      <div class="flex h-24 w-24 shrink-0 items-center justify-center rounded-[1.8rem] bg-gradient-to-br from-blue-600 via-violet-600 to-fuchsia-500 text-6xl font-black text-white shadow-2xl shadow-violet-500/30 [animation:flotar_3s_ease-in-out_infinite]">${ic('∫', 'block h-16 w-16')}</div>
+      <div class="min-w-0"><h2 class="text-4xl font-black tracking-tight">Integrando</h2><p class="font-semibold text-violet-700 dark:text-violet-300">Cálculo paso a paso</p>
+        <p class="text-sm text-stone-600 dark:text-zinc-400">Aprende con fichas y ponlo a prueba defendiendo la Tierra.</p></div></div>
+    <a href="#/ruta" class="block rounded-3xl border border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 p-4 shadow-sm transition-transform active:scale-[0.98] dark:border-amber-800 dark:from-amber-950/40 dark:to-orange-950/30">
+      <div class="flex items-center gap-3">${ic('🏆', 'block h-11 w-11')}<div class="min-w-0 flex-1"><b class="block">Tu ruta · nivel ${nivel} de ${R.total}</b>
+        <span class="block truncate text-sm text-stone-600 dark:text-zinc-400">${sig ? `Siguiente: ${sig.titulo}` : '¡Ruta completa!'}</span></div><span class="text-2xl text-amber-600">›</span></div>
+      <div data-barra3d="#f59e0b" class="mt-2 h-2.5 overflow-hidden rounded-full bg-amber-200 dark:bg-amber-900"><div class="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500" style="width:${Math.round(100 * nivel / R.total)}%"></div></div></a>
+    <div class="grid grid-cols-2 gap-3">
+      <a href="#/jugar" class="group relative flex min-h-48 flex-col justify-between overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-950 via-violet-900 to-fuchsia-800 p-4 text-white shadow-xl shadow-violet-900/30 transition-transform active:scale-[0.97]">
+        <span class="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-fuchsia-400/20 blur-2xl"></span>${ic('🎮', 'block h-16 w-16')}
+        <span><b class="block text-2xl leading-tight">Jugar</b><span class="block text-xs text-violet-200">Defensa Algebraica</span>
+          <span class="mt-1 block text-[11px] text-violet-200/80">${partidas ? `${partidas} partidas · ${misiones} misiones` : 'Resuelve para dar energía'}</span></span></a>
+      <a href="#/aprender" class="group relative flex min-h-48 flex-col justify-between overflow-hidden rounded-3xl bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 p-4 text-white shadow-xl shadow-blue-900/30 transition-transform active:scale-[0.97]">
+        <span class="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-sky-300/30 blur-2xl"></span>${ic('📚', 'block h-16 w-16')}
+        <span><b class="block text-2xl leading-tight">Aprender</b><span class="block text-xs text-sky-100">Fundamentos, derivadas e integrales</span>
+          <span class="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-white/25"><span class="block h-full rounded-full bg-white" style="width:${pct}%"></span></span><span class="mt-0.5 block text-[11px] text-sky-100">${pct} % · ${apOk}/${apTot} ejercicios</span></span></a></div>
+    <div class="grid grid-cols-4 gap-2">${acceso('#/ruta', '🗺️', 'Ruta')}${acceso('#/tutorial', '🧩', 'Tutorial')}${acceso(null, '📖', 'Diccionario', 'data-dict-open')}${acceso(null, '⚙️', 'Ajustes', 'data-ajustes')}</div>
+  </div>`;
 }
 function pageHome(){
   const fAll = FUND.reduce((a,T)=>a+T.lego.length,0), fOk = FUND.reduce((a,T)=>a+fundProgress(T).n,0);
